@@ -1,26 +1,24 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 
 const { runInitCommand } = require("../dist/commands/init.js");
+const { createSkillDirectoryFactory, cleanupDirectory } = require("./helpers/fs-test-utils.js");
 
-function makeEmptySkillDirectory(skillName) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "skillmd-command-test-"));
-  const dir = path.join(root, skillName);
-  fs.mkdirSync(dir);
-  return { root, dir };
-}
+const makeEmptySkillDirectory = createSkillDirectoryFactory("skillmd-command-test-");
 
-function cleanup(root) {
-  fs.rmSync(root, { recursive: true, force: true });
+function withSkillDirectory(skillName, run) {
+  const { root, dir } = makeEmptySkillDirectory(skillName);
+  try {
+    run({ root, dir });
+  } finally {
+    cleanupDirectory(root);
+  }
 }
 
 test("returns success when scaffold and validation succeed", () => {
-  const { root, dir } = makeEmptySkillDirectory("command-pass");
-
-  try {
+  withSkillDirectory("command-pass", ({ dir }) => {
     const exitCode = runInitCommand([], {
       cwd: dir,
       validateSkill: () => ({ status: "passed", message: "ok" }),
@@ -28,31 +26,23 @@ test("returns success when scaffold and validation succeed", () => {
 
     assert.equal(exitCode, 0);
     assert.equal(fs.existsSync(path.join(dir, "SKILL.md")), true);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("returns failure when validation fails", () => {
-  const { root, dir } = makeEmptySkillDirectory("command-validate-fail");
-
-  try {
+  withSkillDirectory("command-validate-fail", ({ dir }) => {
     const exitCode = runInitCommand([], {
       cwd: dir,
       validateSkill: () => ({ status: "failed", message: "bad skill" }),
     });
 
     assert.equal(exitCode, 1);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("returns success with --no-validate", () => {
-  const { root, dir } = makeEmptySkillDirectory("command-no-validate");
-  let validatorCalled = false;
-
-  try {
+  withSkillDirectory("command-no-validate", ({ dir }) => {
+    let validatorCalled = false;
     const exitCode = runInitCommand(["--no-validate"], {
       cwd: dir,
       validateSkill: () => {
@@ -63,60 +53,48 @@ test("returns success with --no-validate", () => {
 
     assert.equal(exitCode, 0);
     assert.equal(validatorCalled, false);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("returns failure when target directory is non-empty", () => {
-  const { root, dir } = makeEmptySkillDirectory("command-non-empty");
-
-  try {
+  withSkillDirectory("command-non-empty", ({ dir }) => {
     fs.writeFileSync(path.join(dir, "existing.txt"), "content", "utf8");
     const exitCode = runInitCommand([], { cwd: dir });
-
     assert.equal(exitCode, 1);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("returns failure when init receives unsupported arguments", () => {
-  const { root, dir } = makeEmptySkillDirectory("command-args");
-
-  try {
+  withSkillDirectory("command-args", ({ dir }) => {
     const exitCode = runInitCommand(["extra-arg"], {
       cwd: dir,
       validateSkill: () => ({ status: "passed", message: "ok" }),
     });
 
     assert.equal(exitCode, 1);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("returns failure with fallback message when non-Error is thrown", () => {
-  const { root, dir } = makeEmptySkillDirectory("command-non-error-throw");
+  withSkillDirectory("command-non-error-throw", ({ dir }) => {
+    const originalError = console.error;
+    let captured = "";
+    console.error = (...args) => {
+      captured += `${args.join(" ")}\n`;
+    };
 
-  const originalError = console.error;
-  let captured = "";
-  console.error = (...args) => {
-    captured += `${args.join(" ")}\n`;
-  };
+    try {
+      const exitCode = runInitCommand([], {
+        cwd: dir,
+        validateSkill: () => {
+          throw "nope";
+        },
+      });
 
-  try {
-    const exitCode = runInitCommand([], {
-      cwd: dir,
-      validateSkill: () => {
-        throw "nope";
-      },
-    });
-
-    assert.equal(exitCode, 1);
-    assert.match(captured, /Unknown error/);
-  } finally {
-    console.error = originalError;
-    cleanup(root);
-  }
+      assert.equal(exitCode, 1);
+      assert.match(captured, /Unknown error/);
+    } finally {
+      console.error = originalError;
+    }
+  });
 });

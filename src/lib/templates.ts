@@ -1,33 +1,15 @@
+import { STRICT_SECTION_TITLES } from "./skill-spec";
+
 export function buildSkillMarkdown(name: string): string {
+  const sections = STRICT_SECTION_TITLES.map((title) => `## ${title}\nTODO`).join("\n\n");
+
   return `---
 name: ${name}
 description: "TODO: Describe what this skill does and when to use it."
 license: TODO
 ---
 
-## Scope
-TODO
-
-## When to use
-TODO
-
-## Inputs
-TODO
-
-## Outputs
-TODO
-
-## Steps / Procedure
-TODO
-
-## Examples
-TODO
-
-## Limitations / Failure modes
-TODO
-
-## Security / Tool access
-TODO
+${sections}
 `;
 }
 

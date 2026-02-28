@@ -1,4 +1,4 @@
-const MAX_SKILL_NAME_LENGTH = 64;
+import { MAX_SKILL_NAME_LENGTH } from "./skill-spec";
 
 export function normalizeSkillName(input: string): string {
   const normalized = input

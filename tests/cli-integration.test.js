@@ -1,19 +1,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 const childProcess = require("node:child_process");
+const { makeTempDirectory, cleanupDirectory } = require("./helpers/fs-test-utils.js");
 
 const CLI_PATH = path.resolve(__dirname, "../dist/cli.js");
-
-function makeTempDirectory(prefix) {
-  return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
-}
-
-function cleanup(dir) {
-  fs.rmSync(dir, { recursive: true, force: true });
-}
+const CLI_TEST_PREFIX = "skillmd-cli-integration-";
 
 function runCli(args, cwd) {
   return childProcess.spawnSync(process.execPath, [CLI_PATH, ...args], {
@@ -23,7 +16,7 @@ function runCli(args, cwd) {
 }
 
 test("spawned CLI: init scaffolds and validates by default", () => {
-  const root = makeTempDirectory("skillmd-cli-integration-");
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
   const skillDir = path.join(root, "integration-skill");
 
   try {
@@ -56,12 +49,12 @@ test("spawned CLI: init scaffolds and validates by default", () => {
 
     assert.deepEqual(files.sort(), expectedFiles);
   } finally {
-    cleanup(root);
+    cleanupDirectory(root);
   }
 });
 
 test("spawned CLI: validate succeeds on generated skill", () => {
-  const root = makeTempDirectory("skillmd-cli-integration-");
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
   const skillDir = path.join(root, "integration-validate");
 
   try {
@@ -73,24 +66,24 @@ test("spawned CLI: validate succeeds on generated skill", () => {
     assert.equal(validateResult.status, 0);
     assert.match(validateResult.stdout, /Validation passed: Spec validation passed\./);
   } finally {
-    cleanup(root);
+    cleanupDirectory(root);
   }
 });
 
 test("spawned CLI: unknown command fails with usage", () => {
-  const root = makeTempDirectory("skillmd-cli-integration-");
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
 
   try {
     const result = runCli(["unknown"], root);
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Usage: skillmd <init\|validate>/);
   } finally {
-    cleanup(root);
+    cleanupDirectory(root);
   }
 });
 
 test("spawned CLI: init rejects unsupported args", () => {
-  const root = makeTempDirectory("skillmd-cli-integration-");
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
   const skillDir = path.join(root, "integration-args");
 
   try {
@@ -99,6 +92,6 @@ test("spawned CLI: init rejects unsupported args", () => {
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Usage: skillmd init \[--no-validate\]/);
   } finally {
-    cleanup(root);
+    cleanupDirectory(root);
   }
 });

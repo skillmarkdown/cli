@@ -1,7 +1,9 @@
 import { resolve } from "node:path";
 
-import { type ValidationResult, validateSkill } from "../lib/validator";
+import { VALIDATE_USAGE } from "../lib/cli-text";
+import { failWithUsage, printValidationResult } from "../lib/command-output";
 import { type UpstreamValidationResult, validateWithSkillsRef } from "../lib/upstream-validator";
+import { type ValidationResult, validateSkill } from "../lib/validator";
 
 interface ValidateCommandOptions {
   cwd?: string;
@@ -29,15 +31,11 @@ export function runValidateCommand(args: string[], options: ValidateCommandOptio
     }
 
     if (arg.startsWith("-")) {
-      console.error(`skillmd validate: unsupported flag '${arg}'`);
-      console.error("Usage: skillmd validate [path] [--strict] [--parity]");
-      return 1;
+      return failWithUsage(`skillmd validate: unsupported flag '${arg}'`, VALIDATE_USAGE);
     }
 
     if (pathArg) {
-      console.error("skillmd validate: accepts at most one path argument");
-      console.error("Usage: skillmd validate [path] [--strict] [--parity]");
-      return 1;
+      return failWithUsage("skillmd validate: accepts at most one path argument", VALIDATE_USAGE);
     }
 
     pathArg = arg;
@@ -67,15 +65,14 @@ export function runValidateCommand(args: string[], options: ValidateCommandOptio
     }
   }
 
+  printValidationResult(validation);
   if (validation.status === "passed") {
-    console.log(`Validation passed: ${validation.message}`);
     if (parity) {
       console.log("Validation parity passed (skills-ref).");
     }
     return 0;
   }
 
-  console.error(`Validation failed: ${validation.message}`);
   if (parity) {
     console.error("Validation parity matched (skills-ref also failed).");
   }

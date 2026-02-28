@@ -2,6 +2,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { parse } from "yaml";
 
+import {
+  MAX_SKILL_NAME_LENGTH,
+  STRICT_REQUIRED_FILES,
+  STRICT_SECTION_HEADINGS,
+} from "./skill-spec";
+
 export type ValidationStatus = "passed" | "failed";
 
 export interface ValidationResult {
@@ -13,30 +19,19 @@ interface ValidationOptions {
   strict?: boolean;
 }
 
-const STRICT_REQUIRED_FILES = [
-  ".gitignore",
-  "scripts/.gitkeep",
-  "references/.gitkeep",
-  "assets/.gitkeep",
-] as const;
-
-const REQUIRED_SECTIONS = [
-  "## Scope",
-  "## When to use",
-  "## Inputs",
-  "## Outputs",
-  "## Steps / Procedure",
-  "## Examples",
-  "## Limitations / Failure modes",
-  "## Security / Tool access",
-] as const;
-
 interface ParsedSkill {
   frontmatter: Record<string, unknown>;
 }
 
+const SKILL_FILE = "SKILL.md";
+
 function stripUtf8Bom(content: string): string {
   return content.replace(/^\uFEFF/, "");
+}
+
+function readSkillContentIfExists(targetDir: string): string | null {
+  const skillPath = join(targetDir, SKILL_FILE);
+  return existsSync(skillPath) ? readFileSync(skillPath, "utf8") : null;
 }
 
 function extractFrontmatter(content: string): ParsedSkill | null {
@@ -46,70 +41,57 @@ function extractFrontmatter(content: string): ParsedSkill | null {
     return null;
   }
 
-  let parsed: unknown;
   try {
-    parsed = parse(match[1]);
+    const parsed = parse(match[1]);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return null;
+    }
+
+    return { frontmatter: parsed as Record<string, unknown> };
   } catch {
     return null;
   }
-
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return null;
-  }
-
-  return {
-    frontmatter: parsed as Record<string, unknown>,
-  };
 }
 
 function isValidSkillName(name: string): boolean {
-  if (name.length === 0 || name.length > 64) {
-    return false;
-  }
-
-  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name);
+  return (
+    name.length > 0 &&
+    name.length <= MAX_SKILL_NAME_LENGTH &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)
+  );
 }
 
 function isStringMap(value: unknown): value is Record<string, string> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-
-  return Object.values(value).every((entry) => typeof entry === "string");
+  return (
+    !!value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.values(value).every((entry) => typeof entry === "string")
+  );
 }
 
 function collectSpecErrors(targetDir: string): string[] {
-  const errors: string[] = [];
-  const skillPath = join(targetDir, "SKILL.md");
-
-  if (!existsSync(skillPath)) {
-    errors.push("missing required file: SKILL.md");
-    return errors;
+  const skillContent = readSkillContentIfExists(targetDir);
+  if (!skillContent) {
+    return [`missing required file: ${SKILL_FILE}`];
   }
 
-  const skillContent = readFileSync(skillPath, "utf8");
   const parsedSkill = extractFrontmatter(skillContent);
-
   if (!parsedSkill) {
-    errors.push("SKILL.md must start with valid YAML frontmatter");
-    return errors;
+    return ["SKILL.md must start with valid YAML frontmatter"];
   }
 
+  const errors: string[] = [];
   const { frontmatter } = parsedSkill;
-  const name = frontmatter.name;
-  const description = frontmatter.description;
-  const license = frontmatter.license;
-  const compatibility = frontmatter.compatibility;
-  const metadata = frontmatter.metadata;
-  const allowedTools = frontmatter["allowed-tools"];
   const directoryName = basename(targetDir);
 
+  const name = frontmatter.name;
   if (typeof name !== "string" || name.length === 0) {
     errors.push("frontmatter is missing required string field: name");
   } else {
     if (!isValidSkillName(name)) {
       errors.push(
-        "frontmatter 'name' must be 1-64 chars using lowercase letters, numbers, and single hyphens",
+        `frontmatter 'name' must be 1-${MAX_SKILL_NAME_LENGTH} chars using lowercase letters, numbers, and single hyphens`,
       );
     }
 
@@ -118,16 +100,18 @@ function collectSpecErrors(targetDir: string): string[] {
     }
   }
 
+  const description = frontmatter.description;
   if (typeof description !== "string" || description.trim().length === 0) {
     errors.push("frontmatter is missing required non-empty string field: description");
   } else if (description.length > 1024) {
     errors.push("frontmatter 'description' must be at most 1024 characters");
   }
 
-  if (license !== undefined && typeof license !== "string") {
+  if (frontmatter.license !== undefined && typeof frontmatter.license !== "string") {
     errors.push("frontmatter 'license' must be a string when provided");
   }
 
+  const compatibility = frontmatter.compatibility;
   if (compatibility !== undefined) {
     if (typeof compatibility !== "string") {
       errors.push("frontmatter 'compatibility' must be a string when provided");
@@ -136,10 +120,11 @@ function collectSpecErrors(targetDir: string): string[] {
     }
   }
 
-  if (metadata !== undefined && !isStringMap(metadata)) {
+  if (frontmatter.metadata !== undefined && !isStringMap(frontmatter.metadata)) {
     errors.push("frontmatter 'metadata' must be a mapping of string keys to string values");
   }
 
+  const allowedTools = frontmatter["allowed-tools"];
   if (allowedTools !== undefined && typeof allowedTools !== "string") {
     errors.push("frontmatter 'allowed-tools' must be a string when provided");
   }
@@ -148,54 +133,35 @@ function collectSpecErrors(targetDir: string): string[] {
 }
 
 function collectStrictScaffoldErrors(targetDir: string): string[] {
-  const errors: string[] = [];
+  const missingStrictFiles = STRICT_REQUIRED_FILES.filter(
+    (requiredFile) => !existsSync(join(targetDir, requiredFile)),
+  ).map((requiredFile) => `missing strict scaffold file: ${requiredFile}`);
 
-  for (const requiredFile of STRICT_REQUIRED_FILES) {
-    if (!existsSync(join(targetDir, requiredFile))) {
-      errors.push(`missing strict scaffold file: ${requiredFile}`);
-    }
+  const skillContent = readSkillContentIfExists(targetDir);
+  if (!skillContent) {
+    return missingStrictFiles;
   }
 
-  const skillPath = join(targetDir, "SKILL.md");
-  if (!existsSync(skillPath)) {
-    return errors;
-  }
+  const missingStrictSections = STRICT_SECTION_HEADINGS.filter(
+    (section) => !hasHeadingOutsideFencedCode(skillContent, section),
+  ).map((section) => `SKILL.md is missing strict section: ${section}`);
 
-  const skillContent = readFileSync(skillPath, "utf8");
-  for (const section of REQUIRED_SECTIONS) {
-    if (!hasHeadingOutsideFencedCode(skillContent, section)) {
-      errors.push(`SKILL.md is missing strict section: ${section}`);
-    }
-  }
-
-  return errors;
+  return [...missingStrictFiles, ...missingStrictSections];
 }
 
 function hasHeadingOutsideFencedCode(content: string, heading: string): boolean {
-  const lines = content.split(/\r?\n/);
   const headingPattern = new RegExp(`^\\s{0,3}${escapeRegExp(heading)}\\s*$`);
   let activeFence: "```" | "~~~" | null = null;
 
-  for (const line of lines) {
+  for (const line of content.split(/\r?\n/)) {
     const trimmed = line.trim();
     if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
       const fence = trimmed.startsWith("```") ? "```" : "~~~";
-      if (activeFence === null) {
-        activeFence = fence;
-        continue;
-      }
-
-      if (activeFence === fence) {
-        activeFence = null;
-        continue;
-      }
-    }
-
-    if (activeFence) {
+      activeFence = activeFence === fence ? null : (activeFence ?? fence);
       continue;
     }
 
-    if (headingPattern.test(line.replace(/\r$/, ""))) {
+    if (!activeFence && headingPattern.test(line.replace(/\r$/, ""))) {
       return true;
     }
   }
@@ -212,7 +178,6 @@ export function validateSkill(
   options: ValidationOptions = {},
 ): ValidationResult {
   const errors = collectSpecErrors(targetDir);
-
   if (options.strict) {
     errors.push(...collectStrictScaffoldErrors(targetDir));
   }

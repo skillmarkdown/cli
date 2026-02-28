@@ -1,21 +1,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 
 const { scaffoldSkillInDirectory } = require("../dist/lib/scaffold.js");
+const { createSkillDirectoryFactory, cleanupDirectory } = require("./helpers/fs-test-utils.js");
 
-function makeEmptySkillDirectory(skillName) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "skillmd-test-"));
-  const dir = path.join(root, skillName);
-  fs.mkdirSync(dir);
-  return { root, dir };
-}
-
-function cleanup(root) {
-  fs.rmSync(root, { recursive: true, force: true });
-}
+const makeEmptySkillDirectory = createSkillDirectoryFactory("skillmd-test-");
 
 function listFilesRecursively(dir, relative = "") {
   const fullPath = relative ? path.join(dir, relative) : dir;
@@ -70,7 +61,7 @@ test("scaffolds required files and template sections", () => {
     assert.match(skillMd, /## Limitations \/ Failure modes/);
     assert.match(skillMd, /## Security \/ Tool access/);
   } finally {
-    cleanup(root);
+    cleanupDirectory(root);
   }
 });
 
@@ -81,7 +72,7 @@ test("fails when target directory is non-empty", () => {
     fs.writeFileSync(path.join(dir, "existing.txt"), "content", "utf8");
     assert.throws(() => scaffoldSkillInDirectory(dir), /not empty/);
   } finally {
-    cleanup(root);
+    cleanupDirectory(root);
   }
 });
 
@@ -95,8 +86,8 @@ test("produces deterministic output in separate empty directories", () => {
 
     assert.deepEqual(snapshotDirectory(first.dir), snapshotDirectory(second.dir));
   } finally {
-    cleanup(first.root);
-    cleanup(second.root);
+    cleanupDirectory(first.root);
+    cleanupDirectory(second.root);
   }
 });
 
@@ -106,6 +97,6 @@ test("fails when current directory name is not normalized", () => {
   try {
     assert.throws(() => scaffoldSkillInDirectory(dir), /must already be normalized/);
   } finally {
-    cleanup(root);
+    cleanupDirectory(root);
   }
 });
