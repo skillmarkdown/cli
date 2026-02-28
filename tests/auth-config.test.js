@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { makeTempDirectory, cleanupDirectory } = require("./helpers/fs-test-utils.js");
+const { DEFAULT_LOGIN_AUTH_CONFIG } = require("../dist/lib/auth-defaults.js");
 const { getDefaultUserEnvPath, getLoginEnvConfig } = require("../dist/lib/auth-config.js");
 
 const AUTH_CONFIG_TEST_PREFIX = "skillmd-auth-config-";
@@ -13,8 +14,8 @@ test("uses built-in defaults when env and user config are absent", () => {
 
   try {
     const config = getLoginEnvConfig({}, { homeDir });
-    assert.equal(config.githubClientId, "Ov23linag5Xc0ufzhxsv");
-    assert.equal(config.firebaseApiKey, "AIzaSyB1eLZYLzmkrEdXXT6aZKB7sIWkTvKzf6M");
+    assert.equal(config.githubClientId, DEFAULT_LOGIN_AUTH_CONFIG.githubClientId);
+    assert.equal(config.firebaseApiKey, DEFAULT_LOGIN_AUTH_CONFIG.firebaseApiKey);
   } finally {
     cleanupDirectory(homeDir);
   }
@@ -81,8 +82,8 @@ test("ignores cwd .env to avoid untrusted directory overrides", () => {
     process.chdir(cwd);
 
     const config = getLoginEnvConfig({}, { homeDir });
-    assert.equal(config.githubClientId, "Ov23linag5Xc0ufzhxsv");
-    assert.equal(config.firebaseApiKey, "AIzaSyB1eLZYLzmkrEdXXT6aZKB7sIWkTvKzf6M");
+    assert.equal(config.githubClientId, DEFAULT_LOGIN_AUTH_CONFIG.githubClientId);
+    assert.equal(config.firebaseApiKey, DEFAULT_LOGIN_AUTH_CONFIG.firebaseApiKey);
   } finally {
     process.chdir(previousCwd);
     cleanupDirectory(homeDir);

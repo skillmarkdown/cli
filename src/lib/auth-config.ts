@@ -1,14 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { DEFAULT_LOGIN_AUTH_CONFIG } from "./auth-defaults";
 
 export interface LoginEnvConfig {
   githubClientId: string;
   firebaseApiKey: string;
 }
 
-const DEFAULT_GITHUB_CLIENT_ID = "Ov23linag5Xc0ufzhxsv";
-const DEFAULT_FIREBASE_API_KEY = "AIzaSyB1eLZYLzmkrEdXXT6aZKB7sIWkTvKzf6M";
 const USER_ENV_RELATIVE_PATH = ".skillmd/.env";
 
 interface LoginConfigOptions {
@@ -79,12 +78,12 @@ export function getLoginEnvConfig(
   const githubClientId = pickValue(
     env.SKILLMD_GITHUB_CLIENT_ID,
     dotEnv.SKILLMD_GITHUB_CLIENT_ID,
-    DEFAULT_GITHUB_CLIENT_ID,
+    DEFAULT_LOGIN_AUTH_CONFIG.githubClientId,
   );
   const firebaseApiKey = pickValue(
     env.SKILLMD_FIREBASE_API_KEY,
     dotEnv.SKILLMD_FIREBASE_API_KEY,
-    DEFAULT_FIREBASE_API_KEY,
+    DEFAULT_LOGIN_AUTH_CONFIG.firebaseApiKey,
   );
 
   if (!githubClientId || !firebaseApiKey) {

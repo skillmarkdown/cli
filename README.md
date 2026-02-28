@@ -76,12 +76,14 @@ By default, `login` uses the project’s built-in development config. You can ov
 - `SKILLMD_FIREBASE_API_KEY`
 
 See `.env.example` for the expected keys.
+Maintainers: built-in defaults are defined in `src/lib/auth-defaults.ts`.
 
 Example override file:
 
 ```bash
 mkdir -p ~/.skillmd
 cp .env.example ~/.skillmd/.env
+# then edit values in ~/.skillmd/.env if needed
 ```
 
 Session helpers:

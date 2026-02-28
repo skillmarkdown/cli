@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
+const { DEFAULT_LOGIN_AUTH_CONFIG } = require("../dist/lib/auth-defaults.js");
 const { runLoginCommand } = require("../dist/commands/login.js");
 
 function mockDeviceCode() {
@@ -51,12 +52,12 @@ test("login uses built-in defaults when env vars are missing", async () => {
     env: {},
     requestDeviceCode: async (clientId) => {
       called = true;
-      assert.equal(clientId, "Ov23linag5Xc0ufzhxsv");
+      assert.equal(clientId, DEFAULT_LOGIN_AUTH_CONFIG.githubClientId);
       return mockDeviceCode();
     },
     pollForAccessToken: async () => ({ accessToken: "gh-token" }),
     signInWithGitHubAccessToken: async (apiKey) => {
-      assert.equal(apiKey, "AIzaSyB1eLZYLzmkrEdXXT6aZKB7sIWkTvKzf6M");
+      assert.equal(apiKey, DEFAULT_LOGIN_AUTH_CONFIG.firebaseApiKey);
       return {
         localId: "uid-1",
         email: "user@example.com",
