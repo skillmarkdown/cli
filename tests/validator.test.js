@@ -1,167 +1,120 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 
 const { scaffoldSkillInDirectory } = require("../dist/lib/scaffold.js");
 const { validateSkill } = require("../dist/lib/validator.js");
+const { createSkillDirectoryFactory, cleanupDirectory } = require("./helpers/fs-test-utils.js");
 
-function makeEmptySkillDirectory(skillName) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "skillmd-validator-test-"));
-  const dir = path.join(root, skillName);
-  fs.mkdirSync(dir);
-  return { root, dir };
+const makeEmptySkillDirectory = createSkillDirectoryFactory("skillmd-validator-test-");
+const SKILL_MD = "SKILL.md";
+
+function withSkillDirectory(skillName, run) {
+  const { root, dir } = makeEmptySkillDirectory(skillName);
+  try {
+    run(dir);
+  } finally {
+    cleanupDirectory(root);
+  }
 }
 
-function cleanup(root) {
-  fs.rmSync(root, { recursive: true, force: true });
+function withScaffoldedSkillDirectory(skillName, run) {
+  withSkillDirectory(skillName, (dir) => {
+    scaffoldSkillInDirectory(dir);
+    run(dir);
+  });
+}
+
+function readSkillMarkdown(dir) {
+  return fs.readFileSync(path.join(dir, SKILL_MD), "utf8");
+}
+
+function writeSkillMarkdown(dir, content) {
+  fs.writeFileSync(path.join(dir, SKILL_MD), content, "utf8");
+}
+
+function patchSkillMarkdown(dir, patcher) {
+  writeSkillMarkdown(dir, patcher(readSkillMarkdown(dir)));
 }
 
 test("passes for generated scaffold", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-pass");
-
-  try {
-    scaffoldSkillInDirectory(dir);
+  withScaffoldedSkillDirectory("validator-pass", (dir) => {
     const result = validateSkill(dir, { strict: true });
     assert.equal(result.status, "passed");
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("fails when SKILL.md frontmatter is invalid YAML", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-invalid-yaml");
-
-  try {
-    fs.writeFileSync(
-      path.join(dir, "SKILL.md"),
-      "---\nname: ok\ndescription: [bad\n---\n\nBody\n",
-      "utf8",
-    );
+  withSkillDirectory("validator-invalid-yaml", (dir) => {
+    writeSkillMarkdown(dir, "---\nname: ok\ndescription: [bad\n---\n\nBody\n");
     const result = validateSkill(dir);
     assert.equal(result.status, "failed");
     assert.match(result.message, /valid YAML frontmatter/);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("fails when frontmatter parses to non-object value", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-non-object-frontmatter");
-
-  try {
-    fs.writeFileSync(path.join(dir, "SKILL.md"), "---\n- just\n- a\n- list\n---\n\nBody\n", "utf8");
+  withSkillDirectory("validator-non-object-frontmatter", (dir) => {
+    writeSkillMarkdown(dir, "---\n- just\n- a\n- list\n---\n\nBody\n");
     const result = validateSkill(dir);
     assert.equal(result.status, "failed");
     assert.match(result.message, /valid YAML frontmatter/);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("fails when name does not match directory", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-name-mismatch");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
-    const content = fs.readFileSync(skillPath, "utf8");
-    fs.writeFileSync(
-      skillPath,
+  withScaffoldedSkillDirectory("validator-name-mismatch", (dir) => {
+    patchSkillMarkdown(dir, (content) =>
       content.replace("name: validator-name-mismatch", "name: other-name"),
-      "utf8",
     );
-
     const result = validateSkill(dir);
     assert.equal(result.status, "failed");
     assert.match(result.message, /must match directory name/);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("fails when name has invalid format", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-name-format");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
-    const content = fs.readFileSync(skillPath, "utf8");
-    fs.writeFileSync(
-      skillPath,
+  withScaffoldedSkillDirectory("validator-name-format", (dir) => {
+    patchSkillMarkdown(dir, (content) =>
       content.replace("name: validator-name-format", "name: Bad_Name"),
-      "utf8",
     );
-
     const result = validateSkill(dir);
     assert.equal(result.status, "failed");
     assert.match(result.message, /must be 1-64 chars/);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("fails when name exceeds 64 chars", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-name-too-long");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
-    const content = fs.readFileSync(skillPath, "utf8");
-    fs.writeFileSync(
-      skillPath,
+  withScaffoldedSkillDirectory("validator-name-too-long", (dir) => {
+    patchSkillMarkdown(dir, (content) =>
       content.replace("name: validator-name-too-long", `name: ${"a".repeat(65)}`),
-      "utf8",
     );
-
     const result = validateSkill(dir);
     assert.equal(result.status, "failed");
     assert.match(result.message, /must be 1-64 chars/);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("passes spec validation even when strict template section is missing", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-missing-section");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
-    const content = fs.readFileSync(skillPath, "utf8");
-    fs.writeFileSync(skillPath, content.replace("## Examples\nTODO\n\n", ""), "utf8");
-
+  withScaffoldedSkillDirectory("validator-missing-section", (dir) => {
+    patchSkillMarkdown(dir, (content) => content.replace("## Examples\nTODO\n\n", ""));
     const result = validateSkill(dir);
     assert.equal(result.status, "passed");
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("fails strict validation when strict template section is missing", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-missing-strict-section");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
-    const content = fs.readFileSync(skillPath, "utf8");
-    fs.writeFileSync(skillPath, content.replace("## Examples\nTODO\n\n", ""), "utf8");
-
+  withScaffoldedSkillDirectory("validator-missing-strict-section", (dir) => {
+    patchSkillMarkdown(dir, (content) => content.replace("## Examples\nTODO\n\n", ""));
     const result = validateSkill(dir, { strict: true });
     assert.equal(result.status, "failed");
     assert.match(result.message, /missing strict section: ## Examples/);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("fails strict validation when section labels appear only in fenced code", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-fenced-headings");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
+  withScaffoldedSkillDirectory("validator-fenced-headings", (dir) => {
     const content = `---
 name: validator-fenced-headings
 description: "Valid description for spec checks."
@@ -179,144 +132,80 @@ license: TODO
 ## Security / Tool access
 \`\`\`
 `;
-    fs.writeFileSync(skillPath, content, "utf8");
-
+    writeSkillMarkdown(dir, content);
     const result = validateSkill(dir, { strict: true });
     assert.equal(result.status, "failed");
     assert.match(result.message, /missing strict section: ## Scope/);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("accepts BOM-prefixed SKILL.md frontmatter", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-bom");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
-    const content = fs.readFileSync(skillPath, "utf8");
-    fs.writeFileSync(skillPath, `\uFEFF${content}`, "utf8");
-
+  withScaffoldedSkillDirectory("validator-bom", (dir) => {
+    patchSkillMarkdown(dir, (content) => `\uFEFF${content}`);
     const result = validateSkill(dir, { strict: true });
     assert.equal(result.status, "passed");
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("fails when description is invalid by spec", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-description");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
-    const content = fs.readFileSync(skillPath, "utf8");
-    fs.writeFileSync(
-      skillPath,
+  withScaffoldedSkillDirectory("validator-description", (dir) => {
+    patchSkillMarkdown(dir, (content) =>
       content.replace(
         'description: "TODO: Describe what this skill does and when to use it."',
         "description:",
       ),
-      "utf8",
     );
-
     const result = validateSkill(dir);
     assert.equal(result.status, "failed");
     assert.match(result.message, /description/);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("fails when license is not a string", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-license-type");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
-    const content = fs.readFileSync(skillPath, "utf8");
-    fs.writeFileSync(skillPath, content.replace("license: TODO", "license: 123"), "utf8");
-
+  withScaffoldedSkillDirectory("validator-license-type", (dir) => {
+    patchSkillMarkdown(dir, (content) => content.replace("license: TODO", "license: 123"));
     const result = validateSkill(dir);
     assert.equal(result.status, "failed");
     assert.match(result.message, /license.*string/);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("fails when compatibility is empty", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-compat-empty");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
-    const content = fs.readFileSync(skillPath, "utf8");
-    fs.writeFileSync(
-      skillPath,
+  withScaffoldedSkillDirectory("validator-compat-empty", (dir) => {
+    patchSkillMarkdown(dir, (content) =>
       content.replace("license: TODO", 'compatibility: ""\nlicense: TODO'),
-      "utf8",
     );
-
     const result = validateSkill(dir);
     assert.equal(result.status, "failed");
     assert.match(result.message, /compatibility.*1-500/);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("fails when compatibility exceeds 500 chars", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-compat-too-long");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
-    const content = fs.readFileSync(skillPath, "utf8");
+  withScaffoldedSkillDirectory("validator-compat-too-long", (dir) => {
     const longCompatibility = "a".repeat(501);
-    fs.writeFileSync(
-      skillPath,
+    patchSkillMarkdown(dir, (content) =>
       content.replace("license: TODO", `compatibility: "${longCompatibility}"\nlicense: TODO`),
-      "utf8",
     );
-
     const result = validateSkill(dir);
     assert.equal(result.status, "failed");
     assert.match(result.message, /compatibility.*1-500/);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("passes when compatibility is exactly 500 chars", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-compat-max");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
-    const content = fs.readFileSync(skillPath, "utf8");
+  withScaffoldedSkillDirectory("validator-compat-max", (dir) => {
     const maxCompatibility = "a".repeat(500);
-    fs.writeFileSync(
-      skillPath,
+    patchSkillMarkdown(dir, (content) =>
       content.replace("license: TODO", `compatibility: "${maxCompatibility}"\nlicense: TODO`),
-      "utf8",
     );
-
     const result = validateSkill(dir);
     assert.equal(result.status, "passed");
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("fails when metadata contains non-string values", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-metadata-values");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
-    const content = fs.readFileSync(skillPath, "utf8");
+  withScaffoldedSkillDirectory("validator-metadata-values", (dir) => {
     const metadataBlock = [
       "metadata:",
       "  author: sample",
@@ -325,58 +214,33 @@ test("fails when metadata contains non-string values", () => {
       "    nested: true",
       "",
     ].join("\n");
-    fs.writeFileSync(
-      skillPath,
+    patchSkillMarkdown(dir, (content) =>
       content.replace("license: TODO\n---", `license: TODO\n${metadataBlock}---`),
-      "utf8",
     );
-
     const result = validateSkill(dir);
     assert.equal(result.status, "failed");
     assert.match(result.message, /metadata.*string keys to string values/);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("fails when compatibility is not a string", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-compat-type");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
-    const content = fs.readFileSync(skillPath, "utf8");
-    fs.writeFileSync(
-      skillPath,
+  withScaffoldedSkillDirectory("validator-compat-type", (dir) => {
+    patchSkillMarkdown(dir, (content) =>
       content.replace("license: TODO", "compatibility: 123\nlicense: TODO"),
-      "utf8",
     );
-
     const result = validateSkill(dir);
     assert.equal(result.status, "failed");
     assert.match(result.message, /compatibility.*string/);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
 
 test("fails when allowed-tools is not a string", () => {
-  const { root, dir } = makeEmptySkillDirectory("validator-allowed-tools");
-
-  try {
-    scaffoldSkillInDirectory(dir);
-    const skillPath = path.join(dir, "SKILL.md");
-    const content = fs.readFileSync(skillPath, "utf8");
-    fs.writeFileSync(
-      skillPath,
+  withScaffoldedSkillDirectory("validator-allowed-tools", (dir) => {
+    patchSkillMarkdown(dir, (content) =>
       content.replace("license: TODO", "allowed-tools:\n  - Bash\nlicense: TODO"),
-      "utf8",
     );
-
     const result = validateSkill(dir);
     assert.equal(result.status, "failed");
     assert.match(result.message, /allowed-tools.*string/);
-  } finally {
-    cleanup(root);
-  }
+  });
 });
