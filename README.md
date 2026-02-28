@@ -42,6 +42,8 @@ skillmd init --no-validate
 skillmd validate
 ```
 
+Default `validate` is spec-only. It checks `SKILL.md` and frontmatter rules, and does not require scaffold directories/files.
+
 You can also pass an explicit path:
 
 ```bash
@@ -53,6 +55,8 @@ Run additional scaffold/template checks:
 ```bash
 skillmd validate --strict
 ```
+
+`--strict` is intentionally stronger than base spec mode and enforces scaffold/template conventions (for example `.gitkeep` files and required section headings).
 
 Compare local validation with `skills-ref` (when installed):
 

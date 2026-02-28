@@ -112,6 +112,8 @@ Expected:
 
 - `Validation passed: Spec validation passed.`
 - exit code `0`
+- only spec-focused checks are applied in this mode (`SKILL.md` + frontmatter rules)
+- scaffold/template conventions are not required unless `--strict` is used
 
 ### Strict mode
 
@@ -126,6 +128,7 @@ mkdir "$tmpdir/validate-strict-skill"
 Expected:
 
 - `Validation passed: Spec and strict scaffold validation passed.`
+- strict mode adds scaffold/template checks on top of base spec validation
 
 ## 7) Optional init without validation
 

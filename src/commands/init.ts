@@ -22,7 +22,7 @@ export function runInitCommand(args: string[], options: InitCommandOptions = {})
 
   try {
     const result = scaffoldSkillInDirectory(cwd);
-    console.log(`Initialized skill '${result.skillName}' in ${cwd}`);
+    console.log(`Initialized skill '${result.skillName}'.`);
 
     if (skipValidation) {
       console.log("Validation skipped (--no-validate).");
