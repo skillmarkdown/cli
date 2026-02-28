@@ -44,19 +44,41 @@ jobs:
       - name: Run quality checks
         run: npm run ci:check
 
+      - name: Determine version bump type
+        id: bump_type
+        run: |
+          LAST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+          RANGE="HEAD"
+          if [ -n "$LAST_TAG" ]; then
+            RANGE="${LAST_TAG}..HEAD"
+          fi
+
+          COMMITS="$(git log --format=%B ${RANGE})"
+          BUMP="patch"
+
+          if echo "$COMMITS" | grep -Eq "BREAKING CHANGE|^[a-zA-Z0-9_-]+(\([^)]+\))?!:"; then
+            BUMP="major"
+          elif echo "$COMMITS" | grep -Eq "^feat(\([^)]+\))?:"; then
+            BUMP="minor"
+          fi
+
+          echo "bump=${BUMP}" >> "$GITHUB_OUTPUT"
+          echo "version_bump=${BUMP}" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Ensure publishable version
         id: ensure_version
         run: |
           PACKAGE_NAME="$(node -p "require('./package.json').name")"
           PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          BUMP_TYPE="${{ steps.bump_type.outputs.bump }}"
 
           if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
-            echo "Current version ${PACKAGE_NAME}@${PACKAGE_VERSION} already exists; bumping patch."
-            npm version patch -m "chore(release): %s [skip ci]"
+            echo "Current version ${PACKAGE_NAME}@${PACKAGE_VERSION} already exists; bumping ${BUMP_TYPE}."
+            npm version "${BUMP_TYPE}" -m "chore(release): %s [skip ci]"
             NEW_VERSION="$(node -p "require('./package.json').version")"
             echo "bumped=true" >> "$GITHUB_OUTPUT"
             echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
-            echo "message=Auto-bumped to ${NEW_VERSION}." >> "$GITHUB_OUTPUT"
+            echo "message=Auto-bumped (${BUMP_TYPE}) to ${NEW_VERSION}." >> "$GITHUB_OUTPUT"
           else
             echo "bumped=false" >> "$GITHUB_OUTPUT"
             echo "version=${PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"

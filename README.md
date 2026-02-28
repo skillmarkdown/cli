@@ -67,6 +67,16 @@ skillmd validate --parity
 - Packed tarball smoke test: `npm run smoke:pack`
 - Optional npm link smoke test: `npm run smoke:link`
 
+### Auto versioning on main
+
+The publish workflow auto-bumps only when the current package version is already published:
+
+- `major`: commit message contains `BREAKING CHANGE` or `type!:` marker
+- `minor`: at least one `feat:` commit
+- `patch`: default fallback
+
+Using Conventional Commit-style messages keeps release behavior predictable.
+
 ## Links
 
 - Agent Skills spec: https://agentskills.io/specification
