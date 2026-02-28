@@ -17,7 +17,7 @@
     "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build",
-    "test": "echo \"No tests yet\" && exit 0"
+    "test": "npm run build && node --test tests/*.test.js"
   },
   "engines": {
     "node": ">=18"

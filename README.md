@@ -26,6 +26,9 @@ skillmd init
 
 This scaffolds a spec-aligned skill structure including `SKILL.md` and optional directories (`scripts/`, `references/`, `assets/`).
 
+## Development
+- Local testing guide: `docs/testing.md`
+
 ## Links
 - Agent Skills spec: https://agentskills.io/specification
 
