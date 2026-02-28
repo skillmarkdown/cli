@@ -63,6 +63,9 @@ skillmd validate --parity
 ## Development
 
 - Local testing guide: `docs/testing.md`
+- CI check script: `npm run ci:check`
+- Packed tarball smoke test: `npm run smoke:pack`
+- Optional npm link smoke test: `npm run smoke:link`
 
 ## Links
 

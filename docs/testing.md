@@ -33,6 +33,12 @@ Git pre-commit now runs through Husky + lint-staged:
 - ESLint + Prettier on staged `*.ts` and `*.js`
 - Prettier on staged `*.json`, `*.mjs`, `*.md`, `*.yml`, and `*.yaml`
 
+## CI and smoke scripts
+
+- `npm run ci:check` runs format check, lint, and tests.
+- `npm run smoke:pack` builds, packs, installs the tarball, and runs init/validate from the packed install.
+- `npm run smoke:link` (optional) runs an install-level check via `npm link`.
+
 ## 3) Manual smoke test (success path)
 
 ```bash
