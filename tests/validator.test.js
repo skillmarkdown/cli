@@ -30,6 +30,36 @@ test("passes for generated scaffold", () => {
   }
 });
 
+test("fails when SKILL.md frontmatter is invalid YAML", () => {
+  const { root, dir } = makeEmptySkillDirectory("validator-invalid-yaml");
+
+  try {
+    fs.writeFileSync(
+      path.join(dir, "SKILL.md"),
+      "---\nname: ok\ndescription: [bad\n---\n\nBody\n",
+      "utf8",
+    );
+    const result = validateSkill(dir);
+    assert.equal(result.status, "failed");
+    assert.match(result.message, /valid YAML frontmatter/);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test("fails when frontmatter parses to non-object value", () => {
+  const { root, dir } = makeEmptySkillDirectory("validator-non-object-frontmatter");
+
+  try {
+    fs.writeFileSync(path.join(dir, "SKILL.md"), "---\n- just\n- a\n- list\n---\n\nBody\n", "utf8");
+    const result = validateSkill(dir);
+    assert.equal(result.status, "failed");
+    assert.match(result.message, /valid YAML frontmatter/);
+  } finally {
+    cleanup(root);
+  }
+});
+
 test("fails when name does not match directory", () => {
   const { root, dir } = makeEmptySkillDirectory("validator-name-mismatch");
 
@@ -46,6 +76,48 @@ test("fails when name does not match directory", () => {
     const result = validateSkill(dir);
     assert.equal(result.status, "failed");
     assert.match(result.message, /must match directory name/);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test("fails when name has invalid format", () => {
+  const { root, dir } = makeEmptySkillDirectory("validator-name-format");
+
+  try {
+    scaffoldSkillInDirectory(dir);
+    const skillPath = path.join(dir, "SKILL.md");
+    const content = fs.readFileSync(skillPath, "utf8");
+    fs.writeFileSync(
+      skillPath,
+      content.replace("name: validator-name-format", "name: Bad_Name"),
+      "utf8",
+    );
+
+    const result = validateSkill(dir);
+    assert.equal(result.status, "failed");
+    assert.match(result.message, /must be 1-64 chars/);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test("fails when name exceeds 64 chars", () => {
+  const { root, dir } = makeEmptySkillDirectory("validator-name-too-long");
+
+  try {
+    scaffoldSkillInDirectory(dir);
+    const skillPath = path.join(dir, "SKILL.md");
+    const content = fs.readFileSync(skillPath, "utf8");
+    fs.writeFileSync(
+      skillPath,
+      content.replace("name: validator-name-too-long", `name: ${"a".repeat(65)}`),
+      "utf8",
+    );
+
+    const result = validateSkill(dir);
+    assert.equal(result.status, "failed");
+    assert.match(result.message, /must be 1-64 chars/);
   } finally {
     cleanup(root);
   }
@@ -152,6 +224,23 @@ test("fails when description is invalid by spec", () => {
     const result = validateSkill(dir);
     assert.equal(result.status, "failed");
     assert.match(result.message, /description/);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test("fails when license is not a string", () => {
+  const { root, dir } = makeEmptySkillDirectory("validator-license-type");
+
+  try {
+    scaffoldSkillInDirectory(dir);
+    const skillPath = path.join(dir, "SKILL.md");
+    const content = fs.readFileSync(skillPath, "utf8");
+    fs.writeFileSync(skillPath, content.replace("license: TODO", "license: 123"), "utf8");
+
+    const result = validateSkill(dir);
+    assert.equal(result.status, "failed");
+    assert.match(result.message, /license.*string/);
   } finally {
     cleanup(root);
   }

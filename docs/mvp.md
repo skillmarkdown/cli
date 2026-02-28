@@ -11,7 +11,7 @@
 ## Non-goals (v0)
 
 - No registry integration
-- No publishing
+- No manual publishing flows in CLI commands
 - No network calls
 - No execution runtime logic
 

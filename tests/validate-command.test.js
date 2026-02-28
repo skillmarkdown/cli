@@ -171,3 +171,33 @@ test("supports parity with strict path mode", () => {
     cleanup(root);
   }
 });
+
+test("fails parity when local fails but upstream passes", () => {
+  const { root, dir } = makeEmptySkillDirectory("validate-parity-local-fail-upstream-pass");
+
+  try {
+    const exitCode = runValidateCommand(["--parity"], {
+      cwd: dir,
+      validateLocal: () => ({ status: "failed", message: "local failed" }),
+      validateUpstream: () => ({ status: "passed", message: "upstream passed" }),
+    });
+    assert.equal(exitCode, 1);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test("fails with matched parity when local and upstream both fail", () => {
+  const { root, dir } = makeEmptySkillDirectory("validate-parity-both-fail");
+
+  try {
+    const exitCode = runValidateCommand(["--parity"], {
+      cwd: dir,
+      validateLocal: () => ({ status: "failed", message: "local failed" }),
+      validateUpstream: () => ({ status: "failed", message: "upstream failed" }),
+    });
+    assert.equal(exitCode, 1);
+  } finally {
+    cleanup(root);
+  }
+});

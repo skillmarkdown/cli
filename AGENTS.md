@@ -4,11 +4,12 @@ This repo builds `@skillmarkdown/cli` (binary: `skillmd`).
 
 ## Goal (v0)
 
-Implement **only** `skillmd init`:
+Implement `skillmd init` and `skillmd validate`:
 
-- scaffolds a spec-aligned skill folder
-- deterministic output (no timestamps, randomness, or machine-specific paths)
-- no network calls
+- `init` scaffolds a spec-aligned skill folder
+- output is deterministic (no timestamps, randomness, or machine-specific paths)
+- `validate` provides local spec checks, with strict/parity modes
+- no network calls during command execution
 
 ## Tech
 

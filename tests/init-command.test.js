@@ -95,3 +95,28 @@ test("returns failure when init receives unsupported arguments", () => {
     cleanup(root);
   }
 });
+
+test("returns failure with fallback message when non-Error is thrown", () => {
+  const { root, dir } = makeEmptySkillDirectory("command-non-error-throw");
+
+  const originalError = console.error;
+  let captured = "";
+  console.error = (...args) => {
+    captured += `${args.join(" ")}\n`;
+  };
+
+  try {
+    const exitCode = runInitCommand([], {
+      cwd: dir,
+      validateSkill: () => {
+        throw "nope";
+      },
+    });
+
+    assert.equal(exitCode, 1);
+    assert.match(captured, /Unknown error/);
+  } finally {
+    console.error = originalError;
+    cleanup(root);
+  }
+});
