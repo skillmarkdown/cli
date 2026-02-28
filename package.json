@@ -1,0 +1,42 @@
+{
+  "name": "@skillmarkdown/cli",
+  "version": "0.1.0",
+  "description": "CLI for scaffolding SKILL.md-based AI skills",
+  "license": "MIT",
+  "type": "commonjs",
+  "bin": {
+    "skillmd": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "main": "dist/cli.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/skillmarkdown/cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/skillmarkdown/cli/issues"
+  },
+  "homepage": "https://github.com/skillmarkdown/cli#readme",
+  "keywords": [
+    "skillmarkdown",
+    "skillmd",
+    "cli"
+  ],
+  "devDependencies": {
+    "@types/node": "^25.3.2",
+    "typescript": "^5.9.3"
+  }
+}
