@@ -37,6 +37,24 @@ We establish deterministic scaffolding before adding complexity.
 
 ---
 
+## D-006: Login Command Is Introduced as a Post-v0 Extension
+
+`skillmd login` is a post-v0 command to establish authenticated CLI context.
+
+Contract:
+
+- `skillmd login` starts GitHub Device Flow and exchanges the GitHub access token with Firebase Identity Toolkit (`accounts:signInWithIdp`).
+- `skillmd login --status` reports whether a local session exists.
+- `skillmd login --reauth` forces a new auth flow even when a local session exists.
+- `skillmd logout` removes the local session.
+- local persistence stores only the Firebase `refreshToken` plus minimal identity metadata.
+- command execution has built-in defaults; overrides are read from `SKILLMD_GITHUB_CLIENT_ID`, `SKILLMD_FIREBASE_API_KEY`, and trusted user config at `~/.skillmd/.env`.
+
+Rationale:
+Authentication is needed for future remote operations, while preserving secret minimization (no GitHub client secret in CLI).
+
+---
+
 ## D-003: Skill Artifact Philosophy
 
 A skill is a **folder artifact**, not a single file.
