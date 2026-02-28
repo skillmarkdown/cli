@@ -19,12 +19,15 @@ Implement `skillmd init` and `skillmd validate`:
 ## Project rules
 
 - Prefer small, composable modules in `src/`.
-- Do not add new commands without updating `docs/mvp.md` and `docs/DECISIONS.md`.
+- Do not add new commands without updating `docs/DECISIONS.md`.
 - Templates must be stable (changes should be intentional and reviewable).
 
 ## Definition of done
 
-Use `docs/mvp.md` as the acceptance checklist for v0.
+For v0, rely on:
+
+- `docs/DECISIONS.md` for scope and architecture constraints.
+- The automated test suite as the behavior acceptance checklist.
 
 ## Release automation
 
