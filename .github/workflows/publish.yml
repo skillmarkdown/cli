@@ -1,0 +1,76 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    if: github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Setup npm for trusted publishing
+        run: |
+          npm install -g npm@11.5.1
+          node --version
+          npm --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run quality checks
+        run: npm run ci:check
+
+      - name: Ensure publishable version
+        id: ensure_version
+        run: |
+          PACKAGE_NAME="$(node -p "require('./package.json').name")"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+
+          if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
+            echo "Current version ${PACKAGE_NAME}@${PACKAGE_VERSION} already exists; bumping patch."
+            npm version patch -m "chore(release): %s [skip ci]"
+            NEW_VERSION="$(node -p "require('./package.json').version")"
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+            echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "message=Auto-bumped to ${NEW_VERSION}." >> "$GITHUB_OUTPUT"
+          else
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+            echo "version=${PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "message=Publishing ${PACKAGE_NAME}@${PACKAGE_VERSION}." >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push version bump commit and tag
+        if: steps.ensure_version.outputs.bumped == 'true'
+        run: git push origin HEAD:main --follow-tags
+
+      - name: Publish package
+        run: npm publish --access public --provenance
+
+      - name: Print release details
+        run: |
+          echo "${{ steps.ensure_version.outputs.message }}"
+          echo "Published version: ${{ steps.ensure_version.outputs.version }}"
