@@ -1,3 +1,5 @@
+import { INIT_USAGE } from "../lib/cli-text";
+import { failWithUsage, printValidationResult } from "../lib/command-output";
 import { scaffoldSkillInDirectory } from "../lib/scaffold";
 import { type ValidationResult, validateSkill } from "../lib/validator";
 
@@ -15,9 +17,7 @@ export function runInitCommand(args: string[], options: InitCommandOptions = {})
   const hasUnsupportedArgs = args.length > 1 || (args.length === 1 && args[0] !== "--no-validate");
 
   if (hasUnsupportedArgs) {
-    console.error("skillmd init: unsupported argument(s)");
-    console.error("Usage: skillmd init [--no-validate]");
-    return 1;
+    return failWithUsage("skillmd init: unsupported argument(s)", INIT_USAGE);
   }
 
   try {
@@ -30,12 +30,11 @@ export function runInitCommand(args: string[], options: InitCommandOptions = {})
     }
 
     const validation = validateSkillFn(cwd);
+    printValidationResult(validation);
     if (validation.status === "passed") {
-      console.log(`Validation passed: ${validation.message}`);
       return 0;
     }
 
-    console.error(`Validation failed: ${validation.message}`);
     console.error("Run 'skillmd validate' after fixing issues.");
     return 1;
   } catch (error) {

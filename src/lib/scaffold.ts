@@ -2,6 +2,7 @@ import { readdirSync, mkdirSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 
 import { normalizeSkillName } from "./normalize-name";
+import { SCAFFOLD_DIRECTORIES } from "./skill-spec";
 import { buildGitignore, buildSkillMarkdown } from "./templates";
 
 export interface ScaffoldResult {
@@ -34,9 +35,7 @@ export function scaffoldSkillInDirectory(targetDir: string): ScaffoldResult {
   const skillName = assertDirectoryNameMatchesNormalized(targetDir);
   assertDirectoryEmpty(targetDir);
 
-  const directories = ["scripts", "references", "assets"] as const;
-
-  for (const directory of directories) {
+  for (const directory of SCAFFOLD_DIRECTORIES) {
     const fullPath = join(targetDir, directory);
     mkdirSync(fullPath, { recursive: true });
     writeFileSync(join(fullPath, ".gitkeep"), "", "utf8");
