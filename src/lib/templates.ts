@@ -1,7 +1,7 @@
 export function buildSkillMarkdown(name: string): string {
   return `---
 name: ${name}
-description: TODO: Describe what this skill does and when to use it.
+description: "TODO: Describe what this skill does and when to use it."
 license: TODO
 ---
 

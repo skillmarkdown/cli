@@ -15,15 +15,11 @@ export function normalizeSkillName(input: string): string {
   }
 
   if (normalized.length > MAX_SKILL_NAME_LENGTH) {
-    throw new Error(
-      `skill name must be at most ${MAX_SKILL_NAME_LENGTH} characters`,
-    );
+    throw new Error(`skill name must be at most ${MAX_SKILL_NAME_LENGTH} characters`);
   }
 
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(normalized)) {
-    throw new Error(
-      "skill name must use lowercase letters, numbers, and single hyphens only",
-    );
+    throw new Error("skill name must use lowercase letters, numbers, and single hyphens only");
   }
 
   return normalized;

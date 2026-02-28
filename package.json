@@ -16,6 +16,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.js\" \"*.{json,mjs}\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.js\" \"*.{json,mjs}\"",
+    "prepare": "husky",
     "prepublishOnly": "npm run clean && npm run build",
     "test": "npm run build && node --test tests/*.test.js"
   },
@@ -36,7 +41,28 @@
     "cli"
   ],
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^25.3.2",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "eslint": "^10.0.2",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.3.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.0",
+    "prettier": "^3.8.1",
     "typescript": "^5.9.3"
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write"
+    ],
+    "*.{json,mjs,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "yaml": "^2.8.2"
   }
 }

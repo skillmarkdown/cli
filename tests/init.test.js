@@ -79,10 +79,7 @@ test("fails when target directory is non-empty", () => {
 
   try {
     fs.writeFileSync(path.join(dir, "existing.txt"), "content", "utf8");
-    assert.throws(
-      () => scaffoldSkillInDirectory(dir),
-      /not empty/,
-    );
+    assert.throws(() => scaffoldSkillInDirectory(dir), /not empty/);
   } finally {
     cleanup(root);
   }
@@ -107,10 +104,7 @@ test("fails when current directory name is not normalized", () => {
   const { root, dir } = makeEmptySkillDirectory("Not_Valid");
 
   try {
-    assert.throws(
-      () => scaffoldSkillInDirectory(dir),
-      /must already be normalized/,
-    );
+    assert.throws(() => scaffoldSkillInDirectory(dir), /must already be normalized/);
   } finally {
     cleanup(root);
   }

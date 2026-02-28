@@ -21,8 +21,17 @@ npm test
 ```
 
 This runs:
+
 - TypeScript build (`npm run build`)
 - Node built-in test suite (`node --test tests/*.test.js`)
+- Spawned-binary CLI integration tests (`tests/cli-integration.test.js`)
+
+## Pre-commit hooks
+
+Git pre-commit now runs through Husky + lint-staged:
+
+- ESLint + Prettier on staged `*.ts` and `*.js`
+- Prettier on staged `*.json`, `*.mjs`, `*.md`, `*.yml`, and `*.yaml`
 
 ## 3) Manual smoke test (success path)
 
@@ -36,11 +45,17 @@ find . -type f | sort
 ```
 
 Expected files:
+
 - `./SKILL.md`
 - `./.gitignore`
 - `./scripts/.gitkeep`
 - `./references/.gitkeep`
 - `./assets/.gitkeep`
+
+Expected CLI output includes:
+
+- initialization success line
+- strict validation result line (`Validation passed: Spec and strict scaffold validation passed.`)
 
 ## 4) Manual smoke test (error path)
 
@@ -55,6 +70,7 @@ echo $?
 ```
 
 Expected:
+
 - clear error about non-empty directory
 - exit code `1`
 
@@ -73,9 +89,53 @@ diff -ru "$tmpdir/deterministic-skill-a" "$tmpdir/deterministic-skill-b"
 ```
 
 Expected:
+
 - no diff output
 
-## 6) Optional verifier check (`skills-ref`)
+## 6) Run local validation command
+
+```bash
+REPO_DIR="$(pwd)"
+tmpdir="$(mktemp -d)"
+mkdir "$tmpdir/validate-skill"
+(cd "$tmpdir/validate-skill" && node "$REPO_DIR/dist/cli.js" init)
+(cd "$tmpdir/validate-skill" && node "$REPO_DIR/dist/cli.js" validate)
+```
+
+Expected:
+
+- `Validation passed: Spec validation passed.`
+- exit code `0`
+
+### Strict mode
+
+```bash
+REPO_DIR="$(pwd)"
+tmpdir="$(mktemp -d)"
+mkdir "$tmpdir/validate-strict-skill"
+(cd "$tmpdir/validate-strict-skill" && node "$REPO_DIR/dist/cli.js" init --no-validate)
+(cd "$tmpdir/validate-strict-skill" && node "$REPO_DIR/dist/cli.js" validate --strict)
+```
+
+Expected:
+
+- `Validation passed: Spec and strict scaffold validation passed.`
+
+## 7) Optional init without validation
+
+```bash
+REPO_DIR="$(pwd)"
+tmpdir="$(mktemp -d)"
+mkdir "$tmpdir/no-validate-skill"
+(cd "$tmpdir/no-validate-skill" && node "$REPO_DIR/dist/cli.js" init --no-validate)
+```
+
+Expected:
+
+- initialization succeeds
+- CLI prints `Validation skipped (--no-validate).`
+
+## 8) Optional verifier check (`skills-ref`)
 
 After generating a skill directory:
 
@@ -84,3 +144,19 @@ skills-ref validate /path/to/generated-skill
 ```
 
 Use this as an external conformance check against AgentSkills rules.
+
+### Parity check mode
+
+If `skills-ref` is installed, compare local validator status against it:
+
+```bash
+REPO_DIR="$(pwd)"
+tmpdir="$(mktemp -d)"
+mkdir "$tmpdir/parity-skill"
+(cd "$tmpdir/parity-skill" && node "$REPO_DIR/dist/cli.js" init --no-validate)
+(cd "$tmpdir/parity-skill" && node "$REPO_DIR/dist/cli.js" validate --parity)
+```
+
+Expected:
+
+- `Validation parity passed (skills-ref).`

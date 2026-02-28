@@ -1,16 +1,17 @@
 # MVP (v0): `skillmd init`
 
 ## Summary
+
 `skillmd init` scaffolds a spec-aligned skill folder with a high-quality starting template.
 
-This is the only supported command in v0.
+`skillmd validate` is also supported in v0 as a local verification command.
 
 ---
 
 ## Non-goals (v0)
+
 - No registry integration
 - No publishing
-- No validation command
 - No network calls
 - No execution runtime logic
 
@@ -33,6 +34,11 @@ Optional future additions must not break this structure.
 ## Behavior Requirements
 
 - If the target directory is non-empty, `init` exits with a clear, actionable error.
+- `init` runs local validation in strict mode by default after scaffolding.
+- `init --no-validate` skips local validation.
+- `validate` checks Agent Skills spec requirements.
+- `validate --strict` additionally checks scaffold/template conventions from this CLI.
+- `validate --parity` compares local validation status with `skills-ref` when available.
 - Output must be deterministic:
   - No timestamps
   - No random IDs
@@ -49,11 +55,13 @@ Optional future additions must not break this structure.
 Generated `SKILL.md` must include:
 
 ### YAML Frontmatter
+
 - `name`
 - `description` (placeholder acceptable)
 - `license` (optional)
 
 ### Markdown Sections (placeholders allowed)
+
 - Scope
 - When to use
 - Inputs

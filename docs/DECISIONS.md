@@ -18,9 +18,14 @@ Scoped package avoids naming collisions while preserving a clean command surface
 
 ## D-002: v0 Scope is Intentionally Narrow
 
-v0 implements **only** `skillmd init`.
+v0 implements `skillmd init` and `skillmd validate`.
+
+`skillmd init` runs local validation by default (with `--no-validate` opt-out).
+`skillmd validate` runs spec checks by default, with `--strict` for scaffold/template checks.
+`skillmd validate --parity` cross-checks local status against `skills-ref` to detect drift.
 
 No:
+
 - registry calls
 - authentication
 - publishing

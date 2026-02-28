@@ -1,16 +1,43 @@
 import { scaffoldSkillInDirectory } from "../lib/scaffold";
+import { type ValidationResult, validateSkill } from "../lib/validator";
 
-export function runInitCommand(args: string[], cwd = process.cwd()): number {
-  if (args.length > 0) {
-    console.error("skillmd init: this command does not accept arguments");
-    console.error("Usage: skillmd init");
+interface InitCommandOptions {
+  cwd?: string;
+  validateSkill?: (targetDir: string) => ValidationResult;
+}
+
+export function runInitCommand(args: string[], options: InitCommandOptions = {}): number {
+  const cwd = options.cwd ?? process.cwd();
+  const validateSkillFn =
+    options.validateSkill ?? ((targetDir: string) => validateSkill(targetDir, { strict: true }));
+
+  const skipValidation = args.includes("--no-validate");
+  const hasUnsupportedArgs = args.length > 1 || (args.length === 1 && args[0] !== "--no-validate");
+
+  if (hasUnsupportedArgs) {
+    console.error("skillmd init: unsupported argument(s)");
+    console.error("Usage: skillmd init [--no-validate]");
     return 1;
   }
 
   try {
     const result = scaffoldSkillInDirectory(cwd);
     console.log(`Initialized skill '${result.skillName}' in ${cwd}`);
-    return 0;
+
+    if (skipValidation) {
+      console.log("Validation skipped (--no-validate).");
+      return 0;
+    }
+
+    const validation = validateSkillFn(cwd);
+    if (validation.status === "passed") {
+      console.log(`Validation passed: ${validation.message}`);
+      return 0;
+    }
+
+    console.error(`Validation failed: ${validation.message}`);
+    console.error("Run 'skillmd validate' after fixing issues.");
+    return 1;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd init: ${message}`);
