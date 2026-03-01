@@ -37,4 +37,8 @@ async function main(): Promise<void> {
   process.exitCode = 1;
 }
 
-void main();
+void main().catch((error: unknown) => {
+  const message = error instanceof Error ? error.message : "Unknown error";
+  console.error(`skillmd: ${message}`);
+  process.exitCode = 1;
+});

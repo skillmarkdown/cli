@@ -7,6 +7,8 @@ export interface UpstreamValidationResult {
   message: string;
 }
 
+const SKILLS_REF_TIMEOUT_MS = 10_000;
+
 function formatOutput(stdout: string, stderr: string): string {
   return [stdout.trim(), stderr.trim()].filter((part) => part.length > 0).join("\n");
 }
@@ -14,6 +16,7 @@ function formatOutput(stdout: string, stderr: string): string {
 export function validateWithSkillsRef(targetDir: string): UpstreamValidationResult {
   const result = spawnSync("skills-ref", ["validate", targetDir], {
     encoding: "utf8",
+    timeout: SKILLS_REF_TIMEOUT_MS,
   });
 
   if (result.error) {
@@ -21,6 +24,12 @@ export function validateWithSkillsRef(targetDir: string): UpstreamValidationResu
       return {
         status: "unavailable",
         message: "skills-ref is not installed or not on PATH",
+      };
+    }
+    if ("code" in result.error && result.error.code === "ETIMEDOUT") {
+      return {
+        status: "unavailable",
+        message: `skills-ref timed out after ${SKILLS_REF_TIMEOUT_MS}ms`,
       };
     }
 

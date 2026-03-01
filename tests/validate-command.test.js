@@ -149,3 +149,15 @@ test("fails with matched parity when local and upstream both fail", () => {
     assert.equal(exitCode, 1);
   });
 });
+
+test("returns failure when validator throws unexpectedly", () => {
+  withSkillDirectory("validate-throws", ({ dir }) => {
+    const exitCode = runValidateCommand([], {
+      cwd: dir,
+      validateLocal: () => {
+        throw new Error("permission denied");
+      },
+    });
+    assert.equal(exitCode, 1);
+  });
+});

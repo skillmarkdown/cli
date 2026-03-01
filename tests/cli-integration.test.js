@@ -98,6 +98,19 @@ test("spawned CLI: logout succeeds when no session exists", () => {
   }
 });
 
+test("spawned CLI: logout fails gracefully on malformed session path", () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+
+  try {
+    fs.mkdirSync(path.join(root, ".skillmd", "auth.json"), { recursive: true });
+    const result = runCli(["logout"], root);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /skillmd logout:/);
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
 test("spawned CLI: login status reports not logged in by default", () => {
   const root = makeTempDirectory(CLI_TEST_PREFIX);
 

@@ -28,3 +28,12 @@ test("logout fails with usage on unsupported flags", () => {
   const exitCode = runLogoutCommand(["--bad-flag"]);
   assert.equal(exitCode, 1);
 });
+
+test("logout returns failure when session clear throws", () => {
+  const exitCode = runLogoutCommand([], {
+    clearSession: () => {
+      throw new Error("unable to remove session");
+    },
+  });
+  assert.equal(exitCode, 1);
+});
