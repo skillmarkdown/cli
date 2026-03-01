@@ -114,7 +114,9 @@ export async function verifyFirebaseRefreshToken(
   const errorMessage = payload.error?.message ?? "";
   if (
     response.status === 400 &&
-    (errorMessage === "INVALID_REFRESH_TOKEN" || errorMessage === "TOKEN_EXPIRED")
+    (errorMessage === "INVALID_REFRESH_TOKEN" ||
+      errorMessage === "TOKEN_EXPIRED" ||
+      errorMessage === "PROJECT_NUMBER_MISMATCH")
   ) {
     return { valid: false };
   }

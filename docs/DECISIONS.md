@@ -44,13 +44,13 @@ We establish deterministic scaffolding before adding complexity.
 Contract:
 
 - `skillmd login` starts GitHub Device Flow and exchanges the GitHub access token with Firebase Identity Toolkit (`accounts:signInWithIdp`).
-- `skillmd login --status` reports whether a local session exists.
+- `skillmd login --status` reports whether a local session exists and shows the session Firebase project id.
 - `skillmd login --reauth` forces a new auth flow even when a local session exists.
 - when a local session exists, `skillmd login` verifies the stored refresh token and automatically reauthenticates if the token is invalid/expired.
 - if existing-session verification is inconclusive (e.g. network timeout), `skillmd login` exits non-zero and keeps the current session to avoid false-positive success.
 - `skillmd logout` removes the local session.
 - local persistence stores only the Firebase `refreshToken` plus minimal identity metadata.
-- command execution has built-in defaults; overrides are read from `SKILLMD_GITHUB_CLIENT_ID`, `SKILLMD_FIREBASE_API_KEY`, and trusted user config at `~/.skillmd/.env`.
+- command execution has built-in defaults; overrides are read from `SKILLMD_GITHUB_CLIENT_ID`, `SKILLMD_FIREBASE_API_KEY`, `SKILLMD_FIREBASE_PROJECT_ID`, and trusted user config at `~/.skillmd/.env`.
 
 Rationale:
 Authentication is needed for future remote operations, while preserving secret minimization (no GitHub client secret in CLI).

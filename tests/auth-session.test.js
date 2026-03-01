@@ -37,6 +37,7 @@ test("writeAuthSession and readAuthSession round-trip valid session", () => {
     uid: "uid-1",
     email: "user@example.com",
     refreshToken: "refresh-1",
+    projectId: "skillmarkdown",
   };
 
   try {
@@ -70,6 +71,51 @@ test("readAuthSession returns null for invalid shape", () => {
       JSON.stringify({
         provider: "github",
         uid: "uid-1",
+      }),
+      "utf8",
+    );
+    assert.equal(readAuthSession(sessionPath), null);
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("readAuthSession accepts legacy sessions without projectId", () => {
+  const { root, sessionPath } = createSessionPath();
+
+  try {
+    fs.mkdirSync(path.dirname(sessionPath), { recursive: true });
+    fs.writeFileSync(
+      sessionPath,
+      JSON.stringify({
+        provider: "github",
+        uid: "uid-legacy",
+        refreshToken: "refresh-legacy",
+      }),
+      "utf8",
+    );
+    assert.deepEqual(readAuthSession(sessionPath), {
+      provider: "github",
+      uid: "uid-legacy",
+      refreshToken: "refresh-legacy",
+    });
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("readAuthSession returns null when projectId is empty", () => {
+  const { root, sessionPath } = createSessionPath();
+
+  try {
+    fs.mkdirSync(path.dirname(sessionPath), { recursive: true });
+    fs.writeFileSync(
+      sessionPath,
+      JSON.stringify({
+        provider: "github",
+        uid: "uid-1",
+        refreshToken: "refresh-1",
+        projectId: "",
       }),
       "utf8",
     );

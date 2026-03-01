@@ -6,6 +6,7 @@ import { DEFAULT_LOGIN_AUTH_CONFIG } from "./auth-defaults";
 export interface LoginEnvConfig {
   githubClientId: string;
   firebaseApiKey: string;
+  firebaseProjectId: string;
 }
 
 const USER_ENV_RELATIVE_PATH = ".skillmd/.env";
@@ -85,14 +86,20 @@ export function getLoginEnvConfig(
     dotEnv.SKILLMD_FIREBASE_API_KEY,
     DEFAULT_LOGIN_AUTH_CONFIG.firebaseApiKey,
   );
+  const firebaseProjectId = pickValue(
+    env.SKILLMD_FIREBASE_PROJECT_ID,
+    dotEnv.SKILLMD_FIREBASE_PROJECT_ID,
+    DEFAULT_LOGIN_AUTH_CONFIG.firebaseProjectId,
+  );
 
-  if (!githubClientId || !firebaseApiKey) {
+  if (!githubClientId || !firebaseApiKey || !firebaseProjectId) {
     throw new Error("missing login configuration");
   }
 
   return {
     githubClientId,
     firebaseApiKey,
+    firebaseProjectId,
   };
 }
 

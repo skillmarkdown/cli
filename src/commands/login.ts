@@ -65,18 +65,44 @@ function parseFlags(args: string[]): { status: boolean; reauth: boolean; valid: 
   return { status, reauth, valid: true };
 }
 
-function printSessionStatus(session: AuthSession | null): number {
+function formatSessionProject(
+  session: AuthSession,
+  currentConfigProjectId?: string,
+): { label: string; mismatch: boolean } {
+  if (!session.projectId) {
+    if (currentConfigProjectId) {
+      return { label: `unknown (current config: ${currentConfigProjectId})`, mismatch: false };
+    }
+    return { label: "unknown", mismatch: false };
+  }
+
+  return {
+    label: session.projectId,
+    mismatch: Boolean(currentConfigProjectId && session.projectId !== currentConfigProjectId),
+  };
+}
+
+function printSessionStatus(session: AuthSession | null, currentConfigProjectId?: string): number {
   if (!session) {
     console.log("Not logged in.");
     return 1;
   }
 
+  const project = formatSessionProject(session, currentConfigProjectId);
+
   if (session.email) {
-    console.log(`Logged in with GitHub as ${session.email}.`);
-    return 0;
+    console.log(`Logged in with GitHub as ${session.email} (project: ${project.label}).`);
+  } else {
+    console.log(`Logged in with GitHub (uid: ${session.uid}, project: ${project.label}).`);
   }
 
-  console.log(`Logged in with GitHub (uid: ${session.uid}).`);
+  if (project.mismatch && currentConfigProjectId) {
+    console.log(
+      `Current CLI config targets project '${currentConfigProjectId}'. ` +
+        "Run 'skillmd login --reauth' to switch projects.",
+    );
+  }
+
   return 0;
 }
 
@@ -104,12 +130,12 @@ export async function runLoginCommand(
   const writeSessionFn = options.writeSession ?? writeAuthSession;
   const clearSessionFn = options.clearSession ?? clearAuthSession;
 
-  if (status) {
-    return printSessionStatus(readSessionFn());
-  }
-
   try {
     const config = requireConfig(options.env ?? process.env);
+    if (status) {
+      return printSessionStatus(readSessionFn(), config.firebaseProjectId);
+    }
+
     const existingSession = readSessionFn();
     if (existingSession && !reauth) {
       const verifyRefreshTokenFn = options.verifyRefreshToken ?? verifyFirebaseRefreshToken;
@@ -121,12 +147,23 @@ export async function runLoginCommand(
         );
 
         if (validation.valid) {
+          const project = formatSessionProject(existingSession, config.firebaseProjectId);
           if (existingSession.email) {
             console.log(
-              `Already logged in as ${existingSession.email}. Run 'skillmd logout' first.`,
+              `Already logged in as ${existingSession.email} (project: ${project.label}). ` +
+                "Run 'skillmd logout' first.",
             );
           } else {
-            console.log("Already logged in. Run 'skillmd logout' first.");
+            console.log(
+              `Already logged in (uid: ${existingSession.uid}, project: ${project.label}). ` +
+                "Run 'skillmd logout' first.",
+            );
+          }
+          if (project.mismatch) {
+            console.log(
+              `Current CLI config targets project '${config.firebaseProjectId}'. ` +
+                "Run 'skillmd login --reauth' to switch projects.",
+            );
           }
           return 0;
         }
@@ -165,12 +202,15 @@ export async function runLoginCommand(
       uid: firebaseSession.localId,
       email: firebaseSession.email,
       refreshToken: firebaseSession.refreshToken,
+      projectId: config.firebaseProjectId,
     });
 
     if (firebaseSession.email) {
-      console.log(`Login successful. Signed in as ${firebaseSession.email}.`);
+      console.log(
+        `Login successful. Signed in as ${firebaseSession.email} (project: ${config.firebaseProjectId}).`,
+      );
     } else {
-      console.log("Login successful.");
+      console.log(`Login successful (project: ${config.firebaseProjectId}).`);
     }
 
     return 0;

@@ -9,6 +9,7 @@ export interface AuthSession {
   uid: string;
   email?: string;
   refreshToken: string;
+  projectId?: string;
 }
 
 export function getDefaultSessionPath(): string {
@@ -34,6 +35,12 @@ export function readAuthSession(sessionPath: string = SESSION_PATH): AuthSession
     }
 
     if (parsed.email !== undefined && typeof parsed.email !== "string") {
+      return null;
+    }
+    if (parsed.projectId !== undefined && typeof parsed.projectId !== "string") {
+      return null;
+    }
+    if (typeof parsed.projectId === "string" && parsed.projectId.length === 0) {
       return null;
     }
 

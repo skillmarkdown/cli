@@ -15,6 +15,28 @@ function mockDeviceCode() {
   };
 }
 
+async function captureConsole(fn) {
+  const originalLog = console.log;
+  const originalError = console.error;
+  const logs = [];
+  const errors = [];
+
+  console.log = (...args) => {
+    logs.push(args.join(" "));
+  };
+  console.error = (...args) => {
+    errors.push(args.join(" "));
+  };
+
+  try {
+    const result = await fn();
+    return { result, logs, errors };
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+  }
+}
+
 test("fails with usage on unsupported flags", async () => {
   const exitCode = await runLoginCommand(["--bad-flag"]);
   assert.equal(exitCode, 1);
@@ -33,15 +55,59 @@ test("shows not logged in status when no session exists", async () => {
 });
 
 test("shows logged in status when session exists", async () => {
-  const exitCode = await runLoginCommand(["--status"], {
-    readSession: () => ({
-      provider: "github",
-      uid: "uid-1",
-      email: "user@example.com",
-      refreshToken: "refresh",
+  const { result, logs } = await captureConsole(() =>
+    runLoginCommand(["--status"], {
+      readSession: () => ({
+        provider: "github",
+        uid: "uid-1",
+        email: "user@example.com",
+        refreshToken: "refresh",
+        projectId: "skillmarkdown-development",
+      }),
     }),
-  });
-  assert.equal(exitCode, 0);
+  );
+
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /project: skillmarkdown-development/);
+});
+
+test("status shows project mismatch hint when session project differs from config", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runLoginCommand(["--status"], {
+      env: {
+        SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown",
+      },
+      readSession: () => ({
+        provider: "github",
+        uid: "uid-1",
+        email: "user@example.com",
+        refreshToken: "refresh",
+        projectId: "skillmarkdown-development",
+      }),
+    }),
+  );
+
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /Current CLI config targets project 'skillmarkdown'/);
+});
+
+test("status shows unknown project for legacy sessions", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runLoginCommand(["--status"], {
+      env: {
+        SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown",
+      },
+      readSession: () => ({
+        provider: "github",
+        uid: "uid-1",
+        email: "user@example.com",
+        refreshToken: "refresh",
+      }),
+    }),
+  );
+
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /project: unknown \(current config: skillmarkdown\)/);
 });
 
 test("login uses built-in defaults when env vars are missing", async () => {
@@ -79,6 +145,7 @@ test("login succeeds and writes session", async () => {
     env: {
       SKILLMD_GITHUB_CLIENT_ID: "gh-client",
       SKILLMD_FIREBASE_API_KEY: "firebase-key",
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown",
     },
     requestDeviceCode: async (clientId) => {
       assert.equal(clientId, "gh-client");
@@ -109,6 +176,7 @@ test("login succeeds and writes session", async () => {
     uid: "uid-1",
     email: "user@example.com",
     refreshToken: "refresh-1",
+    projectId: "skillmarkdown",
   });
 });
 
@@ -121,6 +189,7 @@ test("login does not restart auth flow when already logged in", async () => {
       uid: "uid-1",
       email: "user@example.com",
       refreshToken: "refresh",
+      projectId: "skillmarkdown-development",
     }),
     requestDeviceCode: async () => {
       requestedDeviceCode = true;
@@ -143,6 +212,7 @@ test("login auto-reauthenticates when existing session token is invalid", async 
       uid: "uid-stale",
       email: "stale@example.com",
       refreshToken: "stale-refresh",
+      projectId: "skillmarkdown-development",
     }),
     verifyRefreshToken: async () => ({ valid: false }),
     clearSession: () => {
@@ -177,6 +247,7 @@ test("login continues reauthentication even if clearing stale session fails", as
       uid: "uid-stale",
       email: "stale@example.com",
       refreshToken: "stale-refresh",
+      projectId: "skillmarkdown-development",
     }),
     verifyRefreshToken: async () => ({ valid: false }),
     clearSession: () => {
@@ -211,6 +282,7 @@ test("login fails when token verification is inconclusive due to transient error
       uid: "uid-1",
       email: "user@example.com",
       refreshToken: "refresh",
+      projectId: "skillmarkdown-development",
     }),
     verifyRefreshToken: async () => {
       throw new Error("request timed out");
@@ -240,10 +312,12 @@ test("login --reauth restarts auth flow even when already logged in", async () =
       uid: "uid-old",
       email: "old@example.com",
       refreshToken: "refresh-old",
+      projectId: "skillmarkdown-development",
     }),
     env: {
       SKILLMD_GITHUB_CLIENT_ID: "gh-client",
       SKILLMD_FIREBASE_API_KEY: "firebase-key",
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown",
     },
     requestDeviceCode: async () => {
       requestedDeviceCode = true;
@@ -267,5 +341,6 @@ test("login --reauth restarts auth flow even when already logged in", async () =
     uid: "uid-new",
     email: "new@example.com",
     refreshToken: "refresh-new",
+    projectId: "skillmarkdown",
   });
 });

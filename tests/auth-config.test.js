@@ -16,6 +16,7 @@ test("uses built-in defaults when env and user config are absent", () => {
     const config = getLoginEnvConfig({}, { homeDir });
     assert.equal(config.githubClientId, DEFAULT_LOGIN_AUTH_CONFIG.githubClientId);
     assert.equal(config.firebaseApiKey, DEFAULT_LOGIN_AUTH_CONFIG.firebaseApiKey);
+    assert.equal(config.firebaseProjectId, DEFAULT_LOGIN_AUTH_CONFIG.firebaseProjectId);
   } finally {
     cleanupDirectory(homeDir);
   }
@@ -29,13 +30,16 @@ test("uses trusted user config from ~/.skillmd/.env when env vars are not set", 
     fs.mkdirSync(path.dirname(userEnvPath), { recursive: true });
     fs.writeFileSync(
       userEnvPath,
-      "SKILLMD_GITHUB_CLIENT_ID=from-user-file\nSKILLMD_FIREBASE_API_KEY=from-user-file-key\n",
+      "SKILLMD_GITHUB_CLIENT_ID=from-user-file\n" +
+        "SKILLMD_FIREBASE_API_KEY=from-user-file-key\n" +
+        "SKILLMD_FIREBASE_PROJECT_ID=from-user-file-project\n",
       "utf8",
     );
 
     const config = getLoginEnvConfig({}, { homeDir });
     assert.equal(config.githubClientId, "from-user-file");
     assert.equal(config.firebaseApiKey, "from-user-file-key");
+    assert.equal(config.firebaseProjectId, "from-user-file-project");
   } finally {
     cleanupDirectory(homeDir);
   }
@@ -49,7 +53,9 @@ test("env vars override trusted user config values", () => {
     fs.mkdirSync(path.dirname(userEnvPath), { recursive: true });
     fs.writeFileSync(
       userEnvPath,
-      "SKILLMD_GITHUB_CLIENT_ID=from-user-file\nSKILLMD_FIREBASE_API_KEY=from-user-file-key\n",
+      "SKILLMD_GITHUB_CLIENT_ID=from-user-file\n" +
+        "SKILLMD_FIREBASE_API_KEY=from-user-file-key\n" +
+        "SKILLMD_FIREBASE_PROJECT_ID=from-user-file-project\n",
       "utf8",
     );
 
@@ -57,12 +63,14 @@ test("env vars override trusted user config values", () => {
       {
         SKILLMD_GITHUB_CLIENT_ID: "from-env",
         SKILLMD_FIREBASE_API_KEY: "from-env-key",
+        SKILLMD_FIREBASE_PROJECT_ID: "from-env-project",
       },
       { homeDir },
     );
 
     assert.equal(config.githubClientId, "from-env");
     assert.equal(config.firebaseApiKey, "from-env-key");
+    assert.equal(config.firebaseProjectId, "from-env-project");
   } finally {
     cleanupDirectory(homeDir);
   }
@@ -76,7 +84,9 @@ test("ignores cwd .env to avoid untrusted directory overrides", () => {
   try {
     fs.writeFileSync(
       path.join(cwd, ".env"),
-      "SKILLMD_GITHUB_CLIENT_ID=from-cwd\nSKILLMD_FIREBASE_API_KEY=from-cwd-key\n",
+      "SKILLMD_GITHUB_CLIENT_ID=from-cwd\n" +
+        "SKILLMD_FIREBASE_API_KEY=from-cwd-key\n" +
+        "SKILLMD_FIREBASE_PROJECT_ID=from-cwd-project\n",
       "utf8",
     );
     process.chdir(cwd);
@@ -84,6 +94,7 @@ test("ignores cwd .env to avoid untrusted directory overrides", () => {
     const config = getLoginEnvConfig({}, { homeDir });
     assert.equal(config.githubClientId, DEFAULT_LOGIN_AUTH_CONFIG.githubClientId);
     assert.equal(config.firebaseApiKey, DEFAULT_LOGIN_AUTH_CONFIG.firebaseApiKey);
+    assert.equal(config.firebaseProjectId, DEFAULT_LOGIN_AUTH_CONFIG.firebaseProjectId);
   } finally {
     process.chdir(previousCwd);
     cleanupDirectory(homeDir);
