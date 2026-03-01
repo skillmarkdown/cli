@@ -209,6 +209,7 @@ Expected:
 - CLI prints a GitHub verification URL and user code.
 - After approving in browser, CLI prints `Login successful` (and email when available).
 - Session file exists at `~/.skillmd/auth.json`.
+- if a stale saved session exists, `login` should automatically start reauthentication.
 
 Check login status:
 
@@ -260,3 +261,4 @@ Expected:
 
 - blank env vars: command falls back to the next configured source (`~/.skillmd/.env` or built-in defaults) and continues login flow
 - unsupported flag: usage line `Usage: skillmd login [--status|--reauth]`
+- if session verification cannot complete (e.g. timeout), `login` should keep the current session and return a non-zero exit code

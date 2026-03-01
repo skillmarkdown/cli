@@ -1,19 +1,30 @@
 import { LOGIN_USAGE } from "../lib/cli-text";
 import { failWithUsage } from "../lib/command-output";
 import { getLoginEnvConfig, type LoginEnvConfig } from "../lib/auth-config";
-import { readAuthSession, writeAuthSession, type AuthSession } from "../lib/auth-session";
+import {
+  clearAuthSession,
+  readAuthSession,
+  writeAuthSession,
+  type AuthSession,
+} from "../lib/auth-session";
 import {
   pollForAccessToken,
   requestDeviceCode,
   type DeviceCodeResponse,
   type GitHubAccessTokenResult,
 } from "../lib/github-device-flow";
-import { signInWithGitHubAccessToken, type FirebaseIdpResult } from "../lib/firebase-auth";
+import {
+  signInWithGitHubAccessToken,
+  type FirebaseIdpResult,
+  verifyFirebaseRefreshToken,
+  type FirebaseRefreshTokenValidationResult,
+} from "../lib/firebase-auth";
 
 interface LoginCommandOptions {
   env?: NodeJS.ProcessEnv;
   readSession?: () => AuthSession | null;
   writeSession?: (session: AuthSession) => void;
+  clearSession?: () => boolean;
   requestDeviceCode?: (clientId: string, scope?: string) => Promise<DeviceCodeResponse>;
   pollForAccessToken?: (
     clientId: string,
@@ -25,6 +36,10 @@ interface LoginCommandOptions {
     apiKey: string,
     githubAccessToken: string,
   ) => Promise<FirebaseIdpResult>;
+  verifyRefreshToken?: (
+    apiKey: string,
+    refreshToken: string,
+  ) => Promise<FirebaseRefreshTokenValidationResult>;
 }
 
 function parseFlags(args: string[]): { status: boolean; reauth: boolean; valid: boolean } {
@@ -87,23 +102,47 @@ export async function runLoginCommand(
 
   const readSessionFn = options.readSession ?? readAuthSession;
   const writeSessionFn = options.writeSession ?? writeAuthSession;
+  const clearSessionFn = options.clearSession ?? clearAuthSession;
 
   if (status) {
     return printSessionStatus(readSessionFn());
   }
 
-  const existingSession = readSessionFn();
-  if (existingSession && !reauth) {
-    if (existingSession.email) {
-      console.log(`Already logged in as ${existingSession.email}. Run 'skillmd logout' first.`);
-    } else {
-      console.log("Already logged in. Run 'skillmd logout' first.");
-    }
-    return 0;
-  }
-
   try {
     const config = requireConfig(options.env ?? process.env);
+    const existingSession = readSessionFn();
+    if (existingSession && !reauth) {
+      const verifyRefreshTokenFn = options.verifyRefreshToken ?? verifyFirebaseRefreshToken;
+
+      try {
+        const validation = await verifyRefreshTokenFn(
+          config.firebaseApiKey,
+          existingSession.refreshToken,
+        );
+
+        if (validation.valid) {
+          if (existingSession.email) {
+            console.log(
+              `Already logged in as ${existingSession.email}. Run 'skillmd logout' first.`,
+            );
+          } else {
+            console.log("Already logged in. Run 'skillmd logout' first.");
+          }
+          return 0;
+        }
+
+        clearSessionFn();
+        console.log("Existing session is no longer valid. Starting re-authentication.");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error(
+          `skillmd login: unable to verify existing session (${message}). ` +
+            "Keeping current session. Run 'skillmd login --reauth' to force reauthentication.",
+        );
+        return 1;
+      }
+    }
+
     const requestDeviceCodeFn = options.requestDeviceCode ?? requestDeviceCode;
     const pollForAccessTokenFn = options.pollForAccessToken ?? pollForAccessToken;
     const signInFn = options.signInWithGitHubAccessToken ?? signInWithGitHubAccessToken;

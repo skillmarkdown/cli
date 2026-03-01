@@ -94,6 +94,8 @@ skillmd login --reauth
 skillmd logout
 ```
 
+When a saved session exists, `skillmd login` verifies the stored refresh token. If it is invalid/expired, the CLI automatically starts a new login flow. If verification is inconclusive (for example network timeout), the command exits non-zero and keeps the current session.
+
 ## Development
 
 - Local testing guide (includes manual `login` auth checks): `docs/testing.md`
