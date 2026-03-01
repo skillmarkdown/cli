@@ -20,7 +20,7 @@ function withSkillDirectory(skillName, run) {
 
 function withScaffoldedSkillDirectory(skillName, run) {
   withSkillDirectory(skillName, ({ root, dir }) => {
-    scaffoldSkillInDirectory(dir);
+    scaffoldSkillInDirectory(dir, { template: "verbose" });
     run({ root, dir });
   });
 }

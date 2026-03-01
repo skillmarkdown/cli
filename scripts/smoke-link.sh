@@ -19,7 +19,7 @@ trap cleanup EXIT
 
 mkdir -p "$SKILL_DIR"
 cd "$SKILL_DIR"
-skillmd init --no-validate
+skillmd init --template verbose --no-validate
 skillmd validate
 skillmd validate --strict
 

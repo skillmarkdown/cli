@@ -2,13 +2,14 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+  INIT_TEMPLATE_IDS,
   MAX_SKILL_NAME_LENGTH,
   SCAFFOLD_DIRECTORIES,
   STRICT_REQUIRED_FILES,
   STRICT_SECTION_HEADINGS,
 } = require("../dist/lib/skill-spec.js");
 const { getMaxSkillNameLength } = require("../dist/lib/normalize-name.js");
-const { buildSkillMarkdown } = require("../dist/lib/templates.js");
+const { buildVerboseSkillMarkdown } = require("../dist/lib/templates.js");
 
 test("shared max skill name length stays in sync", () => {
   assert.equal(MAX_SKILL_NAME_LENGTH, getMaxSkillNameLength());
@@ -21,8 +22,12 @@ test("strict required files include .gitkeep for all scaffold directories", () =
 });
 
 test("template contains every strict section heading", () => {
-  const markdown = buildSkillMarkdown("sample-skill");
+  const markdown = buildVerboseSkillMarkdown("sample-skill");
   for (const heading of STRICT_SECTION_HEADINGS) {
     assert.equal(markdown.includes(heading), true);
   }
+});
+
+test("init template ids are stable and ordered", () => {
+  assert.deepEqual(INIT_TEMPLATE_IDS, ["minimal", "verbose"]);
 });

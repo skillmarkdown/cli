@@ -26,7 +26,7 @@ npm install "$REPO_ROOT/$PACK_FILE" >/dev/null
 
 mkdir -p "$SKILL_DIR"
 cd "$SKILL_DIR"
-node "$PACKAGE_CLI_PATH" init
+node "$PACKAGE_CLI_PATH" init --template verbose
 node "$PACKAGE_CLI_PATH" validate
 node "$PACKAGE_CLI_PATH" validate --strict
 

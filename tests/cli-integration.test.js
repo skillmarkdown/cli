@@ -29,14 +29,52 @@ test("spawned CLI: init scaffolds and validates by default", () => {
 
     assert.equal(result.status, 0);
     assert.match(result.stdout, /Initialized skill 'integration-skill'/);
+    assert.match(result.stdout, /Validation passed: Spec validation passed\./);
+
+    const expectedFiles = ["SKILL.md"];
+
+    const files = [];
+    for (const entry of fs.readdirSync(skillDir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        const nested = fs.readdirSync(path.join(skillDir, entry.name), { withFileTypes: true });
+        for (const nestedEntry of nested) {
+          files.push(`${entry.name}/${nestedEntry.name}`);
+        }
+      } else {
+        files.push(entry.name);
+      }
+    }
+
+    assert.deepEqual(files.sort(), expectedFiles);
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: init with --template verbose scaffolds strict template", () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  const skillDir = path.join(root, "integration-verbose");
+
+  try {
+    fs.mkdirSync(skillDir);
+    const result = runCli(["init", "--template", "verbose"], skillDir);
+
+    assert.equal(result.status, 0);
     assert.match(result.stdout, /Validation passed: Spec and strict scaffold validation passed\./);
 
     const expectedFiles = [
       ".gitignore",
       "SKILL.md",
       "assets/.gitkeep",
+      "assets/README.md",
+      "assets/lookup-table.csv",
+      "assets/report-template.md",
       "references/.gitkeep",
+      "references/FORMS.md",
+      "references/REFERENCE.md",
       "scripts/.gitkeep",
+      "scripts/README.md",
+      "scripts/extract.py",
     ];
 
     const files = [];
@@ -131,7 +169,10 @@ test("spawned CLI: init rejects unsupported args", () => {
     fs.mkdirSync(skillDir);
     const result = runCli(["init", "--bad-flag"], skillDir);
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /Usage: skillmd init \[--no-validate\]/);
+    assert.match(
+      result.stderr,
+      /Usage: skillmd init \[--no-validate\] \[--template <minimal\|verbose>\]/,
+    );
   } finally {
     cleanupDirectory(root);
   }

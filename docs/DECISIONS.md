@@ -20,7 +20,7 @@ Scoped package avoids naming collisions while preserving a clean command surface
 
 v0 implements `skillmd init` and `skillmd validate`.
 
-`skillmd init` runs local validation by default (with `--no-validate` opt-out).
+`skillmd init` runs local validation by default (with `--no-validate` opt-out), with behavior depending on template mode.
 `skillmd validate` runs spec checks by default, with `--strict` for scaffold/template checks.
 `skillmd validate --parity` cross-checks local status against `skills-ref` to detect drift.
 
@@ -61,14 +61,20 @@ Authentication is needed for future remote operations, while preserving secret m
 
 A skill is a **folder artifact**, not a single file.
 
-`skillmd init` scaffolds:
+`skillmd init` default (`--template minimal`) scaffolds:
 
 - `SKILL.md`
-- `scripts/`
-- `references/`
-- `assets/`
 
-Optional directories are preserved with `.gitkeep`.
+`skillmd init --template verbose` scaffolds:
+
+- `SKILL.md`
+- `.gitignore`
+- `scripts/` (with starter placeholders)
+- `references/` (with starter placeholders)
+- `assets/` (with starter placeholders)
+
+Verbose-template optional directories are preserved with `.gitkeep`.
+Both templates generate the same `SKILL.md` body/frontmatter template.
 
 Rationale:
 Aligns with AgentSkills specification and supports future packaging + hashing.
