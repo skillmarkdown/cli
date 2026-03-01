@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { requireDist } = require("../helpers/dist-imports.js");
 
 const {
   INIT_TEMPLATE_IDS,
@@ -7,9 +8,9 @@ const {
   SCAFFOLD_DIRECTORIES,
   STRICT_REQUIRED_FILES,
   STRICT_SECTION_HEADINGS,
-} = require("../dist/lib/skill-spec.js");
-const { getMaxSkillNameLength } = require("../dist/lib/normalize-name.js");
-const { buildVerboseSkillMarkdown } = require("../dist/lib/templates.js");
+} = requireDist("lib/skill-spec.js");
+const { getMaxSkillNameLength } = requireDist("lib/normalize-name.js");
+const { buildVerboseSkillMarkdown } = requireDist("lib/templates.js");
 
 test("shared max skill name length stays in sync", () => {
   assert.equal(MAX_SKILL_NAME_LENGTH, getMaxSkillNameLength());

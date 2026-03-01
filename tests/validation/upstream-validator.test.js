@@ -1,9 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { requireDist } = require("../helpers/dist-imports.js");
 const path = require("node:path");
 const childProcess = require("node:child_process");
 
-const upstreamValidator = require("../dist/lib/upstream-validator.js");
+const upstreamValidator = requireDist("lib/upstream-validator.js");
 
 const ORIGINAL_SPAWN_SYNC = childProcess.spawnSync;
 

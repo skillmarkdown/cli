@@ -1,13 +1,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { requireDist } = require("../helpers/dist-imports.js");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const {
-  buildGitignore,
-  buildMinimalSkillMarkdown,
-  buildVerboseSkillMarkdown,
-} = require("../dist/lib/templates.js");
+const { buildGitignore, buildMinimalSkillMarkdown, buildVerboseSkillMarkdown } =
+  requireDist("lib/templates.js");
 
 function readFixture(...segments) {
   return fs.readFileSync(path.join(__dirname, "fixtures", "templates", ...segments), "utf8");
