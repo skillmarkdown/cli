@@ -6,18 +6,10 @@ const { requireDist } = require("../helpers/dist-imports.js");
 const { isPrereleaseVersion, parsePublishFlags } = requireDist("lib/publish/flags.js");
 
 test("parses required flags with separate values", () => {
-  const parsed = parsePublishFlags([
-    "./my-skill",
-    "--owner",
-    "core-team",
-    "--version",
-    "1.2.3",
-    "--dry-run",
-  ]);
+  const parsed = parsePublishFlags(["./my-skill", "--version", "1.2.3", "--dry-run"]);
 
   assert.deepEqual(parsed, {
     pathArg: "./my-skill",
-    owner: "core-team",
     version: "1.2.3",
     channel: undefined,
     dryRun: true,
@@ -27,16 +19,10 @@ test("parses required flags with separate values", () => {
 });
 
 test("parses equals syntax and json/channel flags", () => {
-  const parsed = parsePublishFlags([
-    "--owner=core-team",
-    "--version=1.2.3-beta.1",
-    "--channel=beta",
-    "--json",
-  ]);
+  const parsed = parsePublishFlags(["--version=1.2.3-beta.1", "--channel=beta", "--json"]);
 
   assert.deepEqual(parsed, {
     pathArg: undefined,
-    owner: "core-team",
     version: "1.2.3-beta.1",
     channel: "beta",
     dryRun: false,
@@ -47,13 +33,10 @@ test("parses equals syntax and json/channel flags", () => {
 
 for (const args of [
   [],
-  ["--owner", "core-team"],
-  ["--version", "1.2.3"],
-  ["--owner", "CoreTeam", "--version", "1.2.3"],
-  ["--owner", "core-team", "--version", "1.2"],
-  ["--owner", "core-team", "--version", "1.2.3", "--channel", "rc"],
-  ["--owner", "core-team", "--version", "1.2.3", "--oops"],
-  ["a", "b", "--owner", "core-team", "--version", "1.2.3"],
+  ["--version", "1.2"],
+  ["--version", "1.2.3", "--channel", "rc"],
+  ["--version", "1.2.3", "--oops"],
+  ["a", "b", "--version", "1.2.3"],
 ]) {
   test(`rejects invalid args: ${args.join(" ") || "<none>"}`, () => {
     const parsed = parsePublishFlags(args);
@@ -64,4 +47,16 @@ for (const args of [
 test("detects prerelease versions", () => {
   assert.equal(isPrereleaseVersion("1.2.3-alpha.1"), true);
   assert.equal(isPrereleaseVersion("1.2.3"), false);
+});
+
+test("accepts version-only publish flags", () => {
+  const parsed = parsePublishFlags(["--version", "1.2.3"]);
+  assert.deepEqual(parsed, {
+    pathArg: undefined,
+    version: "1.2.3",
+    channel: undefined,
+    dryRun: false,
+    json: false,
+    valid: true,
+  });
 });

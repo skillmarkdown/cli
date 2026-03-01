@@ -8,7 +8,9 @@ const {
   withMockedFetch,
 } = require("../helpers/fetch-test-utils.js");
 
-const { pollForAccessToken, requestDeviceCode } = requireDist("lib/auth/github-device-flow.js");
+const { pollForAccessToken, requestDeviceCode, requestGitHubUsername } = requireDist(
+  "lib/auth/github-device-flow.js",
+);
 
 test("requestDeviceCode returns mapped values", async () => {
   const result = await withMockedFetch(
@@ -134,6 +136,29 @@ test("pollForAccessToken times out when authorization never completes", async ()
           message: /GitHub device login timed out/,
         },
       );
+    },
+  );
+});
+
+test("requestGitHubUsername returns login", async () => {
+  const result = await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        login: "core",
+      }),
+    () => requestGitHubUsername("access-token"),
+  );
+
+  assert.equal(result, "core");
+});
+
+test("requestGitHubUsername reports non-JSON responses", async () => {
+  await withMockedFetch(
+    async () => mockTextResponse(200, "not-json"),
+    async () => {
+      await assert.rejects(requestGitHubUsername("access-token"), {
+        message: /non-JSON response/,
+      });
     },
   );
 });

@@ -33,7 +33,6 @@ test("buildPublishManifest returns stable schema fields", () => {
   try {
     const manifest = buildPublishManifest({
       targetDir: dir,
-      owner: "core",
       skill: "manifest-skill",
       version: "1.0.0",
       channel: "latest",
@@ -41,7 +40,7 @@ test("buildPublishManifest returns stable schema fields", () => {
     });
 
     assert.equal(manifest.schemaVersion, "skillmd.publish.v1");
-    assert.equal(manifest.skillId, "core/manifest-skill");
+    assert.equal(manifest.skill, "manifest-skill");
     assert.equal(manifest.version, "1.0.0");
     assert.equal(manifest.channel, "latest");
     assert.equal(manifest.description, "Example description");

@@ -6,7 +6,6 @@ import { type PackedArtifact, type PublishChannel, type PublishManifest } from "
 
 interface BuildPublishManifestOptions {
   targetDir: string;
-  owner: string;
   skill: string;
   version: string;
   channel: PublishChannel;
@@ -39,13 +38,10 @@ function readSkillDescription(targetDir: string): string | undefined {
 }
 
 export function buildPublishManifest(options: BuildPublishManifestOptions): PublishManifest {
-  const skillId = `${options.owner}/${options.skill}`;
   const description = readSkillDescription(options.targetDir);
 
   return {
     schemaVersion: "skillmd.publish.v1",
-    skillId,
-    owner: options.owner,
     skill: options.skill,
     version: options.version,
     channel: options.channel,

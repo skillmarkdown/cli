@@ -4,4 +4,4 @@ export const VALIDATE_USAGE = "Usage: skillmd validate [path] [--strict] [--pari
 export const LOGIN_USAGE = "Usage: skillmd login [--status|--reauth]";
 export const LOGOUT_USAGE = "Usage: skillmd logout";
 export const PUBLISH_USAGE =
-  "Usage: skillmd publish [path] --owner <owner-slug> --version <semver> [--channel <latest|beta>] [--dry-run] [--json]";
+  "Usage: skillmd publish [path] --version <semver> [--channel <latest|beta>] [--dry-run] [--json]";

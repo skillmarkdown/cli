@@ -10,6 +10,7 @@ import {
 } from "../lib/auth/session";
 import {
   pollForAccessToken,
+  requestGitHubUsername,
   requestDeviceCode,
   type DeviceCodeResponse,
   type GitHubAccessTokenResult,
@@ -40,6 +41,7 @@ interface LoginCommandOptions {
     apiKey: string,
     githubAccessToken: string,
   ) => Promise<FirebaseIdpResult>;
+  resolveGitHubUsername?: (githubAccessToken: string) => Promise<string>;
   verifyRefreshToken?: (
     apiKey: string,
     refreshToken: string,
@@ -84,6 +86,7 @@ export async function runLoginCommand(
       pollForAccessToken: options.pollForAccessToken ?? pollForAccessToken,
       signInWithGitHubAccessToken:
         options.signInWithGitHubAccessToken ?? signInWithGitHubAccessToken,
+      resolveGitHubUsername: options.resolveGitHubUsername ?? requestGitHubUsername,
       verifyRefreshToken: options.verifyRefreshToken ?? verifyFirebaseRefreshToken,
     });
   } catch (error) {

@@ -110,7 +110,9 @@ Although not implemented in v0, all CLI decisions must preserve this direction.
 Contract:
 
 - command surface:
-  - `skillmd publish [path] --owner <owner-slug> --version <semver> [--channel <latest|beta>] [--dry-run] [--json]`
+  - `skillmd publish [path] --version <semver> [--channel <latest|beta>] [--dry-run] [--json]`
+- owner is derived from authenticated GitHub identity (`@githubusername`), not passed as a CLI flag.
+- publish API owner identity is derived server-side from auth claims (not client-supplied request fields).
 - strict local validation is mandatory before packaging/publish.
 - artifact packaging is deterministic and produces a canonical digest (`sha256:<hex>`).
 - version immutability:

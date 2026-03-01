@@ -106,6 +106,7 @@ test("login uses built-in defaults when env vars are missing", async () => {
       return mockDeviceCode();
     },
     pollForAccessToken: async () => ({ accessToken: "gh-token" }),
+    resolveGitHubUsername: async () => "core",
     signInWithGitHubAccessToken: async (apiKey) => {
       assert.equal(apiKey, DEFAULT_LOGIN_AUTH_CONFIG.firebaseApiKey);
       return makeSignedInUser();
@@ -141,6 +142,7 @@ test("login succeeds and writes session", async () => {
       assert.equal(token, "gh-token");
       return makeSignedInUser();
     },
+    resolveGitHubUsername: async () => "core",
     writeSession: (session) => {
       savedSession = session;
     },
@@ -150,6 +152,7 @@ test("login succeeds and writes session", async () => {
   assert.deepEqual(savedSession, {
     provider: "github",
     uid: "uid-1",
+    githubUsername: "core",
     email: "user@example.com",
     refreshToken: "refresh-1",
     projectId: "skillmarkdown",
@@ -197,6 +200,7 @@ for (const [name, clearSessionResult] of [
         return mockDeviceCode();
       },
       pollForAccessToken: async () => ({ accessToken: "gh-token-new" }),
+      resolveGitHubUsername: async () => "core",
       signInWithGitHubAccessToken: async () =>
         makeSignedInUser({
           localId: "uid-new",
@@ -253,6 +257,7 @@ test("login --reauth restarts auth flow even when already logged in", async () =
       return mockDeviceCode();
     },
     pollForAccessToken: async () => ({ accessToken: "gh-token-new" }),
+    resolveGitHubUsername: async () => "core",
     signInWithGitHubAccessToken: async () =>
       makeSignedInUser({
         localId: "uid-new",
@@ -269,6 +274,7 @@ test("login --reauth restarts auth flow even when already logged in", async () =
   assert.deepEqual(savedSession, {
     provider: "github",
     uid: "uid-new",
+    githubUsername: "core",
     email: "new@example.com",
     refreshToken: "refresh-new",
     projectId: "skillmarkdown",

@@ -1,6 +1,5 @@
 import { type PublishChannel, PUBLISH_CHANNELS, type PublishFlags } from "./types";
 
-const OWNER_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SEMVER_PATTERN =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
@@ -17,10 +16,6 @@ function parseValueArg(args: string[], index: number): { value?: string; nextInd
   return { value, nextIndex: index + 1 };
 }
 
-function isValidOwnerSlug(value: string): boolean {
-  return value.length > 0 && value.length <= 64 && OWNER_SLUG_PATTERN.test(value);
-}
-
 function isValidSemver(value: string): boolean {
   return SEMVER_PATTERN.test(value);
 }
@@ -32,7 +27,6 @@ export function isPrereleaseVersion(value: string): boolean {
 
 export function parsePublishFlags(args: string[]): PublishFlags {
   let pathArg: string | undefined;
-  let owner: string | undefined;
   let version: string | undefined;
   let channel: PublishChannel | undefined;
   let dryRun = false;
@@ -48,21 +42,6 @@ export function parsePublishFlags(args: string[]): PublishFlags {
 
     if (arg === "--json") {
       json = true;
-      continue;
-    }
-
-    if (arg === "--owner") {
-      const parsed = parseValueArg(args, index);
-      if (!parsed.value) {
-        return { dryRun: false, json: false, valid: false };
-      }
-      owner = parsed.value;
-      index = parsed.nextIndex;
-      continue;
-    }
-
-    if (arg.startsWith("--owner=")) {
-      owner = arg.slice("--owner=".length);
       continue;
     }
 
@@ -118,13 +97,12 @@ export function parsePublishFlags(args: string[]): PublishFlags {
     pathArg = arg;
   }
 
-  if (!owner || !version || !isValidOwnerSlug(owner) || !isValidSemver(version)) {
+  if (!version || !isValidSemver(version)) {
     return { dryRun: false, json: false, valid: false };
   }
 
   return {
     pathArg,
-    owner,
     version,
     channel,
     dryRun,

@@ -30,7 +30,6 @@ interface PublishCommandOptions {
   packArtifact?: (targetDir: string) => PackedArtifact;
   buildManifest?: (options: {
     targetDir: string;
-    owner: string;
     skill: string;
     version: string;
     channel: PublishChannel;
@@ -41,7 +40,6 @@ interface PublishCommandOptions {
     baseUrl: string,
     idToken: string,
     payload: {
-      owner: string;
       skill: string;
       version: string;
       channel: PublishChannel;
@@ -68,8 +66,23 @@ interface PublishCommandOptions {
   ) => Promise<CommitPublishResponse>;
 }
 
+const GITHUB_USERNAME_PATTERN = /^[a-z0-9]+(?:-?[a-z0-9]+)*$/i;
+
 function printJson(payload: Record<string, unknown>): void {
   console.log(JSON.stringify(payload, null, 2));
+}
+
+function deriveOwnerFromSession(session: AuthSession): string | null {
+  if (!session.githubUsername) {
+    return null;
+  }
+
+  const cleaned = session.githubUsername.trim().replace(/^@+/, "");
+  if (!cleaned || !GITHUB_USERNAME_PATTERN.test(cleaned)) {
+    return null;
+  }
+
+  return `@${cleaned.toLowerCase()}`;
 }
 
 function printDryRunResult(
@@ -126,7 +139,7 @@ export async function runPublishCommand(
   options: PublishCommandOptions = {},
 ): Promise<number> {
   const parsed = parsePublishFlags(args);
-  if (!parsed.valid || !parsed.owner || !parsed.version) {
+  if (!parsed.valid || !parsed.version) {
     return failWithUsage("skillmd publish: unsupported argument(s)", PUBLISH_USAGE);
   }
 
@@ -147,6 +160,13 @@ export async function runPublishCommand(
   const session = readSessionFn();
   if (!session) {
     console.error("skillmd publish: not logged in. Run 'skillmd login' first.");
+    return 1;
+  }
+  const owner = deriveOwnerFromSession(session);
+  if (!owner) {
+    console.error(
+      "skillmd publish: missing GitHub username in session. Run 'skillmd login --reauth' first.",
+    );
     return 1;
   }
 
@@ -174,12 +194,11 @@ export async function runPublishCommand(
     }
 
     const skill = basename(targetDir);
-    const skillId = `${parsed.owner}/${skill}`;
+    const skillId = `${owner}/${skill}`;
 
     const buildManifestFn = options.buildManifest ?? buildPublishManifest;
     const manifest = buildManifestFn({
       targetDir,
-      owner: parsed.owner,
       skill,
       version: parsed.version,
       channel,
@@ -209,7 +228,6 @@ export async function runPublishCommand(
       config.registryBaseUrl,
       idTokenSession.idToken,
       {
-        owner: parsed.owner,
         skill,
         version: parsed.version,
         channel,
@@ -260,7 +278,7 @@ export async function runPublishCommand(
     if (isPublishApiError(error)) {
       if (error.status === 409 && error.code === "version_conflict") {
         console.error(
-          `skillmd publish: version conflict for ${parsed.owner}/${basename(targetDir)}@${parsed.version}. ` +
+          `skillmd publish: version conflict for ${owner}/${basename(targetDir)}@${parsed.version}. ` +
             "Use a new version number.",
         );
         return 1;

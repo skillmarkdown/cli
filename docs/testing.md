@@ -312,14 +312,14 @@ REPO_DIR="$(pwd)"
 tmpdir="$(mktemp -d)"
 mkdir "$tmpdir/publish-skill"
 (cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" init --template verbose --no-validate)
-(cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" publish --owner core --version 1.0.0 --dry-run)
+(cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" publish --version 1.0.0 --dry-run)
 ```
 
 Expected:
 
 - strict validation is executed and passes.
 - CLI prints a dry-run summary with:
-  - `owner/skill@version`
+  - `@owner/skill@version`
   - channel (`latest` for stable semver)
   - digest (`sha256:...`)
   - artifact size bytes
@@ -331,7 +331,7 @@ REPO_DIR="$(pwd)"
 tmpdir="$(mktemp -d)"
 mkdir "$tmpdir/publish-skill-json"
 (cd "$tmpdir/publish-skill-json" && node "$REPO_DIR/dist/cli.js" init --template verbose --no-validate)
-(cd "$tmpdir/publish-skill-json" && node "$REPO_DIR/dist/cli.js" publish --owner core --version 1.2.3-beta.1 --dry-run --json)
+(cd "$tmpdir/publish-skill-json" && node "$REPO_DIR/dist/cli.js" publish --version 1.2.3-beta.1 --dry-run --json)
 ```
 
 Expected:
@@ -343,7 +343,7 @@ Project mismatch path:
 
 ```bash
 REPO_DIR="$(pwd)"
-node "$REPO_DIR/dist/cli.js" publish --owner core --version 1.0.0 --dry-run
+node "$REPO_DIR/dist/cli.js" publish --version 1.0.0 --dry-run
 ```
 
 Expected when session/config projects differ:

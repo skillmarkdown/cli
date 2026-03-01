@@ -2,6 +2,8 @@
 
 This document defines the HTTP contract consumed by `skillmd publish`.
 
+Owner namespace is derived server-side from authenticated GitHub identity and normalized to `@githubusername`.
+
 ## Auth
 
 Write endpoints require:
@@ -22,7 +24,6 @@ Request body:
 
 ```json
 {
-  "owner": "core",
   "skill": "my-skill",
   "version": "1.0.0",
   "channel": "latest",
@@ -31,8 +32,6 @@ Request body:
   "mediaType": "application/vnd.skillmarkdown.skill.v1+tar",
   "manifest": {
     "schemaVersion": "skillmd.publish.v1",
-    "skillId": "core/my-skill",
-    "owner": "core",
     "skill": "my-skill",
     "version": "1.0.0",
     "channel": "latest",
@@ -51,7 +50,7 @@ Success responses:
 ```json
 {
   "status": "idempotent",
-  "skillId": "core/my-skill",
+  "skillId": "@core/my-skill",
   "version": "1.0.0",
   "digest": "sha256:...",
   "channel": "latest"
@@ -67,7 +66,7 @@ Success responses:
   "uploadUrl": "https://...",
   "uploadMethod": "PUT",
   "uploadHeaders": {
-    "x-goog-meta-skill": "core/my-skill"
+    "x-goog-meta-skill": "@core/my-skill"
   }
 }
 ```
@@ -90,7 +89,6 @@ Known error codes:
 - `forbidden`
 - `invalid_request`
 - `version_conflict`
-- `owner_claim_conflict`
 - `artifact_too_large`
 
 ### `POST /v1/publish/commit`
@@ -112,7 +110,7 @@ Success response:
 ```json
 {
   "status": "published",
-  "skillId": "core/my-skill",
+  "skillId": "@core/my-skill",
   "version": "1.0.0",
   "digest": "sha256:...",
   "channel": "latest"

@@ -13,7 +13,6 @@ const { commitPublish, preparePublish, uploadArtifact } = requireDist("lib/publi
 
 function preparePayload() {
   return {
-    owner: "core",
     skill: "publish-skill",
     version: "1.0.0",
     channel: "latest",
@@ -22,8 +21,6 @@ function preparePayload() {
     mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
     manifest: {
       schemaVersion: "skillmd.publish.v1",
-      skillId: "core/publish-skill",
-      owner: "core",
       skill: "publish-skill",
       version: "1.0.0",
       channel: "latest",
@@ -40,6 +37,10 @@ test("preparePublish returns upload_required payload", async () => {
     async (input, init) => {
       assert.match(String(input), /\/v1\/publish\/prepare$/);
       assert.match(String(init.headers.Authorization), /^Bearer /);
+      const parsedBody = JSON.parse(String(init.body));
+      assert.equal(Object.hasOwn(parsedBody, "owner"), false);
+      assert.equal(Object.hasOwn(parsedBody.manifest, "owner"), false);
+      assert.equal(Object.hasOwn(parsedBody.manifest, "skillId"), false);
       return mockJsonResponse(200, {
         status: "upload_required",
         publishToken: "pub-token",
@@ -61,7 +62,7 @@ test("preparePublish returns idempotent payload", async () => {
     async () =>
       mockJsonResponse(200, {
         status: "idempotent",
-        skillId: "core/publish-skill",
+        skillId: "@core/publish-skill",
         version: "1.0.0",
         digest: "sha256:abc",
         channel: "latest",
@@ -112,7 +113,7 @@ test("commitPublish returns published response", async () => {
       assert.match(String(input), /\/v1\/publish\/commit$/);
       return mockJsonResponse(200, {
         status: "published",
-        skillId: "core/publish-skill",
+        skillId: "@core/publish-skill",
         version: "1.0.0",
         digest: "sha256:abc",
         channel: "latest",

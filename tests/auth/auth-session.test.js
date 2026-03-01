@@ -36,6 +36,7 @@ test("writeAuthSession and readAuthSession round-trip valid session", () => {
   const session = {
     provider: "github",
     uid: "uid-1",
+    githubUsername: "core",
     email: "user@example.com",
     refreshToken: "refresh-1",
     projectId: "skillmarkdown",
@@ -96,6 +97,21 @@ test("readAuthSession returns null when projectId is empty", () => {
         uid: "uid-1",
         refreshToken: "refresh-1",
         projectId: "",
+      }),
+    );
+    assert.equal(readAuthSession(sessionPath), null);
+  });
+});
+
+test("readAuthSession returns null when githubUsername is invalid", () => {
+  withSessionPath(({ sessionPath }) => {
+    writeRawSession(
+      sessionPath,
+      JSON.stringify({
+        provider: "github",
+        uid: "uid-1",
+        refreshToken: "refresh-1",
+        githubUsername: "",
       }),
     );
     assert.equal(readAuthSession(sessionPath), null);

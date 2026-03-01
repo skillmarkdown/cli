@@ -8,14 +8,12 @@ const { PublishApiError } = requireDist("lib/publish/errors.js");
 const { runPublishCommand } = requireDist("commands/publish.js");
 
 function validArgs() {
-  return ["--owner", "core", "--version", "1.0.0", "--dry-run"];
+  return ["--version", "1.0.0", "--dry-run"];
 }
 
 function validManifest() {
   return {
     schemaVersion: "skillmd.publish.v1",
-    skillId: "core/publish-skill",
-    owner: "core",
     skill: "publish-skill",
     version: "1.0.0",
     channel: "latest",
@@ -49,6 +47,7 @@ function baseOptions(overrides = {}) {
     readSession: () => ({
       provider: "github",
       uid: "uid-1",
+      githubUsername: "core",
       email: "user@example.com",
       refreshToken: "refresh-token",
       projectId: "skillmarkdown-development",
@@ -75,7 +74,7 @@ function baseOptions(overrides = {}) {
     uploadArtifact: async () => {},
     commitPublish: async () => ({
       status: "published",
-      skillId: "core/publish-skill",
+      skillId: "@core/publish-skill",
       version: "1.0.0",
       digest: "sha256:abc",
       channel: "latest",
@@ -85,7 +84,7 @@ function baseOptions(overrides = {}) {
 }
 
 test("fails with usage on invalid args", async () => {
-  const exitCode = await runPublishCommand(["--owner", "core"]);
+  const exitCode = await runPublishCommand([]);
   assert.equal(exitCode, 1);
 });
 
@@ -106,11 +105,27 @@ test("fails when not logged in", async () => {
   assert.match(errors.join("\n"), /not logged in/i);
 });
 
+test("fails when session has no github username", async () => {
+  const options = baseOptions({
+    readSession: () => ({
+      provider: "github",
+      uid: "uid-1",
+      refreshToken: "refresh-token",
+      projectId: "skillmarkdown-development",
+    }),
+  });
+  const { result, errors } = await captureConsole(() => runPublishCommand(validArgs(), options));
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /login --reauth/i);
+});
+
 test("fails on project mismatch with reauth guidance", async () => {
   const options = baseOptions({
     readSession: () => ({
       provider: "github",
       uid: "uid-1",
+      githubUsername: "core",
       refreshToken: "refresh-token",
       projectId: "skillmarkdown",
     }),
@@ -150,18 +165,18 @@ test("dry-run performs local checks only", async () => {
 test("publishes successfully", async () => {
   const options = baseOptions();
   const { result, logs } = await captureConsole(() =>
-    runPublishCommand(["--owner", "core", "--version", "1.0.0"], options),
+    runPublishCommand(["--version", "1.0.0"], options),
   );
 
   assert.equal(result, 0);
-  assert.match(logs.join("\n"), /Published core\/publish-skill@1.0.0/);
+  assert.match(logs.join("\n"), /Published @core\/publish-skill@1.0.0/);
 });
 
 test("handles idempotent publish response", async () => {
   const options = baseOptions({
     preparePublish: async () => ({
       status: "idempotent",
-      skillId: "core/publish-skill",
+      skillId: "@core/publish-skill",
       version: "1.0.0",
       digest: "sha256:abc",
       channel: "latest",
@@ -169,7 +184,7 @@ test("handles idempotent publish response", async () => {
   });
 
   const { result, logs } = await captureConsole(() =>
-    runPublishCommand(["--owner", "core", "--version", "1.0.0"], options),
+    runPublishCommand(["--version", "1.0.0"], options),
   );
 
   assert.equal(result, 0);
@@ -184,7 +199,7 @@ test("maps version conflict errors", async () => {
   });
 
   const { result, errors } = await captureConsole(() =>
-    runPublishCommand(["--owner", "core", "--version", "1.0.0"], options),
+    runPublishCommand(["--version", "1.0.0"], options),
   );
 
   assert.equal(result, 1);

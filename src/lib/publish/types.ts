@@ -6,7 +6,6 @@ export type PublishChannel = (typeof PUBLISH_CHANNELS)[number];
 
 export interface PublishFlags {
   pathArg?: string;
-  owner?: string;
   version?: string;
   channel?: PublishChannel;
   dryRun: boolean;
@@ -30,8 +29,6 @@ export interface PackedArtifact {
 
 export interface PublishManifest {
   schemaVersion: "skillmd.publish.v1";
-  skillId: string;
-  owner: string;
   skill: string;
   version: string;
   channel: PublishChannel;
@@ -50,7 +47,6 @@ export interface PublishEnvConfig {
 }
 
 export interface PreparePublishRequest {
-  owner: string;
   skill: string;
   version: string;
   channel: PublishChannel;

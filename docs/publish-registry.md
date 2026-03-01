@@ -11,7 +11,7 @@ This document defines the registry data and artifact model for `skillmd publish`
 
 ## Canonical identifiers
 
-- Skill id: `owner/skill`
+- Skill id: `@githubusername/skill`
 - Version: semver (`1.2.3`, `1.2.3-beta.1`)
 - Artifact digest: `sha256:<hex>`
 
@@ -60,8 +60,9 @@ This document defines the registry data and artifact model for `skillmd publish`
 
 ## Ownership rule
 
-- First authenticated publisher to use an `ownerSlug` claims that owner namespace.
-- Later publishes under that owner slug must come from the same owner uid.
+- Owner namespace comes from authenticated GitHub identity (`@githubusername`).
+- Backend derives owner from verified auth claims for every publish write.
+- Client-provided owner values are not accepted in publish requests.
 
 ## Immutability / idempotency
 

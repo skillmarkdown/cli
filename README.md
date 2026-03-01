@@ -131,7 +131,7 @@ When a saved session exists, `skillmd login` verifies the stored refresh token. 
 ### Publish a skill artifact
 
 ```bash
-skillmd publish [path] --owner <owner-slug> --version <semver>
+skillmd publish [path] --version <semver>
 ```
 
 Optional flags:
@@ -143,6 +143,7 @@ Optional flags:
 Notes:
 
 - `publish` always runs strict local validation before packaging/upload.
+- owner is derived by the registry from your authenticated GitHub identity as `@githubusername`.
 - versions are immutable and content-addressed by digest (`sha256:...`).
 - default channel is `latest` for stable semver and `beta` for prerelease semver.
 - `publish` requires an existing authenticated session (`skillmd login`).

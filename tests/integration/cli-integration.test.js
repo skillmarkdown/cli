@@ -176,19 +176,20 @@ test("spawned CLI: publish --dry-run succeeds for verbose scaffold", () => {
     writeSession(skillDir, {
       provider: "github",
       uid: "uid-1",
+      githubUsername: "core",
       email: "user@example.com",
       refreshToken: "refresh-token",
       projectId: "skillmarkdown-development",
     });
 
     const publishResult = runCli(
-      ["publish", "--owner", "core", "--version", "1.0.0", "--dry-run", "--json"],
+      ["publish", "--version", "1.0.0", "--dry-run", "--json"],
       skillDir,
     );
     assert.equal(publishResult.status, 0);
     const parsed = JSON.parse(publishResult.stdout);
     assert.equal(parsed.status, "dry-run");
-    assert.equal(parsed.skillId, "core/integration-publish-verbose");
+    assert.equal(parsed.skillId, "@core/integration-publish-verbose");
     assert.equal(parsed.version, "1.0.0");
     assert.equal(parsed.channel, "latest");
   } finally {
@@ -208,14 +209,12 @@ test("spawned CLI: publish fails fast on invalid strict scaffold", () => {
     writeSession(skillDir, {
       provider: "github",
       uid: "uid-1",
+      githubUsername: "core",
       refreshToken: "refresh-token",
       projectId: "skillmarkdown-development",
     });
 
-    const publishResult = runCli(
-      ["publish", "--owner", "core", "--version", "1.0.0", "--dry-run"],
-      skillDir,
-    );
+    const publishResult = runCli(["publish", "--version", "1.0.0", "--dry-run"], skillDir);
     assert.equal(publishResult.status, 1);
     assert.match(publishResult.stderr, /Validation failed/);
   } finally {
