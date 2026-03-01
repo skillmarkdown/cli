@@ -6,7 +6,7 @@ import {
   MAX_SKILL_NAME_LENGTH,
   STRICT_REQUIRED_FILES,
   STRICT_SECTION_HEADINGS,
-} from "./skill-spec";
+} from "../scaffold/skill-spec";
 
 export type ValidationStatus = "passed" | "failed";
 

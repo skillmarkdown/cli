@@ -8,8 +8,9 @@ const {
   withMockedFetch,
 } = require("../helpers/fetch-test-utils.js");
 
-const { signInWithGitHubAccessToken, verifyFirebaseRefreshToken } =
-  requireDist("lib/firebase-auth.js");
+const { signInWithGitHubAccessToken, verifyFirebaseRefreshToken } = requireDist(
+  "lib/auth/firebase-auth.js",
+);
 
 test("signInWithGitHubAccessToken returns mapped Firebase session", async () => {
   const result = await withMockedFetch(

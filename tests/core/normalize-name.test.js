@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 
 const { requireDist } = require("../helpers/dist-imports.js");
 
-const { normalizeSkillName, getMaxSkillNameLength } = requireDist("lib/normalize-name.js");
+const { normalizeSkillName, getMaxSkillNameLength } = requireDist("lib/scaffold/normalize-name.js");
 
 test("normalizes mixed separators to lowercase hyphen-case", () => {
   assert.equal(normalizeSkillName("  My__Skill Name  "), "my-skill-name");

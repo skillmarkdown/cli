@@ -6,7 +6,7 @@ const path = require("node:path");
 const { requireDist } = require("../helpers/dist-imports.js");
 const { makeTempDirectory, cleanupDirectory } = require("../helpers/fs-test-utils.js");
 
-const { clearAuthSession, readAuthSession, writeAuthSession } = requireDist("lib/auth-session.js");
+const { clearAuthSession, readAuthSession, writeAuthSession } = requireDist("lib/auth/session.js");
 
 const AUTH_SESSION_TEST_PREFIX = "skillmd-auth-session-";
 

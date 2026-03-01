@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const { requireDist } = require("../helpers/dist-imports.js");
 const { captureConsole } = require("../helpers/console-test-utils.js");
 
-const { DEFAULT_LOGIN_AUTH_CONFIG } = requireDist("lib/auth-defaults.js");
+const { DEFAULT_LOGIN_AUTH_CONFIG } = requireDist("lib/auth/defaults.js");
 const { runLoginCommand } = requireDist("commands/login.js");
 
 function mockDeviceCode() {

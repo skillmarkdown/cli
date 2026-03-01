@@ -9,7 +9,7 @@ const {
   writeSkillMarkdown,
 } = require("../helpers/skill-test-utils.js");
 
-const { validateSkill } = requireDist("lib/validator.js");
+const { validateSkill } = requireDist("lib/validation/validator.js");
 
 const SKILL_PREFIX = "skillmd-validator-test-";
 

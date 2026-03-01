@@ -8,9 +8,9 @@ const {
   SCAFFOLD_DIRECTORIES,
   STRICT_REQUIRED_FILES,
   STRICT_SECTION_HEADINGS,
-} = requireDist("lib/skill-spec.js");
-const { getMaxSkillNameLength } = requireDist("lib/normalize-name.js");
-const { buildVerboseSkillMarkdown } = requireDist("lib/templates.js");
+} = requireDist("lib/scaffold/skill-spec.js");
+const { getMaxSkillNameLength } = requireDist("lib/scaffold/normalize-name.js");
+const { buildVerboseSkillMarkdown } = requireDist("lib/scaffold/templates/index.js");
 
 test("shared max skill name length stays in sync", () => {
   assert.equal(MAX_SKILL_NAME_LENGTH, getMaxSkillNameLength());

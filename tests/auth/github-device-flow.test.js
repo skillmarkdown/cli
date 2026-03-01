@@ -8,7 +8,7 @@ const {
   withMockedFetch,
 } = require("../helpers/fetch-test-utils.js");
 
-const { pollForAccessToken, requestDeviceCode } = requireDist("lib/github-device-flow.js");
+const { pollForAccessToken, requestDeviceCode } = requireDist("lib/auth/github-device-flow.js");
 
 test("requestDeviceCode returns mapped values", async () => {
   const result = await withMockedFetch(

@@ -6,8 +6,8 @@ const path = require("node:path");
 const { requireDist } = require("../helpers/dist-imports.js");
 const { cleanupDirectory, makeTempDirectory } = require("../helpers/fs-test-utils.js");
 
-const { DEFAULT_LOGIN_AUTH_CONFIG } = requireDist("lib/auth-defaults.js");
-const { getDefaultUserEnvPath, getLoginEnvConfig } = requireDist("lib/auth-config.js");
+const { DEFAULT_LOGIN_AUTH_CONFIG } = requireDist("lib/auth/defaults.js");
+const { getDefaultUserEnvPath, getLoginEnvConfig } = requireDist("lib/auth/config.js");
 
 const AUTH_CONFIG_TEST_PREFIX = "skillmd-auth-config-";
 const USER_FILE_CONFIG = {

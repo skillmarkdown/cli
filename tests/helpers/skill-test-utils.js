@@ -4,7 +4,7 @@ const path = require("node:path");
 const { cleanupDirectory, createSkillDirectoryFactory } = require("./fs-test-utils.js");
 const { requireDist } = require("./dist-imports.js");
 
-const { scaffoldSkillInDirectory } = requireDist("lib/scaffold.js");
+const { scaffoldSkillInDirectory } = requireDist("lib/scaffold/scaffold.js");
 
 const SKILL_MD = "SKILL.md";
 

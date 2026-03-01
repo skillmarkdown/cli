@@ -1,9 +1,12 @@
 import { resolve } from "node:path";
 
-import { VALIDATE_USAGE } from "../lib/cli-text";
-import { failWithUsage, printValidationResult } from "../lib/command-output";
-import { type UpstreamValidationResult, validateWithSkillsRef } from "../lib/upstream-validator";
-import { type ValidationResult, validateSkill } from "../lib/validator";
+import { VALIDATE_USAGE } from "../lib/shared/cli-text";
+import { failWithUsage, printValidationResult } from "../lib/shared/command-output";
+import {
+  type UpstreamValidationResult,
+  validateWithSkillsRef,
+} from "../lib/validation/upstream-validator";
+import { type ValidationResult, validateSkill } from "../lib/validation/validator";
 
 interface ValidateCommandOptions {
   cwd?: string;

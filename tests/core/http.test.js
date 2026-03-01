@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const { requireDist } = require("../helpers/dist-imports.js");
 const { withMockedFetch } = require("../helpers/fetch-test-utils.js");
 
-const { fetchWithTimeout } = requireDist("lib/http.js");
+const { fetchWithTimeout } = requireDist("lib/shared/http.js");
 
 function createAbortError(message) {
   const error = new Error(message);

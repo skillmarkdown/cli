@@ -10,7 +10,7 @@ const {
   VERBOSE_SCAFFOLD_FILES,
 } = require("../helpers/scaffold-expected.js");
 
-const { scaffoldSkillInDirectory } = requireDist("lib/scaffold.js");
+const { scaffoldSkillInDirectory } = requireDist("lib/scaffold/scaffold.js");
 
 const makeEmptySkillDirectory = createSkillDirectoryFactory("skillmd-test-");
 

@@ -4,7 +4,7 @@ import { runInitCommand } from "./commands/init";
 import { runLoginCommand } from "./commands/login";
 import { runLogoutCommand } from "./commands/logout";
 import { runValidateCommand } from "./commands/validate";
-import { ROOT_USAGE } from "./lib/cli-text";
+import { ROOT_USAGE } from "./lib/shared/cli-text";
 
 type CommandHandler = (args: string[]) => number | Promise<number>;
 

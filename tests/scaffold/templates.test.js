@@ -4,8 +4,9 @@ const { requireDist } = require("../helpers/dist-imports.js");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { buildGitignore, buildMinimalSkillMarkdown, buildVerboseSkillMarkdown } =
-  requireDist("lib/templates.js");
+const { buildGitignore, buildMinimalSkillMarkdown, buildVerboseSkillMarkdown } = requireDist(
+  "lib/scaffold/templates/index.js",
+);
 
 function readFixture(...segments) {
   return fs.readFileSync(path.join(__dirname, "fixtures", "templates", ...segments), "utf8");
