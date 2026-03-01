@@ -33,25 +33,54 @@ function snapshotDirectory(dir) {
   }));
 }
 
-test("scaffolds required files and template sections", () => {
+test("scaffolds minimal template by default", () => {
   const { root, dir } = makeEmptySkillDirectory("sample-skill");
 
   try {
     const result = scaffoldSkillInDirectory(dir);
     assert.equal(result.skillName, "sample-skill");
+    assert.equal(result.template, "minimal");
 
-    const expectedFiles = [
-      ".gitignore",
-      "SKILL.md",
-      "assets/.gitkeep",
-      "references/.gitkeep",
-      "scripts/.gitkeep",
-    ];
+    const expectedFiles = ["SKILL.md"];
 
     assert.deepEqual(listFilesRecursively(dir), expectedFiles);
 
     const skillMd = fs.readFileSync(path.join(dir, "SKILL.md"), "utf8");
     assert.match(skillMd, /^---\nname: sample-skill\n/m);
+    assert.match(skillMd, /## Scope/);
+    assert.match(skillMd, /license: Optional\./);
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("scaffolds verbose template with strict directories and sections", () => {
+  const { root, dir } = makeEmptySkillDirectory("sample-skill-verbose");
+
+  try {
+    const result = scaffoldSkillInDirectory(dir, { template: "verbose" });
+    assert.equal(result.skillName, "sample-skill-verbose");
+    assert.equal(result.template, "verbose");
+
+    const expectedFiles = [
+      ".gitignore",
+      "SKILL.md",
+      "assets/.gitkeep",
+      "assets/README.md",
+      "assets/lookup-table.csv",
+      "assets/report-template.md",
+      "references/.gitkeep",
+      "references/FORMS.md",
+      "references/REFERENCE.md",
+      "scripts/.gitkeep",
+      "scripts/README.md",
+      "scripts/extract.py",
+    ];
+
+    assert.deepEqual(listFilesRecursively(dir), expectedFiles);
+
+    const skillMd = fs.readFileSync(path.join(dir, "SKILL.md"), "utf8");
+    assert.match(skillMd, /^---\nname: sample-skill-verbose\n/m);
     assert.match(skillMd, /## Scope/);
     assert.match(skillMd, /## When to use/);
     assert.match(skillMd, /## Inputs/);
@@ -76,13 +105,28 @@ test("fails when target directory is non-empty", () => {
   }
 });
 
-test("produces deterministic output in separate empty directories", () => {
+test("produces deterministic minimal output in separate empty directories", () => {
   const first = makeEmptySkillDirectory("deterministic-skill");
   const second = makeEmptySkillDirectory("deterministic-skill");
 
   try {
     scaffoldSkillInDirectory(first.dir);
     scaffoldSkillInDirectory(second.dir);
+
+    assert.deepEqual(snapshotDirectory(first.dir), snapshotDirectory(second.dir));
+  } finally {
+    cleanupDirectory(first.root);
+    cleanupDirectory(second.root);
+  }
+});
+
+test("produces deterministic verbose output in separate empty directories", () => {
+  const first = makeEmptySkillDirectory("deterministic-skill-verbose");
+  const second = makeEmptySkillDirectory("deterministic-skill-verbose");
+
+  try {
+    scaffoldSkillInDirectory(first.dir, { template: "verbose" });
+    scaffoldSkillInDirectory(second.dir, { template: "verbose" });
 
     assert.deepEqual(snapshotDirectory(first.dir), snapshotDirectory(second.dir));
   } finally {

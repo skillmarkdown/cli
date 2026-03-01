@@ -53,15 +53,47 @@ find . -type f | sort
 Expected files:
 
 - `./SKILL.md`
-- `./.gitignore`
-- `./scripts/.gitkeep`
-- `./references/.gitkeep`
-- `./assets/.gitkeep`
+
+Expected `SKILL.md`:
+
+- valid YAML frontmatter with required fields
+- template guidance for optional spec fields (`compatibility`, `metadata`, `allowed-tools`, `license`)
+- strict guidance sections (`## Scope`, `## When to use`, etc.)
 
 Expected CLI output includes:
 
 - initialization success line
-- strict validation result line (`Validation passed: Spec and strict scaffold validation passed.`)
+- spec validation result line (`Validation passed: Spec validation passed.`)
+
+### Full verbose template smoke
+
+```bash
+REPO_DIR="$(pwd)"
+tmpdir="$(mktemp -d)"
+mkdir "$tmpdir/my-skill-verbose"
+cd "$tmpdir/my-skill-verbose"
+node "$REPO_DIR/dist/cli.js" init --template verbose
+find . -type f | sort
+```
+
+Expected files:
+
+- `./SKILL.md`
+- `./.gitignore`
+- `./scripts/.gitkeep`
+- `./scripts/README.md`
+- `./scripts/extract.py`
+- `./references/.gitkeep`
+- `./references/REFERENCE.md`
+- `./references/FORMS.md`
+- `./assets/.gitkeep`
+- `./assets/README.md`
+- `./assets/report-template.md`
+- `./assets/lookup-table.csv`
+
+Expected CLI output includes strict template validation:
+
+- `Validation passed: Spec and strict scaffold validation passed.`
 
 ## 4) Manual smoke test (error path)
 
@@ -121,7 +153,7 @@ Expected:
 REPO_DIR="$(pwd)"
 tmpdir="$(mktemp -d)"
 mkdir "$tmpdir/validate-strict-skill"
-(cd "$tmpdir/validate-strict-skill" && node "$REPO_DIR/dist/cli.js" init --no-validate)
+(cd "$tmpdir/validate-strict-skill" && node "$REPO_DIR/dist/cli.js" init --template verbose --no-validate)
 (cd "$tmpdir/validate-strict-skill" && node "$REPO_DIR/dist/cli.js" validate --strict)
 ```
 

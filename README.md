@@ -28,13 +28,42 @@ npx @skillmarkdown/cli init
 skillmd init
 ```
 
-This scaffolds a spec-aligned skill structure including `SKILL.md` and optional directories (`scripts/`, `references/`, `assets/`), then runs local validation.
+Default `init` creates the minimal filesystem scaffold:
+
+- `SKILL.md` only
+
+and runs spec validation.
+
+To scaffold the full verbose template:
+
+```bash
+skillmd init --template verbose
+```
+
+The `verbose` template includes `SKILL.md`, `.gitignore`, and optional directories (`scripts/`, `references/`, `assets/`) with starter placeholder content and `.gitkeep`, then runs strict validation.
+
+Included starter files:
+
+- `scripts/README.md`
+- `scripts/extract.py`
+- `references/REFERENCE.md`
+- `references/FORMS.md`
+- `assets/README.md`
+- `assets/report-template.md`
+- `assets/lookup-table.csv`
+
+`SKILL.md` content is the same across `minimal` and `verbose` templates. Template selection only changes extra scaffold files/directories around `SKILL.md`.
 
 To skip validation during init:
 
 ```bash
 skillmd init --no-validate
 ```
+
+Supported templates:
+
+- `minimal` (default)
+- `verbose`
 
 ### Validate a skill folder
 

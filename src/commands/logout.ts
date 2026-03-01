@@ -11,13 +11,19 @@ export function runLogoutCommand(args: string[], options: LogoutCommandOptions =
     return failWithUsage("skillmd logout: unsupported argument(s)", LOGOUT_USAGE);
   }
 
-  const clearSessionFn = options.clearSession ?? clearAuthSession;
-  const removed = clearSessionFn();
-  if (removed) {
-    console.log("Logged out.");
-    return 0;
-  }
+  try {
+    const clearSessionFn = options.clearSession ?? clearAuthSession;
+    const removed = clearSessionFn();
+    if (removed) {
+      console.log("Logged out.");
+      return 0;
+    }
 
-  console.log("No active session to log out.");
-  return 0;
+    console.log("No active session to log out.");
+    return 0;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error(`skillmd logout: ${message}`);
+    return 1;
+  }
 }

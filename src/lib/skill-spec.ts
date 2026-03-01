@@ -1,5 +1,8 @@
 export const MAX_SKILL_NAME_LENGTH = 64;
 
+export const INIT_TEMPLATE_IDS = ["minimal", "verbose"] as const;
+export type InitTemplateId = (typeof INIT_TEMPLATE_IDS)[number];
+
 export const SCAFFOLD_DIRECTORIES = ["scripts", "references", "assets"] as const;
 
 export const STRICT_REQUIRED_FILES = [

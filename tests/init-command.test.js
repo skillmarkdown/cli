@@ -19,12 +19,17 @@ function withSkillDirectory(skillName, run) {
 
 test("returns success when scaffold and validation succeed", () => {
   withSkillDirectory("command-pass", ({ dir }) => {
+    let strictValue = null;
     const exitCode = runInitCommand([], {
       cwd: dir,
-      validateSkill: () => ({ status: "passed", message: "ok" }),
+      validateSkill: (_targetDir, options) => {
+        strictValue = options?.strict ?? null;
+        return { status: "passed", message: "ok" };
+      },
     });
 
     assert.equal(exitCode, 0);
+    assert.equal(strictValue, false);
     assert.equal(fs.existsSync(path.join(dir, "SKILL.md")), true);
   });
 });
@@ -56,6 +61,44 @@ test("returns success with --no-validate", () => {
   });
 });
 
+test("returns success with --template verbose and strict validation mode", () => {
+  withSkillDirectory("command-template-verbose", ({ dir }) => {
+    let strictValue = null;
+    const exitCode = runInitCommand(["--template", "verbose"], {
+      cwd: dir,
+      validateSkill: (_targetDir, options) => {
+        strictValue = options?.strict ?? null;
+        return { status: "passed", message: "ok" };
+      },
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(strictValue, true);
+    assert.equal(fs.existsSync(path.join(dir, "SKILL.md")), true);
+    assert.equal(fs.existsSync(path.join(dir, "scripts", ".gitkeep")), true);
+  });
+});
+
+test("supports equals form for --template", () => {
+  withSkillDirectory("command-template-equals", ({ dir }) => {
+    const exitCode = runInitCommand(["--template=verbose", "--no-validate"], {
+      cwd: dir,
+    });
+    assert.equal(exitCode, 0);
+    assert.equal(fs.existsSync(path.join(dir, "scripts", ".gitkeep")), true);
+  });
+});
+
+test("rejects --template example", () => {
+  withSkillDirectory("command-template-example", ({ dir }) => {
+    const exitCode = runInitCommand(["--template", "example", "--no-validate"], {
+      cwd: dir,
+    });
+    assert.equal(exitCode, 1);
+    assert.equal(fs.existsSync(path.join(dir, "scripts", ".gitkeep")), false);
+  });
+});
+
 test("returns failure when target directory is non-empty", () => {
   withSkillDirectory("command-non-empty", ({ dir }) => {
     fs.writeFileSync(path.join(dir, "existing.txt"), "content", "utf8");
@@ -67,6 +110,17 @@ test("returns failure when target directory is non-empty", () => {
 test("returns failure when init receives unsupported arguments", () => {
   withSkillDirectory("command-args", ({ dir }) => {
     const exitCode = runInitCommand(["extra-arg"], {
+      cwd: dir,
+      validateSkill: () => ({ status: "passed", message: "ok" }),
+    });
+
+    assert.equal(exitCode, 1);
+  });
+});
+
+test("returns failure when --template value is unknown", () => {
+  withSkillDirectory("command-template-unknown", ({ dir }) => {
+    const exitCode = runInitCommand(["--template", "claude"], {
       cwd: dir,
       validateSkill: () => ({ status: "passed", message: "ok" }),
     });

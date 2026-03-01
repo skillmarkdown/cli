@@ -20,7 +20,7 @@ function withSkillDirectory(skillName, run) {
 
 function withScaffoldedSkillDirectory(skillName, run) {
   withSkillDirectory(skillName, ({ root, dir }) => {
-    scaffoldSkillInDirectory(dir);
+    scaffoldSkillInDirectory(dir, { template: "verbose" });
     run({ root, dir });
   });
 }
@@ -145,6 +145,18 @@ test("fails with matched parity when local and upstream both fail", () => {
       cwd: dir,
       validateLocal: () => ({ status: "failed", message: "local failed" }),
       validateUpstream: () => ({ status: "failed", message: "upstream failed" }),
+    });
+    assert.equal(exitCode, 1);
+  });
+});
+
+test("returns failure when validator throws unexpectedly", () => {
+  withSkillDirectory("validate-throws", ({ dir }) => {
+    const exitCode = runValidateCommand([], {
+      cwd: dir,
+      validateLocal: () => {
+        throw new Error("permission denied");
+      },
     });
     assert.equal(exitCode, 1);
   });

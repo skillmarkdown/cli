@@ -38,6 +38,20 @@ test("returns unavailable on generic execution errors", () => {
   );
 });
 
+test("returns unavailable when skills-ref times out", () => {
+  const timeoutError = new Error("spawnSync skills-ref ETIMEDOUT");
+  timeoutError.code = "ETIMEDOUT";
+
+  withSpawnSyncMock(
+    () => ({ error: timeoutError }),
+    () => {
+      const result = upstreamValidator.validateWithSkillsRef(path.resolve("."));
+      assert.equal(result.status, "unavailable");
+      assert.match(result.message, /timed out after 10000ms/);
+    },
+  );
+});
+
 test("returns passed with fallback message when no output", () => {
   withSpawnSyncMock(
     () => ({ status: 0, stdout: "", stderr: "" }),
