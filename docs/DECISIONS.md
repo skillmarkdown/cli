@@ -35,6 +35,9 @@ No:
 Rationale:
 We establish deterministic scaffolding before adding complexity.
 
+Note:
+Post-v0 command extensions are tracked in D-006 (`login` / `logout`) and D-007 (`publish`).
+
 ---
 
 ## D-006: Login Command Is Introduced as a Post-v0 Extension
@@ -97,3 +100,32 @@ Future packaging will rely on hash-based immutability.
 Published skill versions will eventually be treated as immutable, hashable artifacts.
 
 Although not implemented in v0, all CLI decisions must preserve this direction.
+
+---
+
+## D-007: Publish Command Uses Immutable Digest-Backed Semver Artifacts
+
+`skillmd publish` is a post-v0 command for registry publishing.
+
+Contract:
+
+- command surface:
+  - `skillmd publish [path] --owner <owner-slug> --version <semver> [--channel <latest|beta>] [--dry-run] [--json]`
+- strict local validation is mandatory before packaging/publish.
+- artifact packaging is deterministic and produces a canonical digest (`sha256:<hex>`).
+- version immutability:
+  - same `owner/skill@version` + same digest => idempotent success.
+  - same `owner/skill@version` + different digest => conflict failure.
+- default channel selection:
+  - prerelease semver => `beta`
+  - stable semver => `latest`
+- authenticated write model:
+  - publish requires local login session.
+  - CLI exchanges Firebase refresh token for ID token at publish time.
+  - CLI never stores backend secrets.
+- CLI env overrides for registry client:
+  - `SKILLMD_REGISTRY_BASE_URL`
+  - `SKILLMD_REGISTRY_TIMEOUT_MS`
+
+Rationale:
+This keeps the publish surface simple while preserving integrity guarantees required for future search/install workflows.

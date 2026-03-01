@@ -4,7 +4,7 @@
 
 ## Status
 
-Early development. Current command surface includes `skillmd init`, `skillmd validate`, `skillmd login`, and `skillmd logout`. Docs are intentionally lightweight and may evolve.
+Early development. Current command surface includes `skillmd init`, `skillmd validate`, `skillmd login`, `skillmd logout`, and `skillmd publish`.
 
 ## Install
 
@@ -128,12 +128,42 @@ skillmd logout
 
 When a saved session exists, `skillmd login` verifies the stored refresh token. If it is invalid/expired, the CLI automatically starts a new login flow. If verification is inconclusive (for example network timeout), the command exits non-zero and keeps the current session.
 
+### Publish a skill artifact
+
+```bash
+skillmd publish [path] --owner <owner-slug> --version <semver>
+```
+
+Optional flags:
+
+- `--channel <latest|beta>`
+- `--dry-run`
+- `--json`
+
+Notes:
+
+- `publish` always runs strict local validation before packaging/upload.
+- versions are immutable and content-addressed by digest (`sha256:...`).
+- default channel is `latest` for stable semver and `beta` for prerelease semver.
+- `publish` requires an existing authenticated session (`skillmd login`).
+- if session project and current config project differ, run `skillmd login --reauth`.
+
+Registry env overrides:
+
+- `SKILLMD_REGISTRY_BASE_URL`
+- `SKILLMD_REGISTRY_TIMEOUT_MS` (milliseconds, default `10000`)
+
 ## Development
 
-- Local testing guide (includes manual `login` auth checks): `docs/testing.md`
+- Local testing guide (includes manual `login` and `publish` checks): `docs/testing.md`
 - CI check script: `npm run ci:check`
 - Packed tarball smoke test: `npm run smoke:pack`
 - Optional npm link smoke test: `npm run smoke:link`
+
+### Publish docs
+
+- Registry model: `docs/publish-registry.md`
+- HTTP contract: `docs/publish-api.md`
 
 ### Auto versioning on main
 

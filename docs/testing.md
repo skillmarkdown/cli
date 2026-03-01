@@ -297,3 +297,56 @@ Expected:
 - blank env vars: command falls back to the next configured source (`~/.skillmd/.env` or built-in defaults) and continues login flow
 - unsupported flag: usage line `Usage: skillmd login [--status|--reauth]`
 - if session verification cannot complete (e.g. timeout), `login` should keep the current session and return a non-zero exit code
+
+## 10) Manual publish dry-run test (`skillmd publish`)
+
+Prerequisites:
+
+- You have a logged-in session (`skillmd login`) in the same shell/user context.
+- You have a valid verbose scaffold skill directory.
+
+Generate a verbose skill and run dry-run publish:
+
+```bash
+REPO_DIR="$(pwd)"
+tmpdir="$(mktemp -d)"
+mkdir "$tmpdir/publish-skill"
+(cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" init --template verbose --no-validate)
+(cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" publish --owner core --version 1.0.0 --dry-run)
+```
+
+Expected:
+
+- strict validation is executed and passes.
+- CLI prints a dry-run summary with:
+  - `owner/skill@version`
+  - channel (`latest` for stable semver)
+  - digest (`sha256:...`)
+  - artifact size bytes
+
+JSON output shape check:
+
+```bash
+REPO_DIR="$(pwd)"
+tmpdir="$(mktemp -d)"
+mkdir "$tmpdir/publish-skill-json"
+(cd "$tmpdir/publish-skill-json" && node "$REPO_DIR/dist/cli.js" init --template verbose --no-validate)
+(cd "$tmpdir/publish-skill-json" && node "$REPO_DIR/dist/cli.js" publish --owner core --version 1.2.3-beta.1 --dry-run --json)
+```
+
+Expected:
+
+- valid JSON object with `status: \"dry-run\"`
+- `channel: \"beta\"` for prerelease semver
+
+Project mismatch path:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" publish --owner core --version 1.0.0 --dry-run
+```
+
+Expected when session/config projects differ:
+
+- non-zero exit
+- guidance to run `skillmd login --reauth`

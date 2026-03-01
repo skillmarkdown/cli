@@ -24,6 +24,12 @@ function runCli(args, cwd) {
   });
 }
 
+function writeSession(homeDir, session) {
+  const sessionDir = path.join(homeDir, ".skillmd");
+  fs.mkdirSync(sessionDir, { recursive: true });
+  fs.writeFileSync(path.join(sessionDir, "auth.json"), JSON.stringify(session, null, 2), "utf8");
+}
+
 function listScaffoldFiles(dir) {
   const files = [];
 
@@ -98,7 +104,7 @@ test("spawned CLI: unknown command fails with usage", () => {
   try {
     const result = runCli(["unknown"], root);
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /Usage: skillmd <init\|validate\|login\|logout>/);
+    assert.match(result.stderr, /Usage: skillmd <init\|validate\|login\|logout\|publish>/);
   } finally {
     cleanupDirectory(root);
   }
@@ -153,6 +159,65 @@ test("spawned CLI: init rejects unsupported args", () => {
       result.stderr,
       /Usage: skillmd init \[--no-validate\] \[--template <minimal\|verbose>\]/,
     );
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: publish --dry-run succeeds for verbose scaffold", () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  const skillDir = path.join(root, "integration-publish-verbose");
+
+  try {
+    fs.mkdirSync(skillDir);
+    const initResult = runCli(["init", "--template", "verbose", "--no-validate"], skillDir);
+    assert.equal(initResult.status, 0);
+
+    writeSession(skillDir, {
+      provider: "github",
+      uid: "uid-1",
+      email: "user@example.com",
+      refreshToken: "refresh-token",
+      projectId: "skillmarkdown-development",
+    });
+
+    const publishResult = runCli(
+      ["publish", "--owner", "core", "--version", "1.0.0", "--dry-run", "--json"],
+      skillDir,
+    );
+    assert.equal(publishResult.status, 0);
+    const parsed = JSON.parse(publishResult.stdout);
+    assert.equal(parsed.status, "dry-run");
+    assert.equal(parsed.skillId, "core/integration-publish-verbose");
+    assert.equal(parsed.version, "1.0.0");
+    assert.equal(parsed.channel, "latest");
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: publish fails fast on invalid strict scaffold", () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  const skillDir = path.join(root, "integration-publish-minimal");
+
+  try {
+    fs.mkdirSync(skillDir);
+    const initResult = runCli(["init", "--no-validate"], skillDir);
+    assert.equal(initResult.status, 0);
+
+    writeSession(skillDir, {
+      provider: "github",
+      uid: "uid-1",
+      refreshToken: "refresh-token",
+      projectId: "skillmarkdown-development",
+    });
+
+    const publishResult = runCli(
+      ["publish", "--owner", "core", "--version", "1.0.0", "--dry-run"],
+      skillDir,
+    );
+    assert.equal(publishResult.status, 1);
+    assert.match(publishResult.stderr, /Validation failed/);
   } finally {
     cleanupDirectory(root);
   }
