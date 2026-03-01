@@ -143,6 +143,24 @@ test("verifyFirebaseRefreshToken returns invalid for expired refresh tokens", as
   }
 });
 
+test("verifyFirebaseRefreshToken returns invalid for project-number mismatch", async () => {
+  const originalFetch = global.fetch;
+
+  try {
+    global.fetch = async () =>
+      mockJsonResponse(400, {
+        error: {
+          message: "PROJECT_NUMBER_MISMATCH",
+        },
+      });
+
+    const result = await verifyFirebaseRefreshToken("api-key", "refresh-token");
+    assert.deepEqual(result, { valid: false });
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 test("verifyFirebaseRefreshToken rejects successful responses missing required fields", async () => {
   const originalFetch = global.fetch;
 

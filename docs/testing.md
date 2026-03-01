@@ -179,12 +179,14 @@ Prerequisites:
 - Optional: you know override values for:
   - `SKILLMD_GITHUB_CLIENT_ID`
   - `SKILLMD_FIREBASE_API_KEY`
+  - `SKILLMD_FIREBASE_PROJECT_ID`
 
 The command works with built-in defaults. If you want to override, either set env vars:
 
 ```bash
 export SKILLMD_GITHUB_CLIENT_ID="your_github_oauth_client_id"
 export SKILLMD_FIREBASE_API_KEY="your_firebase_web_api_key"
+export SKILLMD_FIREBASE_PROJECT_ID="your_firebase_project_id"
 ```
 
 Or create a trusted user config file:
@@ -194,6 +196,7 @@ mkdir -p ~/.skillmd
 cat > ~/.skillmd/.env <<'EOF'
 SKILLMD_GITHUB_CLIENT_ID=your_github_oauth_client_id
 SKILLMD_FIREBASE_API_KEY=your_firebase_web_api_key
+SKILLMD_FIREBASE_PROJECT_ID=your_firebase_project_id
 EOF
 ```
 
@@ -220,7 +223,7 @@ node "$REPO_DIR/dist/cli.js" login --status
 
 Expected:
 
-- `Logged in with GitHub ...`
+- `Logged in with GitHub ... (project: ...)`
 - exit code `0`
 
 Force reauthentication:

@@ -74,6 +74,7 @@ By default, `login` uses the project’s built-in development config. You can ov
 
 - `SKILLMD_GITHUB_CLIENT_ID`
 - `SKILLMD_FIREBASE_API_KEY`
+- `SKILLMD_FIREBASE_PROJECT_ID`
 
 See `.env.example` for the expected keys.
 Maintainers: built-in defaults are defined in `src/lib/auth-defaults.ts`.
@@ -93,6 +94,8 @@ skillmd login --status
 skillmd login --reauth
 skillmd logout
 ```
+
+`skillmd login --status` includes the authenticated Firebase project so you can confirm whether the active session is for `skillmarkdown` or `skillmarkdown-development`.
 
 When a saved session exists, `skillmd login` verifies the stored refresh token. If it is invalid/expired, the CLI automatically starts a new login flow. If verification is inconclusive (for example network timeout), the command exits non-zero and keeps the current session.
 
