@@ -7,6 +7,7 @@ const SESSION_PATH = join(homedir(), ".skillmd", "auth.json");
 export interface AuthSession {
   provider: "github";
   uid: string;
+  githubUsername?: string;
   email?: string;
   refreshToken: string;
   projectId?: string;
@@ -35,6 +36,12 @@ export function readAuthSession(sessionPath: string = SESSION_PATH): AuthSession
     }
 
     if (parsed.email !== undefined && typeof parsed.email !== "string") {
+      return null;
+    }
+    if (parsed.githubUsername !== undefined && typeof parsed.githubUsername !== "string") {
+      return null;
+    }
+    if (typeof parsed.githubUsername === "string" && parsed.githubUsername.trim().length === 0) {
       return null;
     }
     if (parsed.projectId !== undefined && typeof parsed.projectId !== "string") {

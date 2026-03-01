@@ -12,17 +12,17 @@ It is intentionally abstract and will be refined into concrete technical plans p
 
 ## Planned sequence
 
-1. `skillmd login`
+1. `skillmd login` (implemented)
 
 Goal:
 Establish authenticated user context for later remote operations.
 
-2. `skillmd publish`
+2. `skillmd publish` (implemented v1 contract + CLI)
 
 Goal:
 Publish validated skills through the supported distribution flow.
 
-3. `skillmd search`
+3. `skillmd search` (next)
 
 Goal:
 Discover published skills with a simple, reliable query UX.
@@ -43,3 +43,6 @@ Show locally installed skills (and optionally remote-owned skills in a future ex
 
 - Each command should get its own design and acceptance checklist before implementation.
 - This roadmap is ordered by dependency and user flow, not by implementation complexity.
+- `publish` references:
+  - `docs/publish-registry.md`
+  - `docs/publish-api.md`

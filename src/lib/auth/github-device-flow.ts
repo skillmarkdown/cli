@@ -13,6 +13,10 @@ export interface GitHubAccessTokenResult {
   accessToken: string;
 }
 
+interface GitHubUserApiResponse {
+  login?: string;
+}
+
 interface PollForAccessTokenOptions {
   sleep?: (ms: number) => Promise<void>;
 }
@@ -34,6 +38,7 @@ interface GitHubAccessTokenApiResponse {
 
 const GITHUB_DEVICE_CODE_URL = "https://github.com/login/device/code";
 const GITHUB_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token";
+const GITHUB_USER_URL = "https://api.github.com/user";
 const GITHUB_HTTP_TIMEOUT_MS = 10_000;
 
 async function postGitHubForm<T>(url: string, form: URLSearchParams): Promise<T> {
@@ -150,4 +155,37 @@ export async function pollForAccessToken(
   }
 
   throw new Error("GitHub device login timed out");
+}
+
+export async function requestGitHubUsername(accessToken: string): Promise<string> {
+  const response = await fetchWithTimeout(
+    GITHUB_USER_URL,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+    { timeoutMs: GITHUB_HTTP_TIMEOUT_MS },
+  );
+
+  const text = await response.text();
+  let payload: GitHubUserApiResponse;
+  try {
+    payload = JSON.parse(text) as GitHubUserApiResponse;
+  } catch {
+    throw new Error(`GitHub user API returned non-JSON response (${response.status})`);
+  }
+
+  if (!response.ok) {
+    throw new Error(`GitHub user API request failed (${response.status})`);
+  }
+
+  const login = payload.login?.trim();
+  if (!login) {
+    throw new Error("GitHub user API response was missing required field: login");
+  }
+
+  return login;
 }

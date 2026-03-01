@@ -19,6 +19,7 @@ export interface LoginFlowDependencies {
     apiKey: string,
     githubAccessToken: string,
   ) => Promise<FirebaseIdpResult>;
+  resolveGitHubUsername: (githubAccessToken: string) => Promise<string>;
   verifyRefreshToken: (
     apiKey: string,
     refreshToken: string,
@@ -91,10 +92,12 @@ export async function executeLoginFlow(
     config.firebaseApiKey,
     token.accessToken,
   );
+  const githubUsername = await dependencies.resolveGitHubUsername(token.accessToken);
 
   dependencies.writeSession({
     provider: "github",
     uid: firebaseSession.localId,
+    githubUsername,
     email: firebaseSession.email,
     refreshToken: firebaseSession.refreshToken,
     projectId: config.firebaseProjectId,
