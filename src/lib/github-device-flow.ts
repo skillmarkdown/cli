@@ -13,6 +13,10 @@ export interface GitHubAccessTokenResult {
   accessToken: string;
 }
 
+interface PollForAccessTokenOptions {
+  sleep?: (ms: number) => Promise<void>;
+}
+
 interface GitHubDeviceCodeApiResponse {
   device_code: string;
   user_code: string;
@@ -103,12 +107,14 @@ export async function pollForAccessToken(
   deviceCode: string,
   intervalSeconds: number,
   expiresInSeconds: number,
+  options: PollForAccessTokenOptions = {},
 ): Promise<GitHubAccessTokenResult> {
   const startedAt = Date.now();
   let pollInterval = Math.max(1, intervalSeconds);
+  const sleepFn = options.sleep ?? sleep;
 
   while (Date.now() - startedAt < expiresInSeconds * 1000) {
-    await sleep(pollInterval * 1000);
+    await sleepFn(pollInterval * 1000);
 
     const payload = await postGitHubForm<GitHubAccessTokenApiResponse>(
       GITHUB_ACCESS_TOKEN_URL,

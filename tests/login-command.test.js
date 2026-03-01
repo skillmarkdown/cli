@@ -126,9 +126,107 @@ test("login does not restart auth flow when already logged in", async () => {
       requestedDeviceCode = true;
       return mockDeviceCode();
     },
+    verifyRefreshToken: async () => ({ valid: true }),
   });
 
   assert.equal(exitCode, 0);
+  assert.equal(requestedDeviceCode, false);
+});
+
+test("login auto-reauthenticates when existing session token is invalid", async () => {
+  let cleared = false;
+  let requestedDeviceCode = false;
+
+  const exitCode = await runLoginCommand([], {
+    readSession: () => ({
+      provider: "github",
+      uid: "uid-stale",
+      email: "stale@example.com",
+      refreshToken: "stale-refresh",
+    }),
+    verifyRefreshToken: async () => ({ valid: false }),
+    clearSession: () => {
+      cleared = true;
+      return true;
+    },
+    requestDeviceCode: async () => {
+      requestedDeviceCode = true;
+      return mockDeviceCode();
+    },
+    pollForAccessToken: async () => ({ accessToken: "gh-token-new" }),
+    signInWithGitHubAccessToken: async () => ({
+      localId: "uid-new",
+      email: "new@example.com",
+      refreshToken: "refresh-new",
+    }),
+    writeSession: () => {},
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(cleared, true);
+  assert.equal(requestedDeviceCode, true);
+});
+
+test("login continues reauthentication even if clearing stale session fails", async () => {
+  let cleared = false;
+  let requestedDeviceCode = false;
+
+  const exitCode = await runLoginCommand([], {
+    readSession: () => ({
+      provider: "github",
+      uid: "uid-stale",
+      email: "stale@example.com",
+      refreshToken: "stale-refresh",
+    }),
+    verifyRefreshToken: async () => ({ valid: false }),
+    clearSession: () => {
+      cleared = true;
+      return false;
+    },
+    requestDeviceCode: async () => {
+      requestedDeviceCode = true;
+      return mockDeviceCode();
+    },
+    pollForAccessToken: async () => ({ accessToken: "gh-token-new" }),
+    signInWithGitHubAccessToken: async () => ({
+      localId: "uid-new",
+      email: "new@example.com",
+      refreshToken: "refresh-new",
+    }),
+    writeSession: () => {},
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(cleared, true);
+  assert.equal(requestedDeviceCode, true);
+});
+
+test("login fails when token verification is inconclusive due to transient error", async () => {
+  let requestedDeviceCode = false;
+  let cleared = false;
+
+  const exitCode = await runLoginCommand([], {
+    readSession: () => ({
+      provider: "github",
+      uid: "uid-1",
+      email: "user@example.com",
+      refreshToken: "refresh",
+    }),
+    verifyRefreshToken: async () => {
+      throw new Error("request timed out");
+    },
+    clearSession: () => {
+      cleared = true;
+      return true;
+    },
+    requestDeviceCode: async () => {
+      requestedDeviceCode = true;
+      return mockDeviceCode();
+    },
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(cleared, false);
   assert.equal(requestedDeviceCode, false);
 });
 

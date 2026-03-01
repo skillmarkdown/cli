@@ -74,6 +74,25 @@ test("requestDeviceCode reports non-2xx responses", async () => {
   }
 });
 
+test("requestDeviceCode reports missing required fields in JSON payload", async () => {
+  const originalFetch = global.fetch;
+
+  try {
+    global.fetch = async () =>
+      mockJsonResponse(200, {
+        user_code: "ABCD-EFGH",
+        verification_uri: "https://github.com/login/device",
+        expires_in: 900,
+      });
+
+    await assert.rejects(requestDeviceCode("client-id"), {
+      message: "GitHub device code response was missing required fields",
+    });
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 test("pollForAccessToken handles slow_down and eventually succeeds", async () => {
   const originalFetch = global.fetch;
   let calls = 0;
@@ -88,7 +107,9 @@ test("pollForAccessToken handles slow_down and eventually succeeds", async () =>
       return mockJsonResponse(200, { access_token: "token-1" });
     };
 
-    const result = await pollForAccessToken("client-id", "device-code", 1, 30);
+    const result = await pollForAccessToken("client-id", "device-code", 1, 30, {
+      sleep: async () => {},
+    });
     assert.deepEqual(result, { accessToken: "token-1" });
     assert.equal(calls, 2);
   } finally {
@@ -105,9 +126,14 @@ test("pollForAccessToken reports expired_token", async () => {
         error: "expired_token",
       });
 
-    await assert.rejects(pollForAccessToken("client-id", "device-code", 1, 30), {
-      message: "GitHub device code expired before authorization completed",
-    });
+    await assert.rejects(
+      pollForAccessToken("client-id", "device-code", 1, 30, {
+        sleep: async () => {},
+      }),
+      {
+        message: "GitHub device code expired before authorization completed",
+      },
+    );
   } finally {
     global.fetch = originalFetch;
   }
@@ -122,9 +148,14 @@ test("pollForAccessToken reports access_denied", async () => {
         error: "access_denied",
       });
 
-    await assert.rejects(pollForAccessToken("client-id", "device-code", 1, 30), {
-      message: "GitHub authorization was denied by the user",
-    });
+    await assert.rejects(
+      pollForAccessToken("client-id", "device-code", 1, 30, {
+        sleep: async () => {},
+      }),
+      {
+        message: "GitHub authorization was denied by the user",
+      },
+    );
   } finally {
     global.fetch = originalFetch;
   }
@@ -136,9 +167,36 @@ test("pollForAccessToken reports non-JSON responses", async () => {
   try {
     global.fetch = async () => mockTextResponse(200, "not-json");
 
-    await assert.rejects(pollForAccessToken("client-id", "device-code", 1, 30), {
-      message: "GitHub API returned non-JSON response (200)",
-    });
+    await assert.rejects(
+      pollForAccessToken("client-id", "device-code", 1, 30, {
+        sleep: async () => {},
+      }),
+      {
+        message: "GitHub API returned non-JSON response (200)",
+      },
+    );
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("pollForAccessToken times out when authorization never completes", async () => {
+  const originalFetch = global.fetch;
+
+  try {
+    global.fetch = async () =>
+      mockJsonResponse(200, {
+        error: "authorization_pending",
+      });
+
+    await assert.rejects(
+      pollForAccessToken("client-id", "device-code", 1, 0, {
+        sleep: async () => {},
+      }),
+      {
+        message: "GitHub device login timed out",
+      },
+    );
   } finally {
     global.fetch = originalFetch;
   }
