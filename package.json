@@ -25,7 +25,7 @@
     "prepublishOnly": "npm run clean && npm run build",
     "smoke:link": "bash ./scripts/smoke-link.sh",
     "smoke:pack": "bash ./scripts/smoke-pack.sh",
-    "test": "npm run build && node --test tests/*.test.js"
+    "test": "npm run build && node --test \"tests/**/*.test.js\""
   },
   "engines": {
     "node": ">=18"

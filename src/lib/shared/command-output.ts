@@ -1,4 +1,4 @@
-import { type ValidationResult } from "./validator";
+import { type ValidationResult } from "../validation/validator";
 
 export function failWithUsage(message: string, usage: string): number {
   console.error(message);

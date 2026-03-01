@@ -3,9 +3,14 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const childProcess = require("node:child_process");
-const { makeTempDirectory, cleanupDirectory } = require("./helpers/fs-test-utils.js");
 
-const CLI_PATH = path.resolve(__dirname, "../dist/cli.js");
+const { makeTempDirectory, cleanupDirectory } = require("../helpers/fs-test-utils.js");
+const {
+  MINIMAL_SCAFFOLD_FILES,
+  VERBOSE_SCAFFOLD_FILES,
+} = require("../helpers/scaffold-expected.js");
+
+const CLI_PATH = path.resolve(process.cwd(), "dist/cli.js");
 const CLI_TEST_PREFIX = "skillmd-cli-integration-";
 
 function runCli(args, cwd) {
@@ -19,6 +24,24 @@ function runCli(args, cwd) {
   });
 }
 
+function listScaffoldFiles(dir) {
+  const files = [];
+
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      const nested = fs.readdirSync(path.join(dir, entry.name), { withFileTypes: true });
+      for (const nestedEntry of nested) {
+        files.push(`${entry.name}/${nestedEntry.name}`);
+      }
+      continue;
+    }
+
+    files.push(entry.name);
+  }
+
+  return files.sort();
+}
+
 test("spawned CLI: init scaffolds and validates by default", () => {
   const root = makeTempDirectory(CLI_TEST_PREFIX);
   const skillDir = path.join(root, "integration-skill");
@@ -30,22 +53,7 @@ test("spawned CLI: init scaffolds and validates by default", () => {
     assert.equal(result.status, 0);
     assert.match(result.stdout, /Initialized skill 'integration-skill'/);
     assert.match(result.stdout, /Validation passed: Spec validation passed\./);
-
-    const expectedFiles = ["SKILL.md"];
-
-    const files = [];
-    for (const entry of fs.readdirSync(skillDir, { withFileTypes: true })) {
-      if (entry.isDirectory()) {
-        const nested = fs.readdirSync(path.join(skillDir, entry.name), { withFileTypes: true });
-        for (const nestedEntry of nested) {
-          files.push(`${entry.name}/${nestedEntry.name}`);
-        }
-      } else {
-        files.push(entry.name);
-      }
-    }
-
-    assert.deepEqual(files.sort(), expectedFiles);
+    assert.deepEqual(listScaffoldFiles(skillDir), MINIMAL_SCAFFOLD_FILES);
   } finally {
     cleanupDirectory(root);
   }
@@ -61,35 +69,7 @@ test("spawned CLI: init with --template verbose scaffolds strict template", () =
 
     assert.equal(result.status, 0);
     assert.match(result.stdout, /Validation passed: Spec and strict scaffold validation passed\./);
-
-    const expectedFiles = [
-      ".gitignore",
-      "SKILL.md",
-      "assets/.gitkeep",
-      "assets/README.md",
-      "assets/lookup-table.csv",
-      "assets/report-template.md",
-      "references/.gitkeep",
-      "references/FORMS.md",
-      "references/REFERENCE.md",
-      "scripts/.gitkeep",
-      "scripts/README.md",
-      "scripts/extract.py",
-    ];
-
-    const files = [];
-    for (const entry of fs.readdirSync(skillDir, { withFileTypes: true })) {
-      if (entry.isDirectory()) {
-        const nested = fs.readdirSync(path.join(skillDir, entry.name), { withFileTypes: true });
-        for (const nestedEntry of nested) {
-          files.push(`${entry.name}/${nestedEntry.name}`);
-        }
-      } else {
-        files.push(entry.name);
-      }
-    }
-
-    assert.deepEqual(files.sort(), expectedFiles);
+    assert.deepEqual(listScaffoldFiles(skillDir), VERBOSE_SCAFFOLD_FILES);
   } finally {
     cleanupDirectory(root);
   }

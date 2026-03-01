@@ -1,8 +1,8 @@
-import { INIT_USAGE } from "../lib/cli-text";
-import { failWithUsage, printValidationResult } from "../lib/command-output";
-import { resolveInitTemplateId, scaffoldSkillInDirectory } from "../lib/scaffold";
-import { type InitTemplateId } from "../lib/skill-spec";
-import { type ValidationResult, validateSkill } from "../lib/validator";
+import { INIT_USAGE } from "../lib/shared/cli-text";
+import { failWithUsage, printValidationResult } from "../lib/shared/command-output";
+import { resolveInitTemplateId, scaffoldSkillInDirectory } from "../lib/scaffold/scaffold";
+import { type InitTemplateId } from "../lib/scaffold/skill-spec";
+import { type ValidationResult, validateSkill } from "../lib/validation/validator";
 
 interface InitCommandOptions {
   cwd?: string;

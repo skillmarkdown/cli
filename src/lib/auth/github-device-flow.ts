@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from "./http";
+import { fetchWithTimeout } from "../shared/http";
 
 export interface DeviceCodeResponse {
   deviceCode: string;

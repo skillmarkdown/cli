@@ -1,6 +1,6 @@
-import { LOGOUT_USAGE } from "../lib/cli-text";
-import { failWithUsage } from "../lib/command-output";
-import { clearAuthSession } from "../lib/auth-session";
+import { LOGOUT_USAGE } from "../lib/shared/cli-text";
+import { failWithUsage } from "../lib/shared/command-output";
+import { clearAuthSession } from "../lib/auth/session";
 
 interface LogoutCommandOptions {
   clearSession?: () => boolean;

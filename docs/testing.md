@@ -23,8 +23,8 @@ npm test
 This runs:
 
 - TypeScript build (`npm run build`)
-- Node built-in test suite (`node --test tests/*.test.js`)
-- Spawned-binary CLI integration tests (`tests/cli-integration.test.js`)
+- Node built-in test suite (`node --test "tests/**/*.test.js"`)
+- Spawned-binary CLI integration tests (`tests/integration/cli-integration.test.js`)
 
 ## Pre-commit hooks
 

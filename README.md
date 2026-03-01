@@ -106,7 +106,7 @@ By default, `login` uses the project’s built-in development config. You can ov
 - `SKILLMD_FIREBASE_PROJECT_ID`
 
 See `.env.example` for the expected keys.
-Maintainers: built-in defaults are defined in `src/lib/auth-defaults.ts`.
+Maintainers: built-in defaults are defined in `src/lib/auth/defaults.ts`.
 
 Example override file:
 

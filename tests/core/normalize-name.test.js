@@ -1,7 +1,9 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { normalizeSkillName, getMaxSkillNameLength } = require("../dist/lib/normalize-name.js");
+const { requireDist } = require("../helpers/dist-imports.js");
+
+const { normalizeSkillName, getMaxSkillNameLength } = requireDist("lib/scaffold/normalize-name.js");
 
 test("normalizes mixed separators to lowercase hyphen-case", () => {
   assert.equal(normalizeSkillName("  My__Skill Name  "), "my-skill-name");
@@ -16,6 +18,5 @@ test("throws when normalized value is empty", () => {
 });
 
 test("throws when skill name exceeds max length", () => {
-  const tooLong = "a".repeat(getMaxSkillNameLength() + 1);
-  assert.throws(() => normalizeSkillName(tooLong), /at most/);
+  assert.throws(() => normalizeSkillName("a".repeat(getMaxSkillNameLength() + 1)), /at most/);
 });

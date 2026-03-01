@@ -3,8 +3,14 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { scaffoldSkillInDirectory } = require("../dist/lib/scaffold.js");
-const { createSkillDirectoryFactory, cleanupDirectory } = require("./helpers/fs-test-utils.js");
+const { requireDist } = require("../helpers/dist-imports.js");
+const { createSkillDirectoryFactory, cleanupDirectory } = require("../helpers/fs-test-utils.js");
+const {
+  MINIMAL_SCAFFOLD_FILES,
+  VERBOSE_SCAFFOLD_FILES,
+} = require("../helpers/scaffold-expected.js");
+
+const { scaffoldSkillInDirectory } = requireDist("lib/scaffold/scaffold.js");
 
 const makeEmptySkillDirectory = createSkillDirectoryFactory("skillmd-test-");
 
@@ -41,9 +47,7 @@ test("scaffolds minimal template by default", () => {
     assert.equal(result.skillName, "sample-skill");
     assert.equal(result.template, "minimal");
 
-    const expectedFiles = ["SKILL.md"];
-
-    assert.deepEqual(listFilesRecursively(dir), expectedFiles);
+    assert.deepEqual(listFilesRecursively(dir), MINIMAL_SCAFFOLD_FILES);
 
     const skillMd = fs.readFileSync(path.join(dir, "SKILL.md"), "utf8");
     assert.match(skillMd, /^---\nname: sample-skill\n/m);
@@ -62,22 +66,7 @@ test("scaffolds verbose template with strict directories and sections", () => {
     assert.equal(result.skillName, "sample-skill-verbose");
     assert.equal(result.template, "verbose");
 
-    const expectedFiles = [
-      ".gitignore",
-      "SKILL.md",
-      "assets/.gitkeep",
-      "assets/README.md",
-      "assets/lookup-table.csv",
-      "assets/report-template.md",
-      "references/.gitkeep",
-      "references/FORMS.md",
-      "references/REFERENCE.md",
-      "scripts/.gitkeep",
-      "scripts/README.md",
-      "scripts/extract.py",
-    ];
-
-    assert.deepEqual(listFilesRecursively(dir), expectedFiles);
+    assert.deepEqual(listFilesRecursively(dir), VERBOSE_SCAFFOLD_FILES);
 
     const skillMd = fs.readFileSync(path.join(dir, "SKILL.md"), "utf8");
     assert.match(skillMd, /^---\nname: sample-skill-verbose\n/m);
