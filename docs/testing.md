@@ -1,4 +1,4 @@
-# Testing `skillmd init`
+# Testing `skillmd`
 
 This guide shows how to test `@skillmarkdown/cli` locally.
 
@@ -169,3 +169,94 @@ mkdir "$tmpdir/parity-skill"
 Expected:
 
 - `Validation parity passed (skills-ref).`
+
+## 9) Manual auth test (`skillmd login`)
+
+Prerequisites:
+
+- GitHub OAuth app is configured with Device Flow enabled.
+- Firebase Authentication GitHub provider is enabled with the same GitHub OAuth app credentials.
+- Optional: you know override values for:
+  - `SKILLMD_GITHUB_CLIENT_ID`
+  - `SKILLMD_FIREBASE_API_KEY`
+
+The command works with built-in defaults. If you want to override, either set env vars:
+
+```bash
+export SKILLMD_GITHUB_CLIENT_ID="your_github_oauth_client_id"
+export SKILLMD_FIREBASE_API_KEY="your_firebase_web_api_key"
+```
+
+Or create a trusted user config file:
+
+```bash
+mkdir -p ~/.skillmd
+cat > ~/.skillmd/.env <<'EOF'
+SKILLMD_GITHUB_CLIENT_ID=your_github_oauth_client_id
+SKILLMD_FIREBASE_API_KEY=your_firebase_web_api_key
+EOF
+```
+
+Run login:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" login
+```
+
+Expected:
+
+- CLI prints a GitHub verification URL and user code.
+- After approving in browser, CLI prints `Login successful` (and email when available).
+- Session file exists at `~/.skillmd/auth.json`.
+
+Check login status:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" login --status
+```
+
+Expected:
+
+- `Logged in with GitHub ...`
+- exit code `0`
+
+Force reauthentication:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" login --reauth
+```
+
+Expected:
+
+- command starts a fresh device flow even if already logged in
+- successful completion overwrites `~/.skillmd/auth.json` with the new session
+
+Logout:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" logout
+node "$REPO_DIR/dist/cli.js" login --status
+```
+
+Expected:
+
+- first command prints `Logged out.`
+- second command prints `Not logged in.`
+- status returns exit code `1` when logged out
+
+Negative-path checks:
+
+```bash
+REPO_DIR="$(pwd)"
+SKILLMD_GITHUB_CLIENT_ID="" SKILLMD_FIREBASE_API_KEY="" node "$REPO_DIR/dist/cli.js" login
+node "$REPO_DIR/dist/cli.js" login --bad-flag
+```
+
+Expected:
+
+- blank env vars: command falls back to the next configured source (`~/.skillmd/.env` or built-in defaults) and continues login flow
+- unsupported flag: usage line `Usage: skillmd login [--status|--reauth]`

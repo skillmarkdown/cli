@@ -4,7 +4,7 @@
 
 ## Status
 
-Early development. v0 focuses on `skillmd init` and `skillmd validate`. Docs are intentionally lightweight and may evolve.
+Early development. Current command surface includes `skillmd init`, `skillmd validate`, `skillmd login`, and `skillmd logout`. Docs are intentionally lightweight and may evolve.
 
 ## Install
 
@@ -64,9 +64,39 @@ Compare local validation with `skills-ref` (when installed):
 skillmd validate --parity
 ```
 
+### Login with GitHub (Device Flow)
+
+```bash
+skillmd login
+```
+
+By default, `login` uses the project’s built-in development config. You can override values with shell env vars or `~/.skillmd/.env`:
+
+- `SKILLMD_GITHUB_CLIENT_ID`
+- `SKILLMD_FIREBASE_API_KEY`
+
+See `.env.example` for the expected keys.
+Maintainers: built-in defaults are defined in `src/lib/auth-defaults.ts`.
+
+Example override file:
+
+```bash
+mkdir -p ~/.skillmd
+cp .env.example ~/.skillmd/.env
+# then edit values in ~/.skillmd/.env if needed
+```
+
+Session helpers:
+
+```bash
+skillmd login --status
+skillmd login --reauth
+skillmd logout
+```
+
 ## Development
 
-- Local testing guide: `docs/testing.md`
+- Local testing guide (includes manual `login` auth checks): `docs/testing.md`
 - CI check script: `npm run ci:check`
 - Packed tarball smoke test: `npm run smoke:pack`
 - Optional npm link smoke test: `npm run smoke:link`

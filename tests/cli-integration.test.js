@@ -12,6 +12,10 @@ function runCli(args, cwd) {
   return childProcess.spawnSync(process.execPath, [CLI_PATH, ...args], {
     cwd,
     encoding: "utf8",
+    env: {
+      ...process.env,
+      HOME: cwd,
+    },
   });
 }
 
@@ -76,7 +80,31 @@ test("spawned CLI: unknown command fails with usage", () => {
   try {
     const result = runCli(["unknown"], root);
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /Usage: skillmd <init\|validate>/);
+    assert.match(result.stderr, /Usage: skillmd <init\|validate\|login\|logout>/);
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: logout succeeds when no session exists", () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+
+  try {
+    const result = runCli(["logout"], root);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /No active session to log out\./);
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: login status reports not logged in by default", () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+
+  try {
+    const result = runCli(["login", "--status"], root);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /Not logged in\./);
   } finally {
     cleanupDirectory(root);
   }

@@ -1,15 +1,21 @@
 #!/usr/bin/env node
 
 import { runInitCommand } from "./commands/init";
+import { runLoginCommand } from "./commands/login";
+import { runLogoutCommand } from "./commands/logout";
 import { runValidateCommand } from "./commands/validate";
 import { ROOT_USAGE } from "./lib/cli-text";
 
-const COMMAND_HANDLERS: Record<string, (args: string[]) => number> = {
+type CommandHandler = (args: string[]) => number | Promise<number>;
+
+const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   init: runInitCommand,
   validate: runValidateCommand,
+  login: runLoginCommand,
+  logout: runLogoutCommand,
 };
 
-function main(): void {
+async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const command = args[0];
 
@@ -22,7 +28,7 @@ function main(): void {
 
   const handler = COMMAND_HANDLERS[command];
   if (handler) {
-    process.exitCode = handler(args.slice(1));
+    process.exitCode = await handler(args.slice(1));
     return;
   }
 
@@ -31,4 +37,4 @@ function main(): void {
   process.exitCode = 1;
 }
 
-main();
+void main();
