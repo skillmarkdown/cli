@@ -179,7 +179,6 @@ test("spawned CLI: publish --dry-run succeeds for verbose scaffold", () => {
       githubUsername: "core",
       email: "user@example.com",
       refreshToken: "refresh-token",
-      projectId: "skillmarkdown-development",
     });
 
     const publishResult = runCli(
@@ -211,7 +210,6 @@ test("spawned CLI: publish fails fast on invalid strict scaffold", () => {
       uid: "uid-1",
       githubUsername: "core",
       refreshToken: "refresh-token",
-      projectId: "skillmarkdown-development",
     });
 
     const publishResult = runCli(["publish", "--version", "1.0.0", "--dry-run"], skillDir);
