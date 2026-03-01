@@ -19,7 +19,7 @@ const SECTION_PLACEHOLDERS: Record<(typeof STRICT_SECTION_TITLES)[number], strin
 
 export function buildSkillMarkdown(name: string): string {
   const sections = STRICT_SECTION_TITLES.map(
-    (title) => `## ${title}\n${SECTION_PLACEHOLDERS[title]}`,
+    (title) => `## ${title}\n\n${SECTION_PLACEHOLDERS[title]}`,
   ).join("\n\n");
 
   return `---
