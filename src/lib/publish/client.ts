@@ -12,6 +12,11 @@ interface PublishClientOptions {
 }
 
 interface ApiErrorPayload {
+  error?: {
+    code?: string;
+    message?: string;
+    details?: unknown;
+  };
   code?: string;
   message?: string;
   details?: unknown;
@@ -28,9 +33,10 @@ async function parseJsonOrThrow<T>(response: Response, label: string): Promise<T
 }
 
 function toPublishApiError(status: number, payload: ApiErrorPayload): PublishApiError {
-  const code = payload.code || "unknown_error";
-  const message = payload.message || `publish API request failed (${status})`;
-  return new PublishApiError(status, code, message, payload.details);
+  const nested = payload.error;
+  const code = nested?.code || payload.code || "unknown_error";
+  const message = nested?.message || payload.message || `publish API request failed (${status})`;
+  return new PublishApiError(status, code, message, nested?.details ?? payload.details);
 }
 
 function parseHeaders(headers: Record<string, string> | undefined): HeadersInit | undefined {
@@ -74,6 +80,30 @@ export async function preparePublish(
     (parsed as PreparePublishResponse).status !== "idempotent"
   ) {
     throw new Error("Publish prepare API response was missing required fields");
+  }
+
+  if ((parsed as PreparePublishResponse).status === "upload_required") {
+    const upload = parsed as PreparePublishResponse & {
+      publishToken?: unknown;
+      uploadUrl?: unknown;
+    };
+    if (typeof upload.publishToken !== "string" || typeof upload.uploadUrl !== "string") {
+      throw new Error("Publish prepare API response was missing required fields");
+    }
+  }
+
+  if ((parsed as PreparePublishResponse).status === "idempotent") {
+    const idempotent = parsed as PreparePublishResponse & {
+      publishToken?: unknown;
+      skillId?: unknown;
+      version?: unknown;
+    };
+    const hasCurrentFields = typeof idempotent.publishToken === "string";
+    const hasLegacyFields =
+      typeof idempotent.skillId === "string" && typeof idempotent.version === "string";
+    if (!hasCurrentFields && !hasLegacyFields) {
+      throw new Error("Publish prepare API response was missing required fields");
+    }
   }
 
   return parsed as PreparePublishResponse;
@@ -135,8 +165,9 @@ export async function commitPublish(
     throw toPublishApiError(response.status, parsed as ApiErrorPayload);
   }
 
+  const status = (parsed as CommitPublishResponse).status;
   if (
-    (parsed as CommitPublishResponse).status !== "published" ||
+    (status !== "published" && status !== "idempotent") ||
     !(parsed as CommitPublishResponse).skillId ||
     !(parsed as CommitPublishResponse).version
   ) {
