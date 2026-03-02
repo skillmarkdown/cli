@@ -22,7 +22,7 @@ Establish authenticated user context for later remote operations.
 Goal:
 Publish validated skills through the supported distribution flow.
 
-3. `skillmd search` (next)
+3. `skillmd search` (implemented)
 
 Goal:
 Discover published skills with a simple, reliable query UX.

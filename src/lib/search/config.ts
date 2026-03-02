@@ -1,12 +1,13 @@
 import { getLoginEnvConfig } from "../auth/config";
 import { parseRegistryTimeoutMs, resolveRegistryBaseUrl } from "../registry/config";
-import { type PublishEnvConfig } from "./types";
+import { type SearchEnvConfig } from "./types";
 
-export function getPublishEnvConfig(env: NodeJS.ProcessEnv = process.env): PublishEnvConfig {
+export type { SearchEnvConfig } from "./types";
+
+export function getSearchEnvConfig(env: NodeJS.ProcessEnv = process.env): SearchEnvConfig {
   const loginConfig = getLoginEnvConfig(env);
 
   return {
-    firebaseApiKey: loginConfig.firebaseApiKey,
     firebaseProjectId: loginConfig.firebaseProjectId,
     registryBaseUrl: resolveRegistryBaseUrl(
       loginConfig.firebaseProjectId,

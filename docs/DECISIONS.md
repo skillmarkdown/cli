@@ -131,3 +131,25 @@ Contract:
 
 Rationale:
 This keeps the publish surface simple while preserving integrity guarantees required for future search/install workflows.
+
+---
+
+## D-008: Search Command Is Public Discovery-Only (Single-Term v1)
+
+`skillmd search` is introduced for public remote discovery.
+
+Contract:
+
+- command surface:
+  - `skillmd search [query] [--limit <1-50>] [--cursor <token>] [--json]`
+- `query` is optional:
+  - omitted query => browse latest published skills
+  - provided query => single search token in v1
+- cursor-based pagination is supported through opaque `nextCursor` values.
+- output modes:
+  - human-readable summary output by default
+  - raw API payload via `--json`
+- this command only queries public registry metadata; it does not install or mutate local skill state.
+
+Rationale:
+Search is the lowest-risk step toward install/use flows and web listing while keeping implementation and API semantics stable.

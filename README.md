@@ -41,6 +41,12 @@ skillmd login
 skillmd publish --version 1.0.0
 ```
 
+5. Search published skills:
+
+```bash
+skillmd search agent --limit 10
+```
+
 ## Commands
 
 ### `skillmd init`
@@ -99,6 +105,19 @@ Notes:
 - Always runs strict local validation before publishing.
 - Owner is derived by the registry from your authenticated GitHub identity (`@githubusername`).
 - Default channel is `latest` for stable versions and `beta` for prerelease versions.
+
+### `skillmd search`
+
+Search public registry skills.
+
+```bash
+skillmd search [query] [--limit <1-50>] [--cursor <token>] [--json]
+```
+
+Notes:
+
+- No `query` means browse latest published skills.
+- Results include `skillId` (`@owner/skill`) and channel pointers.
 
 ## Optional Configuration
 
