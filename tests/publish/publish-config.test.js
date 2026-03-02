@@ -6,7 +6,9 @@ const { requireDist } = require("../helpers/dist-imports.js");
 const { getPublishEnvConfig } = requireDist("lib/publish/config.js");
 
 test("maps development project to default dev registry URL", () => {
-  const config = getPublishEnvConfig({});
+  const config = getPublishEnvConfig({
+    SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+  });
   assert.equal(config.firebaseProjectId, "skillmarkdown-development");
   assert.equal(config.registryBaseUrl, "https://registryapi-sm46rm3rja-uc.a.run.app");
 });
