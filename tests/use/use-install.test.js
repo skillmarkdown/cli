@@ -45,7 +45,29 @@ async function createArchiveBytesWithSymlink(linkPath, targetPath, files = {}) {
       fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
       fs.writeFileSync(absolutePath, content, "utf8");
     }
+    fs.mkdirSync(path.dirname(path.join(sourceDir, linkPath)), { recursive: true });
     fs.symlinkSync(targetPath, path.join(sourceDir, linkPath));
+
+    await tar.c({ gzip: true, file: archivePath, cwd: sourceDir }, ["."]);
+    return fs.readFileSync(archivePath);
+  } finally {
+    cleanupDirectory(root);
+  }
+}
+
+async function createArchiveBytesWithHardlink(linkPath, targetPath, files = {}) {
+  const root = makeTempDirectory(TEST_PREFIX);
+  const sourceDir = path.join(root, "source");
+  const archivePath = path.join(root, "artifact.tgz");
+
+  try {
+    fs.mkdirSync(sourceDir, { recursive: true });
+    for (const [relativePath, content] of Object.entries(files)) {
+      const absolutePath = path.join(sourceDir, relativePath);
+      fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+      fs.writeFileSync(absolutePath, content, "utf8");
+    }
+    fs.linkSync(path.join(sourceDir, targetPath), path.join(sourceDir, linkPath));
 
     await tar.c({ gzip: true, file: archivePath, cwd: sourceDir }, ["."]);
     return fs.readFileSync(archivePath);
@@ -222,7 +244,89 @@ test("installSkillArtifact fails when SKILL.md is a symlink", async () => {
           sourceCommand: "skillmd use @owner/symlink-skill --version 1.0.0",
         },
       }),
-      /regular file/i,
+      /unsupported symboliclink entry/i,
+    );
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("installSkillArtifact fails when archive contains non-SKILL symlink", async () => {
+  const root = makeTempDirectory(TEST_PREFIX);
+
+  try {
+    const archiveBytes = await createArchiveBytesWithSymlink("scripts/run.sh", "SKILL.md", {
+      "SKILL.md": "---\nname: symlinked-script\n---\n",
+    });
+
+    await assert.rejects(
+      installSkillArtifact({
+        targetPath: path.join(
+          root,
+          ".agent",
+          "skills",
+          "registry.example.com",
+          "owner",
+          "symlinked-script",
+        ),
+        tempRoot: path.join(root, ".agent", ".tmp"),
+        archiveBytes,
+        metadata: {
+          skillId: "@owner/symlinked-script",
+          ownerLogin: "owner",
+          skill: "symlinked-script",
+          version: "1.0.0",
+          digest: "sha256:test",
+          sizeBytes: archiveBytes.length,
+          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+          registryBaseUrl: "https://registry.example.com",
+          downloadedFrom: "https://storage.example.com/object",
+          installedAt: "2026-03-02T12:00:00.000Z",
+          sourceCommand: "skillmd use @owner/symlinked-script --version 1.0.0",
+        },
+      }),
+      /unsupported symboliclink entry/i,
+    );
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("installSkillArtifact fails when archive contains hardlink entry", async () => {
+  const root = makeTempDirectory(TEST_PREFIX);
+
+  try {
+    const archiveBytes = await createArchiveBytesWithHardlink("COPY.md", "SKILL.md", {
+      "SKILL.md": "---\nname: hardlink-skill\n---\n",
+    });
+
+    await assert.rejects(
+      installSkillArtifact({
+        targetPath: path.join(
+          root,
+          ".agent",
+          "skills",
+          "registry.example.com",
+          "owner",
+          "hardlink-skill",
+        ),
+        tempRoot: path.join(root, ".agent", ".tmp"),
+        archiveBytes,
+        metadata: {
+          skillId: "@owner/hardlink-skill",
+          ownerLogin: "owner",
+          skill: "hardlink-skill",
+          version: "1.0.0",
+          digest: "sha256:test",
+          sizeBytes: archiveBytes.length,
+          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+          registryBaseUrl: "https://registry.example.com",
+          downloadedFrom: "https://storage.example.com/object",
+          installedAt: "2026-03-02T12:00:00.000Z",
+          sourceCommand: "skillmd use @owner/hardlink-skill --version 1.0.0",
+        },
+      }),
+      /unsupported link entry/i,
     );
   } finally {
     cleanupDirectory(root);

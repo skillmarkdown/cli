@@ -26,6 +26,7 @@ interface InstallFileOps {
 interface InstallSkillArtifactDependencies {
   fileOps?: InstallFileOps;
   tarExtract?: typeof tar.x;
+  tarList?: typeof tar.t;
 }
 
 const DEFAULT_FILE_OPS: InstallFileOps = {
@@ -37,6 +38,40 @@ const DEFAULT_FILE_OPS: InstallFileOps = {
   rm: fs.rm.bind(fs),
   rename: fs.rename.bind(fs),
 };
+
+function isDisallowedArchiveEntryType(type: string | undefined): boolean {
+  return type === "SymbolicLink" || type === "Link";
+}
+
+async function assertArchiveContainsNoLinkEntries(
+  archivePath: string,
+  tarList: typeof tar.t,
+): Promise<void> {
+  let disallowed:
+    | {
+        type: string;
+        path: string;
+      }
+    | undefined;
+
+  await tarList({
+    file: archivePath,
+    onentry(entry) {
+      if (!disallowed && isDisallowedArchiveEntryType(entry.type)) {
+        disallowed = {
+          type: entry.type,
+          path: entry.path,
+        };
+      }
+    },
+  });
+
+  if (disallowed) {
+    throw new Error(
+      `invalid artifact: archive contains unsupported ${disallowed.type.toLowerCase()} entry '${disallowed.path}'`,
+    );
+  }
+}
 
 async function exists(path: string, fileOps: InstallFileOps): Promise<boolean> {
   try {
@@ -71,6 +106,7 @@ export async function installSkillArtifact(
 ): Promise<void> {
   const fileOps = dependencies.fileOps ?? DEFAULT_FILE_OPS;
   const tarExtract = dependencies.tarExtract ?? tar.x;
+  const tarList = dependencies.tarList ?? tar.t;
   const runId = `skillmd-use-${Date.now()}-${randomUUID().slice(0, 8)}`;
   const runDir = join(input.tempRoot, runId);
   const archivePath = join(runDir, "artifact.tgz");
@@ -84,6 +120,7 @@ export async function installSkillArtifact(
 
   try {
     await fileOps.writeFile(archivePath, input.archiveBytes);
+    await assertArchiveContainsNoLinkEntries(archivePath, tarList);
     await fileOps.mkdir(extractedPath, { recursive: true });
 
     await tarExtract({
