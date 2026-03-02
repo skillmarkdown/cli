@@ -4,6 +4,7 @@ import { isSearchApiError } from "../lib/search/errors";
 import { parseSearchFlags } from "../lib/search/flags";
 import { SEARCH_USAGE } from "../lib/shared/cli-text";
 import { failWithUsage } from "../lib/shared/command-output";
+import { renderTable } from "../lib/shared/table";
 import { type SearchSkillsResponse } from "../lib/search/types";
 
 interface SearchCommandOptions {
@@ -20,28 +21,54 @@ function printJson(payload: Record<string, unknown>): void {
   console.log(JSON.stringify(payload, null, 2));
 }
 
-function truncate(value: string, maxLength: number): string {
-  if (value.length <= maxLength) {
-    return value;
-  }
-
-  return `${value.slice(0, maxLength - 1)}…`;
-}
-
 function printHumanResults(
   query: string | undefined,
   limit: number | undefined,
   payload: SearchSkillsResponse,
 ) {
+  const maxWidth = process.stdout.isTTY ? (process.stdout.columns ?? 120) : undefined;
+
   if (payload.results.length === 0) {
     console.log("No skills found.");
   } else {
-    for (const item of payload.results) {
-      const description = item.description ? ` - ${truncate(item.description, 80)}` : "";
-      console.log(
-        `${item.skillId} latest=${item.channels.latest ?? "-"} beta=${item.channels.beta ?? "-"} ` +
-          `updated=${item.updatedAt}${description}`,
-      );
+    const lines = renderTable(
+      [
+        {
+          header: "SKILL",
+          minWidth: 16,
+          maxWidth: 36,
+          shrinkPriority: 1,
+          value: (row) => row.skillId,
+        },
+        {
+          header: "LATEST",
+          width: 10,
+          value: (row) => row.channels.latest ?? "-",
+        },
+        {
+          header: "BETA",
+          width: 12,
+          value: (row) => row.channels.beta ?? "-",
+        },
+        {
+          header: "UPDATED",
+          width: 24,
+          value: (row) => row.updatedAt,
+        },
+        {
+          header: "DESCRIPTION",
+          minWidth: 18,
+          maxWidth: 64,
+          shrinkPriority: 3,
+          value: (row) => row.description ?? "",
+        },
+      ],
+      payload.results,
+      { maxWidth },
+    );
+
+    for (const line of lines) {
+      console.log(line);
     }
   }
 

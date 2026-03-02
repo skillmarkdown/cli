@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const http = require("node:http");
 const childProcess = require("node:child_process");
 
 const { makeTempDirectory, cleanupDirectory } = require("../helpers/fs-test-utils.js");
@@ -13,14 +14,49 @@ const {
 const CLI_PATH = path.resolve(process.cwd(), "dist/cli.js");
 const CLI_TEST_PREFIX = "skillmd-cli-integration-";
 
-function runCli(args, cwd) {
+function runCli(args, cwd, envOverrides = {}) {
   return childProcess.spawnSync(process.execPath, [CLI_PATH, ...args], {
     cwd,
     encoding: "utf8",
     env: {
       ...process.env,
       HOME: cwd,
+      ...envOverrides,
     },
+  });
+}
+
+function runCliAsync(args, cwd, envOverrides = {}) {
+  return new Promise((resolve, reject) => {
+    const child = childProcess.spawn(process.execPath, [CLI_PATH, ...args], {
+      cwd,
+      env: {
+        ...process.env,
+        HOME: cwd,
+        ...envOverrides,
+      },
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+
+    child.on("error", reject);
+    child.on("close", (code) => {
+      resolve({
+        status: code,
+        stdout,
+        stderr,
+      });
+    });
   });
 }
 
@@ -46,6 +82,27 @@ function listScaffoldFiles(dir) {
   }
 
   return files.sort();
+}
+
+async function startMockRegistry(handler) {
+  const server = http.createServer(handler);
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  return {
+    baseUrl,
+    async close() {
+      await new Promise((resolve, reject) => {
+        server.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
+        });
+      });
+    },
+  };
 }
 
 test("spawned CLI: init scaffolds and validates by default", () => {
@@ -234,6 +291,111 @@ test("spawned CLI: use fails with usage when skill-id is missing", () => {
       /Usage: skillmd use <skill-id> \[--version <semver> \| --channel <latest\|beta>\] \[--allow-yanked\] \[--json\]/,
     );
   } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: search prints columnar human output", async () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  const mockRegistry = await startMockRegistry((request, response) => {
+    if (request.method === "GET" && request.url.startsWith("/v1/skills/search")) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          query: "agent",
+          limit: 2,
+          results: [
+            {
+              skillId: "@core/agent-skill",
+              owner: "@core",
+              ownerLogin: "core",
+              skill: "agent-skill",
+              description: "Sample description for integration test output",
+              channels: {
+                latest: "1.0.0",
+                beta: "1.1.0-beta.1",
+              },
+              updatedAt: "2026-03-02T09:00:00.000Z",
+            },
+          ],
+          nextCursor: "cursor_2",
+        }),
+      );
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: { code: "invalid_request", message: "not found" } }));
+  });
+
+  try {
+    const result = await runCliAsync(["search", "agent", "--limit", "2"], root, {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
+    });
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /^┌/mu);
+    assert.match(result.stdout, /│ SKILL/mu);
+    assert.match(result.stdout, /@core\//);
+    assert.match(result.stdout, /Next page: skillmd search agent --limit 2 --cursor cursor_2/);
+  } finally {
+    await mockRegistry.close();
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: history prints columnar human output", async () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  const mockRegistry = await startMockRegistry((request, response) => {
+    if (
+      request.method === "GET" &&
+      request.url.startsWith("/v1/skills/core/agent-skill/versions")
+    ) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@core",
+          ownerLogin: "core",
+          skill: "agent-skill",
+          limit: 2,
+          results: [
+            {
+              version: "1.2.3",
+              digest: "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+              sizeBytes: 12345,
+              mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+              publishedAt: "2026-03-02T09:00:00.000Z",
+              yanked: true,
+              yankedAt: "2026-03-02T10:00:00.000Z",
+              yankedReason: "security issue",
+            },
+          ],
+          nextCursor: "cursor_3",
+        }),
+      );
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: { code: "invalid_request", message: "not found" } }));
+  });
+
+  try {
+    const result = await runCliAsync(["history", "@core/agent-skill", "--limit", "2"], root, {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
+    });
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /^┌/mu);
+    assert.match(result.stdout, /PUBLISHED/mu);
+    assert.match(result.stdout, /DIGEST/mu);
+    assert.match(result.stdout, /sha256:1234567890.*\.\.\./);
+    assert.match(
+      result.stdout,
+      /Next page: skillmd history @core\/agent-skill --limit 2 --cursor cursor_3/,
+    );
+  } finally {
+    await mockRegistry.close();
     cleanupDirectory(root);
   }
 });

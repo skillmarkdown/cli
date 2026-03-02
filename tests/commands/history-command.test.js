@@ -58,8 +58,50 @@ test("prints human output for history results", async () => {
   );
 
   assert.equal(result, 0);
-  assert.match(logs.join("\n"), /@stefdevscore\/test-skill@1.2.3/);
-  assert.match(logs.join("\n"), /Next page:/);
+  assert.match(logs[0], /^┌/u);
+  assert.match(logs[1], /VERSION/u);
+  assert.match(logs[2], /^├/u);
+  assert.match(logs[3], /1.2.3/);
+  assert.match(logs[3], /sha256:abc/);
+  assert.match(logs[4], /^└/u);
+  assert.match(logs[5], /Next page:/);
+});
+
+test("prints yanked metadata and truncates digest in human output", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runHistoryCommand(
+      ["@stefdevscore/test-skill", "--limit", "10"],
+      baseOptions({
+        listHistory: async () => ({
+          owner: "@stefdevscore",
+          ownerLogin: "stefdevscore",
+          skill: "test-skill",
+          limit: 10,
+          results: [
+            {
+              version: "1.2.3",
+              digest: "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+              sizeBytes: 12345,
+              mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+              publishedAt: "2026-03-02T09:00:00.000Z",
+              yanked: true,
+              yankedAt: "2026-03-02T10:00:00.000Z",
+              yankedReason: "security issue",
+            },
+          ],
+          nextCursor: "cursor_2",
+        }),
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.match(logs[3], /yes:securit.*\.\.\.|yes:security issue/);
+  assert.match(logs[3], /sha256:1234567890.*\.\.\./);
+  assert.equal(
+    logs[5],
+    "Next page: skillmd history @stefdevscore/test-skill --limit 10 --cursor cursor_2",
+  );
 });
 
 test("prints json output with --json", async () => {

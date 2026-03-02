@@ -6,6 +6,7 @@ import { type HistoryResponse } from "../lib/history/types";
 import { parseSkillId } from "../lib/registry/skill-id";
 import { HISTORY_USAGE } from "../lib/shared/cli-text";
 import { failWithUsage } from "../lib/shared/command-output";
+import { renderTable } from "../lib/shared/table";
 
 interface HistoryCommandOptions {
   env?: NodeJS.ProcessEnv;
@@ -21,16 +22,74 @@ function printJson(payload: Record<string, unknown>): void {
   console.log(JSON.stringify(payload, null, 2));
 }
 
+function formatDigestForHuman(digest: string): string {
+  if (!digest.startsWith("sha256:")) {
+    return digest;
+  }
+
+  const value = digest.slice("sha256:".length);
+  if (value.length <= 12) {
+    return digest;
+  }
+
+  return `sha256:${value.slice(0, 12)}...`;
+}
+
 function printHumanResults(skillId: string, limit: number | undefined, payload: HistoryResponse) {
+  const maxWidth = process.stdout.isTTY ? (process.stdout.columns ?? 120) : undefined;
+
   if (payload.results.length === 0) {
     console.log("No versions found.");
   } else {
-    for (const item of payload.results) {
-      const yankedSummary = item.yanked ? ` yanked=yes (${item.yankedReason ?? "no reason"})` : "";
-      console.log(
-        `${skillId}@${item.version} published=${item.publishedAt} size=${item.sizeBytes} ` +
-          `media=${item.mediaType} digest=${item.digest}${yankedSummary}`,
-      );
+    const lines = renderTable(
+      [
+        {
+          header: "VERSION",
+          width: 10,
+          value: (row) => row.version,
+        },
+        {
+          header: "PUBLISHED",
+          width: 20,
+          value: (row) => row.publishedAt,
+        },
+        {
+          header: "YANKED",
+          minWidth: 10,
+          maxWidth: 24,
+          shrinkPriority: 2,
+          value: (row) => {
+            if (!row.yanked) {
+              return "no";
+            }
+            return row.yankedReason ? `yes:${row.yankedReason}` : "yes";
+          },
+        },
+        {
+          header: "SIZE",
+          width: 10,
+          align: "right",
+          value: (row) => row.sizeBytes,
+        },
+        {
+          header: "DIGEST",
+          width: 24,
+          value: (row) => formatDigestForHuman(row.digest),
+        },
+        {
+          header: "MEDIA",
+          minWidth: 16,
+          maxWidth: 42,
+          shrinkPriority: 3,
+          value: (row) => row.mediaType,
+        },
+      ],
+      payload.results,
+      { maxWidth },
+    );
+
+    for (const line of lines) {
+      console.log(line);
     }
   }
 

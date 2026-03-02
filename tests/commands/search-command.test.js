@@ -57,8 +57,46 @@ test("prints human output for search results", async () => {
   );
 
   assert.equal(result, 0);
-  assert.match(logs.join("\n"), /@core\/agent-skill/);
-  assert.match(logs.join("\n"), /Next page:/);
+  assert.match(logs[0], /^┌/u);
+  assert.match(logs[1], /SKILL/u);
+  assert.match(logs[2], /^├/u);
+  assert.match(logs[3], /@core\/agent-skill/);
+  assert.match(logs[4], /^└/u);
+  assert.match(logs[5], /Next page:/);
+});
+
+test("truncates long search descriptions and preserves next-page hint", async () => {
+  const longDescription =
+    "This is a very long description that should be truncated in table output so column widths stay stable across rows and pages.";
+  const { result, logs } = await captureConsole(() =>
+    runSearchCommand(
+      ["agent", "--limit", "10"],
+      baseOptions({
+        searchSkills: async () => ({
+          query: "agent",
+          limit: 10,
+          results: [
+            {
+              skillId: "@core/agent-skill",
+              owner: "@core",
+              ownerLogin: "core",
+              skill: "agent-skill",
+              description: longDescription,
+              channels: {
+                latest: "1.0.0",
+              },
+              updatedAt: "2026-03-02T09:00:00.000Z",
+            },
+          ],
+          nextCursor: "cursor_2",
+        }),
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.match(logs[3], /\.\.\./);
+  assert.equal(logs[5], "Next page: skillmd search agent --limit 10 --cursor cursor_2");
 });
 
 test("prints json output with --json", async () => {

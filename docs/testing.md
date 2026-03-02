@@ -350,3 +350,60 @@ Expected when session/config projects differ:
 
 - non-zero exit
 - guidance to run `skillmd login --reauth`
+
+## 11) Manual discovery output smoke (`search` and `history`)
+
+Use development registry:
+
+```bash
+REPO_DIR="$(pwd)"
+export SKILLMD_FIREBASE_PROJECT_ID="skillmarkdown-development"
+export SKILLMD_REGISTRY_BASE_URL="https://registryapi-sm46rm3rja-uc.a.run.app"
+node "$REPO_DIR/dist/cli.js" search --limit 5
+```
+
+Expected:
+
+- output starts with a boxed table:
+  - top border begins with `┌`
+  - header row contains `SKILL`, `LATEST`, `BETA`, `UPDATED`, `DESCRIPTION`
+- row columns remain aligned
+- next page hint prints when cursor exists
+
+Search pagination:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" search agent --limit 5 --cursor "<token>"
+```
+
+Expected:
+
+- page returns successfully with the same header format
+
+History output:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" history @owner/skill --limit 5
+```
+
+Expected:
+
+- output starts with a boxed table:
+  - top border begins with `┌`
+  - header row contains `VERSION`, `PUBLISHED`, `YANKED`, `SIZE`, `DIGEST`, `MEDIA`
+- digest is shortened in human mode (`sha256:<prefix>...`)
+- yanked rows show `yes:<reason>` in `YANKED`
+- next page hint prints when cursor exists
+
+History pagination:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" history @owner/skill --limit 5 --cursor "<token>"
+```
+
+Expected:
+
+- page returns successfully with same column layout

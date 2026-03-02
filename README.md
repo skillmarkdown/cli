@@ -131,6 +131,17 @@ Notes:
 - No `query` means browse latest published skills.
 - Results include `skillId` (`@owner/skill`) and channel pointers.
 
+Example human output:
+
+```text
+┌──────────────────────────────────────┬────────────┬──────────────┬──────────────────────────┬──────────────────────────────────────────────────────────────────┐
+│ SKILL                                │ LATEST     │ BETA         │ UPDATED                  │ DESCRIPTION                                                      │
+├──────────────────────────────────────┼────────────┼──────────────┼──────────────────────────┼──────────────────────────────────────────────────────────────────┤
+│ @core/agent-skill                    │ 1.0.0      │ 1.1.0-beta.1 │ 2026-03-02T09:00:00.000Z │ Sample description                                               │
+└──────────────────────────────────────┴────────────┴──────────────┴──────────────────────────┴──────────────────────────────────────────────────────────────────┘
+Next page: skillmd search agent --limit 10 --cursor <token>
+```
+
 ### `skillmd history`
 
 List published versions for a single skill.
@@ -143,6 +154,17 @@ Notes:
 
 - `<skill-id>` accepts `@owner/skill` or `owner/skill`.
 - Output includes digest, publish timestamp, artifact size/media type, and yank metadata.
+
+Example human output:
+
+```text
+┌────────────┬──────────────────────┬──────────────────────────┬────────────┬───────────────────────┬────────────────────────────────────────────┐
+│ VERSION    │ PUBLISHED            │ YANKED                   │ SIZE       │ DIGEST                │ MEDIA                                      │
+├────────────┼──────────────────────┼──────────────────────────┼────────────┼───────────────────────┼────────────────────────────────────────────┤
+│ 1.2.3      │ 2026-03-02T09:00:... │ yes:security issue       │      12345 │ sha256:1234567890ab...│ application/vnd.skillmarkdown.skill.v1+tar │
+└────────────┴──────────────────────┴──────────────────────────┴────────────┴───────────────────────┴────────────────────────────────────────────┘
+Next page: skillmd history @owner/skill --limit 20 --cursor <token>
+```
 
 ### `skillmd use`
 
