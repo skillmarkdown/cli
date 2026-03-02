@@ -241,10 +241,10 @@ export async function runPublishCommand(
 
     if (prepared.status === "idempotent") {
       printPublishedResult(parsed.json, "idempotent", {
-        skillId: prepared.skillId,
-        version: prepared.version,
-        digest: prepared.digest,
-        channel: prepared.channel,
+        skillId: prepared.skillId ?? skillId,
+        version: prepared.version ?? parsed.version,
+        digest: prepared.digest ?? artifact.digest,
+        channel: prepared.channel ?? channel,
       });
       return 0;
     }
@@ -267,10 +267,10 @@ export async function runPublishCommand(
       { timeoutMs: config.requestTimeoutMs },
     );
 
-    printPublishedResult(parsed.json, "published", {
+    printPublishedResult(parsed.json, committed.status, {
       skillId: committed.skillId,
       version: committed.version,
-      digest: committed.digest,
+      digest: committed.digest ?? artifact.digest,
       channel: committed.channel,
     });
     return 0;

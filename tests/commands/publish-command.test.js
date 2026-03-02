@@ -76,7 +76,6 @@ function baseOptions(overrides = {}) {
       status: "published",
       skillId: "@core/publish-skill",
       version: "1.0.0",
-      digest: "sha256:abc",
       channel: "latest",
     }),
     ...overrides,
@@ -176,10 +175,8 @@ test("handles idempotent publish response", async () => {
   const options = baseOptions({
     preparePublish: async () => ({
       status: "idempotent",
-      skillId: "@core/publish-skill",
-      version: "1.0.0",
-      digest: "sha256:abc",
-      channel: "latest",
+      publishToken: "pit-token",
+      expiresAt: "2026-03-02T00:00:00Z",
     }),
   });
 

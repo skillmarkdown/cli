@@ -62,20 +62,43 @@ test("preparePublish returns idempotent payload", async () => {
     async () =>
       mockJsonResponse(200, {
         status: "idempotent",
-        skillId: "@core/publish-skill",
-        version: "1.0.0",
-        digest: "sha256:abc",
-        channel: "latest",
+        publishToken: "pit-token",
+        expiresAt: "2026-03-02T00:00:00Z",
       }),
     () => preparePublish("https://registry.example.com", "id-token", preparePayload()),
   );
 
   assert.equal(result.status, "idempotent");
+  assert.equal(result.publishToken, "pit-token");
 });
 
 test("preparePublish maps API errors", async () => {
   await withMockedFetch(
     async () => mockJsonResponse(409, { code: "version_conflict", message: "Conflict" }),
+    async () => {
+      await assert.rejects(
+        preparePublish("https://registry.example.com", "id-token", preparePayload()),
+        (error) => {
+          assert.ok(error instanceof PublishApiError);
+          assert.equal(error.status, 409);
+          assert.equal(error.code, "version_conflict");
+          return true;
+        },
+      );
+    },
+  );
+});
+
+test("preparePublish maps nested error envelope", async () => {
+  await withMockedFetch(
+    async () =>
+      mockJsonResponse(409, {
+        error: {
+          code: "version_conflict",
+          message: "Conflict",
+        },
+        requestId: "req_123",
+      }),
     async () => {
       await assert.rejects(
         preparePublish("https://registry.example.com", "id-token", preparePayload()),
@@ -115,7 +138,6 @@ test("commitPublish returns published response", async () => {
         status: "published",
         skillId: "@core/publish-skill",
         version: "1.0.0",
-        digest: "sha256:abc",
         channel: "latest",
       });
     },
@@ -127,4 +149,22 @@ test("commitPublish returns published response", async () => {
 
   assert.equal(result.status, "published");
   assert.equal(result.version, "1.0.0");
+});
+
+test("commitPublish accepts idempotent response", async () => {
+  const result = await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        status: "idempotent",
+        skillId: "@core/publish-skill",
+        version: "1.0.0",
+        channel: "latest",
+      }),
+    () =>
+      commitPublish("https://registry.example.com", "id-token", {
+        publishToken: "pub-token",
+      }),
+  );
+
+  assert.equal(result.status, "idempotent");
 });

@@ -3,8 +3,8 @@ import { type PublishEnvConfig } from "./types";
 
 const DEFAULT_REGISTRY_TIMEOUT_MS = 10_000;
 const REGISTRY_BY_PROJECT: Record<string, string> = {
-  skillmarkdown: "https://registry.skillmarkdown.com",
-  "skillmarkdown-development": "https://registry-development.skillmarkdown.com",
+  skillmarkdown: "https://registryapi-pfd5mx23uq-uc.a.run.app",
+  "skillmarkdown-development": "https://registryapi-sm46rm3rja-uc.a.run.app",
 };
 
 function parseTimeoutMs(value: string | undefined): number {

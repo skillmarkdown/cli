@@ -50,10 +50,8 @@ Success responses:
 ```json
 {
   "status": "idempotent",
-  "skillId": "@core/my-skill",
-  "version": "1.0.0",
-  "digest": "sha256:...",
-  "channel": "latest"
+  "publishToken": "pit_xxx",
+  "expiresAt": "2026-03-01T12:00:00Z"
 }
 ```
 
@@ -75,11 +73,14 @@ Error response shape:
 
 ```json
 {
-  "code": "version_conflict",
-  "message": "Version already exists with different digest",
-  "details": {
-    "existingDigest": "sha256:..."
-  }
+  "error": {
+    "code": "version_conflict",
+    "message": "Version already exists with different digest",
+    "details": {
+      "existingDigest": "sha256:..."
+    }
+  },
+  "requestId": "req_..."
 }
 ```
 
@@ -112,7 +113,6 @@ Success response:
   "status": "published",
   "skillId": "@core/my-skill",
   "version": "1.0.0",
-  "digest": "sha256:...",
   "channel": "latest"
 }
 ```

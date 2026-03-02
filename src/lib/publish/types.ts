@@ -66,10 +66,13 @@ export interface PreparePublishUploadResponse {
 
 export interface PreparePublishIdempotentResponse {
   status: "idempotent";
-  skillId: string;
-  version: string;
-  digest: string;
-  channel: PublishChannel;
+  publishToken?: string;
+  expiresAt?: string;
+  // Backward-compatible optional fields for older server responses.
+  skillId?: string;
+  version?: string;
+  digest?: string;
+  channel?: PublishChannel;
 }
 
 export type PreparePublishResponse =
@@ -81,9 +84,9 @@ export interface CommitPublishRequest {
 }
 
 export interface CommitPublishResponse {
-  status: "published";
+  status: "published" | "idempotent";
   skillId: string;
   version: string;
-  digest: string;
+  digest?: string;
   channel: PublishChannel;
 }
