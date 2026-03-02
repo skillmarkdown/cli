@@ -8,6 +8,7 @@ import { runPublishCommand } from "./commands/publish";
 import { runSearchCommand } from "./commands/search";
 import { runUseCommand } from "./commands/use";
 import { runValidateCommand } from "./commands/validate";
+import { runViewCommand } from "./commands/view";
 import { ROOT_USAGE } from "./lib/shared/cli-text";
 
 type CommandHandler = (args: string[]) => number | Promise<number>;
@@ -20,6 +21,7 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   logout: runLogoutCommand,
   publish: runPublishCommand,
   search: runSearchCommand,
+  view: runViewCommand,
   use: runUseCommand,
 };
 

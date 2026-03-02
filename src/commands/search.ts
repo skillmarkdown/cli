@@ -2,10 +2,27 @@ import { searchSkills } from "../lib/search/client";
 import { getSearchEnvConfig, type SearchEnvConfig } from "../lib/search/config";
 import { isSearchApiError } from "../lib/search/errors";
 import { parseSearchFlags } from "../lib/search/flags";
+import {
+  buildSearchContinuationKey,
+  readSearchSelectionCache,
+  writeSearchSelectionCache,
+  type SearchSelectionCache,
+} from "../lib/search/selection-cache";
 import { SEARCH_USAGE } from "../lib/shared/cli-text";
 import { failWithUsage } from "../lib/shared/command-output";
 import { renderTable } from "../lib/shared/table";
 import { type SearchSkillsResponse } from "../lib/search/types";
+
+interface IndexedSearchResult {
+  index: number;
+  skillId: string;
+  channels: {
+    latest?: string;
+    beta?: string;
+  };
+  updatedAt: string;
+  description: string;
+}
 
 interface SearchCommandOptions {
   env?: NodeJS.ProcessEnv;
@@ -15,6 +32,8 @@ interface SearchCommandOptions {
     request: { query?: string; limit?: number; cursor?: string },
     options?: { timeoutMs?: number },
   ) => Promise<SearchSkillsResponse>;
+  readSelectionCache?: () => SearchSelectionCache | null;
+  writeSelectionCache?: (cache: SearchSelectionCache) => void;
 }
 
 function printJson(payload: Record<string, unknown>): void {
@@ -38,6 +57,7 @@ function formatUpdatedAtForTable(value: string): string {
 function printHumanResults(
   query: string | undefined,
   limit: number | undefined,
+  startIndex: number,
   payload: SearchSkillsResponse,
 ) {
   const maxWidth = process.stdout.isTTY ? (process.stdout.columns ?? 120) : undefined;
@@ -45,8 +65,23 @@ function printHumanResults(
   if (payload.results.length === 0) {
     console.log("No skills found.");
   } else {
+    const lastVisibleIndex = startIndex + payload.results.length - 1;
+    const indexedResults: IndexedSearchResult[] = payload.results.map((result, rowIndex) => ({
+      index: startIndex + rowIndex,
+      skillId: result.skillId,
+      channels: result.channels,
+      updatedAt: result.updatedAt,
+      description: result.description,
+    }));
+
     const lines = renderTable(
       [
+        {
+          header: "#",
+          width: Math.max(2, String(lastVisibleIndex).length),
+          align: "right",
+          value: (row) => row.index,
+        },
         {
           header: "SKILL",
           minWidth: 28,
@@ -75,7 +110,7 @@ function printHumanResults(
           value: (row) => row.description ?? "",
         },
       ],
-      payload.results,
+      indexedResults,
       { maxWidth },
     );
 
@@ -97,6 +132,68 @@ function printHumanResults(
   }
 }
 
+function resolvePageStartIndex(params: {
+  registryBaseUrl: string;
+  query: string | null;
+  limit: number;
+  cursor?: string;
+  cache: SearchSelectionCache | null;
+}): number {
+  if (!params.cursor || !params.cache?.continuations?.length) {
+    return 1;
+  }
+
+  const key = buildSearchContinuationKey({
+    registryBaseUrl: params.registryBaseUrl,
+    query: params.query,
+    limit: params.limit,
+    cursor: params.cursor,
+  });
+
+  const match = params.cache.continuations.find((entry) => entry.key === key);
+  if (!match) {
+    return 1;
+  }
+
+  return match.nextIndex;
+}
+
+function buildUpdatedContinuations(params: {
+  existing: SearchSelectionCache | null;
+  registryBaseUrl: string;
+  query: string | null;
+  limit: number;
+  nextCursor: string | null;
+  nextIndex: number;
+  nowIso: string;
+}): SearchSelectionCache["continuations"] {
+  const existing = params.existing?.continuations ?? [];
+  const filtered = existing.filter((entry) => entry.key.length > 0);
+
+  if (!params.nextCursor) {
+    return filtered.slice(-100);
+  }
+
+  const key = buildSearchContinuationKey({
+    registryBaseUrl: params.registryBaseUrl,
+    query: params.query,
+    limit: params.limit,
+    cursor: params.nextCursor,
+  });
+
+  const withoutExistingKey = filtered.filter((entry) => entry.key !== key);
+  const updated = [
+    ...withoutExistingKey,
+    {
+      key,
+      nextIndex: params.nextIndex,
+      createdAt: params.nowIso,
+    },
+  ];
+
+  return updated.slice(-100);
+}
+
 export async function runSearchCommand(
   args: string[],
   options: SearchCommandOptions = {},
@@ -111,6 +208,9 @@ export async function runSearchCommand(
     const getConfigFn = options.getConfig ?? getSearchEnvConfig;
     const config = getConfigFn(env);
     const searchSkillsFn = options.searchSkills ?? searchSkills;
+    const readSelectionCacheFn = options.readSelectionCache ?? readSearchSelectionCache;
+    const writeSelectionCacheFn = options.writeSelectionCache ?? writeSearchSelectionCache;
+    const existingCache = readSelectionCacheFn();
     const response = await searchSkillsFn(
       config.registryBaseUrl,
       {
@@ -121,12 +221,42 @@ export async function runSearchCommand(
       { timeoutMs: config.requestTimeoutMs },
     );
 
+    const pageStartIndex = resolvePageStartIndex({
+      registryBaseUrl: config.registryBaseUrl,
+      query: response.query,
+      limit: response.limit,
+      cursor: parsed.cursor,
+      cache: existingCache,
+    });
+    const nowIso = new Date().toISOString();
+    const continuations = buildUpdatedContinuations({
+      existing: existingCache,
+      registryBaseUrl: config.registryBaseUrl,
+      query: response.query,
+      limit: response.limit,
+      nextCursor: response.nextCursor,
+      nextIndex: pageStartIndex + response.results.length,
+      nowIso,
+    });
+
+    try {
+      writeSelectionCacheFn({
+        registryBaseUrl: config.registryBaseUrl,
+        createdAt: nowIso,
+        skillIds: response.results.map((result) => result.skillId),
+        pageStartIndex,
+        continuations,
+      });
+    } catch {
+      // Cache persistence is best-effort and must not fail command execution.
+    }
+
     if (parsed.json) {
       printJson(response as unknown as Record<string, unknown>);
       return 0;
     }
 
-    printHumanResults(parsed.query, parsed.limit, response);
+    printHumanResults(parsed.query, parsed.limit, pageStartIndex, response);
     return 0;
   } catch (error) {
     if (isSearchApiError(error)) {

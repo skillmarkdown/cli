@@ -47,13 +47,19 @@ skillmd publish --version 1.0.0
 skillmd search agent --limit 10
 ```
 
-6. View version history for a skill:
+6. View skill details:
+
+```bash
+skillmd view @owner/skill
+```
+
+7. View version history for a skill:
 
 ```bash
 skillmd history @owner/skill --limit 20
 ```
 
-7. Install a published skill into the current workspace:
+8. Install a published skill into the current workspace:
 
 ```bash
 skillmd use @owner/skill
@@ -130,17 +136,32 @@ Notes:
 
 - No `query` means browse latest published skills.
 - Results include `skillId` (`@owner/skill`) and channel pointers.
+- `#` row numbers continue across `--cursor` pages for the same query and limit.
 
 Example human output:
 
 ```text
-┌──────────────────────────────────────┬────────────┬──────────────────┬──────────────────────────────────────────────────────────────────┐
-│ SKILL                                │ LATEST     │ UPDATED          │ DESCRIPTION                                                      │
-├──────────────────────────────────────┼────────────┼──────────────────┼──────────────────────────────────────────────────────────────────┤
-│ @core/agent-skill                    │ 1.0.0      │ 2026-03-02T09:00 │ Sample description                                               │
-└──────────────────────────────────────┴────────────┴──────────────────┴──────────────────────────────────────────────────────────────────┘
+┌────┬──────────────────────────────────────┬────────────┬──────────────────┬──────────────────────────────────────────────────────────────────┐
+│  # │ SKILL                                │ LATEST     │ UPDATED          │ DESCRIPTION                                                      │
+├────┼──────────────────────────────────────┼────────────┼──────────────────┼──────────────────────────────────────────────────────────────────┤
+│  1 │ @core/agent-skill                    │ 1.0.0      │ 2026-03-02T09:00 │ Sample description                                               │
+└────┴──────────────────────────────────────┴────────────┴──────────────────┴──────────────────────────────────────────────────────────────────┘
 Next page: skillmd search agent --limit 10 --cursor <token>
 ```
+
+### `skillmd view`
+
+Show full details for a specific skill.
+
+```bash
+skillmd view <skill-id|index> [--json]
+```
+
+Notes:
+
+- `<skill-id>` accepts `@owner/skill` or `owner/skill`.
+- `<index>` resolves from the visible `#` values on the most recent `skillmd search` result page (for example `skillmd view 4`).
+- Shows owner, visibility, full channel pointers, update time, and description.
 
 ### `skillmd history`
 
@@ -176,8 +197,8 @@ skillmd use <skill-id> [--version <semver> | --channel <latest|beta>] [--allow-y
 
 Notes:
 
-- Default selector is `latest` channel when `--version`/`--channel` are omitted.
-- Installed path is `.agent/skills/<registry-host>/<owner>/<skill>` under current working directory.
+- Default selector is `latest` when `--version`/`--channel` are omitted; if `latest` is unset, CLI falls back to `beta`.
+- Installed path is `.agent/skills/registry.skillmarkdown.com/<owner>/<skill>` under current working directory (same in dev and prod).
 - Existing target install path is replaced atomically.
 
 ## Optional Configuration

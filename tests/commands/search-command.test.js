@@ -6,6 +6,7 @@ const { captureConsole } = require("../helpers/console-test-utils.js");
 
 const { runSearchCommand } = requireDist("commands/search.js");
 const { SearchApiError } = requireDist("lib/search/errors.js");
+const { buildSearchContinuationKey } = requireDist("lib/search/selection-cache.js");
 
 function baseOptions(overrides = {}) {
   return {
@@ -19,6 +20,8 @@ function baseOptions(overrides = {}) {
       registryBaseUrl: "https://registry.example.com",
       requestTimeoutMs: 10000,
     }),
+    readSelectionCache: () => null,
+    writeSelectionCache: () => {},
     searchSkills: async () => ({
       query: "agent",
       limit: 20,
@@ -46,6 +49,124 @@ test("fails with usage on invalid args", async () => {
   assert.equal(exitCode, 1);
 });
 
+test("continues row numbers on next-page cursor when cache has continuation", async () => {
+  const cursor = "cursor_2";
+  const continuationKey = buildSearchContinuationKey({
+    registryBaseUrl: "https://registry.example.com",
+    query: "agent",
+    limit: 2,
+    cursor,
+  });
+
+  const { result, logs } = await captureConsole(() =>
+    runSearchCommand(
+      ["agent", "--limit", "2", "--cursor", cursor],
+      baseOptions({
+        readSelectionCache: () => ({
+          registryBaseUrl: "https://registry.example.com",
+          createdAt: "2026-03-02T12:00:00.000Z",
+          skillIds: ["@core/agent-skill"],
+          continuations: [
+            {
+              key: continuationKey,
+              nextIndex: 3,
+              createdAt: "2026-03-02T12:01:00.000Z",
+            },
+          ],
+        }),
+        searchSkills: async () => ({
+          query: "agent",
+          limit: 2,
+          results: [
+            {
+              skillId: "@core/agent-skill-3",
+              owner: "@core",
+              ownerLogin: "core",
+              skill: "agent-skill-3",
+              description: "page 2 row 1",
+              channels: {
+                latest: "1.0.3",
+              },
+              updatedAt: "2026-03-02T09:03:00.000Z",
+            },
+            {
+              skillId: "@core/agent-skill-4",
+              owner: "@core",
+              ownerLogin: "core",
+              skill: "agent-skill-4",
+              description: "page 2 row 2",
+              channels: {
+                latest: "1.0.4",
+              },
+              updatedAt: "2026-03-02T09:04:00.000Z",
+            },
+          ],
+          nextCursor: "cursor_3",
+        }),
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  const output = logs.join("\n");
+  assert.match(output, /│\s*3\s*│\s*@core\/agent-skill-3/u);
+  assert.match(output, /│\s*4\s*│\s*@core\/agent-skill-4/u);
+});
+
+test("keeps 3-digit row numbers visible without truncating # column", async () => {
+  const cursor = "cursor_100";
+  const continuationKey = buildSearchContinuationKey({
+    registryBaseUrl: "https://registry.example.com",
+    query: "agent",
+    limit: 1,
+    cursor,
+  });
+
+  const { result, logs } = await captureConsole(() =>
+    runSearchCommand(
+      ["agent", "--limit", "1", "--cursor", cursor],
+      baseOptions({
+        readSelectionCache: () => ({
+          registryBaseUrl: "https://registry.example.com",
+          createdAt: "2026-03-02T12:00:00.000Z",
+          skillIds: ["@core/agent-skill-99"],
+          pageStartIndex: 99,
+          continuations: [
+            {
+              key: continuationKey,
+              nextIndex: 100,
+              createdAt: "2026-03-02T12:01:00.000Z",
+            },
+          ],
+        }),
+        searchSkills: async () => ({
+          query: "agent",
+          limit: 1,
+          results: [
+            {
+              skillId: "@core/agent-skill-100",
+              owner: "@core",
+              ownerLogin: "core",
+              skill: "agent-skill-100",
+              description: "page 100",
+              channels: {
+                latest: "1.0.100",
+              },
+              updatedAt: "2026-03-02T09:00:00.000Z",
+            },
+          ],
+          nextCursor: null,
+        }),
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  const output = logs.join("\n");
+  assert.match(output, /│\s*100\s*│\s*@core\/agent-skill-100/u);
+  assert.doesNotMatch(output, /│\s*\.\.\s*│/u);
+});
+
 test("fails with usage when --cursor is missing a value and next token is a flag", async () => {
   const exitCode = await runSearchCommand(["agent", "--cursor", "--json"], baseOptions());
   assert.equal(exitCode, 1);
@@ -57,16 +178,68 @@ test("prints human output for search results", async () => {
   );
 
   assert.equal(result, 0);
-  assert.match(logs[0], /^┌/u);
-  assert.match(logs[1], /SKILL/u);
-  assert.match(logs[1], /LATEST/u);
-  assert.match(logs[1], /UPDATED/u);
-  assert.doesNotMatch(logs[1], /BETA/u);
-  assert.match(logs[2], /^├/u);
-  assert.match(logs[3], /@core\/agent-skill/);
-  assert.match(logs[3], /2026-03-02T09:00/);
-  assert.match(logs[4], /^└/u);
-  assert.match(logs[5], /Next page:/);
+  const output = logs.join("\n");
+  assert.match(output, /^┌/mu);
+  assert.match(output, /│\s*#\s*│\s*SKILL/u);
+  assert.match(output, /SKILL/u);
+  assert.match(output, /LATEST/u);
+  assert.match(output, /UPDATED/u);
+  assert.doesNotMatch(output, /BETA/u);
+  assert.match(output, /│\s*1\s*│\s*@core\/agent-skill/u);
+  assert.match(output, /@core\/agent-skill/u);
+  assert.match(output, /2026-03-02T09:00/u);
+  assert.match(output, /^└/mu);
+  assert.match(output, /Next page:/u);
+});
+
+test("writes ordered selection cache for numeric view lookup", async () => {
+  let savedCache = null;
+  const { result } = await captureConsole(() =>
+    runSearchCommand(
+      ["agent", "--limit", "20"],
+      baseOptions({
+        searchSkills: async () => ({
+          query: "agent",
+          limit: 20,
+          results: [
+            {
+              skillId: "@core/agent-skill",
+              owner: "@core",
+              ownerLogin: "core",
+              skill: "agent-skill",
+              description: "Sample description",
+              channels: {
+                latest: "1.0.0",
+              },
+              updatedAt: "2026-03-02T09:00:00.000Z",
+            },
+            {
+              skillId: "@core/agent-next",
+              owner: "@core",
+              ownerLogin: "core",
+              skill: "agent-next",
+              description: "Next skill",
+              channels: {
+                latest: "1.1.0",
+              },
+              updatedAt: "2026-03-02T10:00:00.000Z",
+            },
+          ],
+          nextCursor: null,
+        }),
+        writeSelectionCache: (cache) => {
+          savedCache = cache;
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.ok(savedCache);
+  assert.equal(savedCache.registryBaseUrl, "https://registry.example.com");
+  assert.match(savedCache.createdAt, /^\d{4}-\d{2}-\d{2}T/u);
+  assert.equal(savedCache.pageStartIndex, 1);
+  assert.deepEqual(savedCache.skillIds, ["@core/agent-skill", "@core/agent-next"]);
 });
 
 test("truncates long search descriptions and preserves next-page hint", async () => {
@@ -99,8 +272,9 @@ test("truncates long search descriptions and preserves next-page hint", async ()
   );
 
   assert.equal(result, 0);
-  assert.match(logs[3], /\.\.\./);
-  assert.equal(logs[5], "Next page: skillmd search agent --limit 10 --cursor cursor_2");
+  const output = logs.join("\n");
+  assert.match(output, /\.\.\./u);
+  assert.match(output, /Next page: skillmd search agent --limit 10 --cursor cursor_2/u);
 });
 
 test("wraps long skill ids across table lines for visibility", async () => {

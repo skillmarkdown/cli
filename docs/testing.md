@@ -366,7 +366,7 @@ Expected:
 
 - output starts with a boxed table:
   - top border begins with `┌`
-  - header row contains `SKILL`, `LATEST`, `UPDATED`, `DESCRIPTION`
+  - header row contains `#`, `SKILL`, `LATEST`, `UPDATED`, `DESCRIPTION`
 - row columns remain aligned
 - next page hint prints when cursor exists
 
@@ -380,6 +380,7 @@ node "$REPO_DIR/dist/cli.js" search agent --limit 5 --cursor "<token>"
 Expected:
 
 - page returns successfully with the same header format
+- `#` numbering continues from previous page (does not reset to `1`)
 
 History output:
 
@@ -407,3 +408,34 @@ node "$REPO_DIR/dist/cli.js" history @owner/skill --limit 5 --cursor "<token>"
 Expected:
 
 - page returns successfully with same column layout
+
+## 12) Manual skill detail smoke (`view`)
+
+```bash
+REPO_DIR="$(pwd)"
+export SKILLMD_FIREBASE_PROJECT_ID="skillmarkdown-development"
+export SKILLMD_REGISTRY_BASE_URL="https://registryapi-sm46rm3rja-uc.a.run.app"
+node "$REPO_DIR/dist/cli.js" view @owner/skill
+node "$REPO_DIR/dist/cli.js" view 1
+```
+
+Expected:
+
+- output includes:
+  - `Skill: @owner/skill`
+  - `Owner: ...`
+  - `Updated: ...`
+  - `Visibility: ...`
+  - `Channels:` with `latest` and `beta`
+- `view <n>` resolves from the visible `#` column on the latest `search` page in the same registry environment
+
+JSON mode:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" view @owner/skill --json
+```
+
+Expected:
+
+- valid JSON payload with owner/skill/description/channels/updatedAt fields.

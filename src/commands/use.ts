@@ -72,6 +72,18 @@ function printHumanResult(result: UseCommandResult): void {
   console.log(`Next: skillmd history ${result.skillId} --limit 20`);
 }
 
+function shouldFallbackToBeta(error: unknown): boolean {
+  if (!isUseApiError(error)) {
+    return false;
+  }
+
+  if (error.status !== 404 || error.code !== "invalid_request") {
+    return false;
+  }
+
+  return /channel not set/i.test(error.message);
+}
+
 export async function runUseCommand(
   args: string[],
   options: UseCommandOptions = {},
@@ -94,15 +106,34 @@ export async function runUseCommand(
     const config = getConfigFn(env);
 
     let selectedVersion = parsed.version;
+    let resolvedChannel: PublishChannel | undefined = parsed.channel;
     if (!selectedVersion) {
-      const resolved = await resolveVersionFn(
-        config.registryBaseUrl,
-        parsedSkillId.ownerSlug,
-        parsedSkillId.skillSlug,
-        parsed.channel ?? "latest",
-        { timeoutMs: config.requestTimeoutMs },
-      );
-      selectedVersion = resolved.version;
+      const requestedChannel = parsed.channel ?? "latest";
+      try {
+        const resolved = await resolveVersionFn(
+          config.registryBaseUrl,
+          parsedSkillId.ownerSlug,
+          parsedSkillId.skillSlug,
+          requestedChannel,
+          { timeoutMs: config.requestTimeoutMs },
+        );
+        selectedVersion = resolved.version;
+        resolvedChannel = resolved.channel;
+      } catch (error) {
+        if (!parsed.channel && shouldFallbackToBeta(error)) {
+          const resolved = await resolveVersionFn(
+            config.registryBaseUrl,
+            parsedSkillId.ownerSlug,
+            parsedSkillId.skillSlug,
+            "beta",
+            { timeoutMs: config.requestTimeoutMs },
+          );
+          selectedVersion = resolved.version;
+          resolvedChannel = resolved.channel;
+        } else {
+          throw error;
+        }
+      }
     }
 
     const descriptor = await getArtifactDescriptorFn(
@@ -150,7 +181,7 @@ export async function runUseCommand(
       installedAt,
       sourceCommand: buildSourceCommand(canonicalSkillId, {
         version: parsed.version,
-        channel: parsed.version ? undefined : (parsed.channel ?? "latest"),
+        channel: parsed.version ? undefined : resolvedChannel,
         allowYanked: parsed.allowYanked,
       }),
     };

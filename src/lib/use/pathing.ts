@@ -1,8 +1,10 @@
 import { join } from "node:path";
 
+const INSTALL_REGISTRY_HOST = "registry.skillmarkdown.com";
+
 export function resolveRegistryHost(baseUrl: string): string {
-  const parsed = new URL(baseUrl);
-  return parsed.host.toLowerCase();
+  void baseUrl;
+  return INSTALL_REGISTRY_HOST;
 }
 
 export function resolveInstalledSkillPath(

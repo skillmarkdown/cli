@@ -163,7 +163,7 @@ test("spawned CLI: unknown command fails with usage", () => {
     assert.equal(result.status, 1);
     assert.match(
       result.stderr,
-      /Usage: skillmd <init\|validate\|login\|logout\|publish\|search\|history\|use>/,
+      /Usage: skillmd <init\|validate\|login\|logout\|publish\|search\|view\|history\|use>/,
     );
   } finally {
     cleanupDirectory(root);
@@ -295,6 +295,18 @@ test("spawned CLI: use fails with usage when skill-id is missing", () => {
   }
 });
 
+test("spawned CLI: view fails with usage when skill-id is missing", () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+
+  try {
+    const result = runCli(["view"], root);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Usage: skillmd view <skill-id\|index> \[--json\]/);
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
 test("spawned CLI: search prints columnar human output", async () => {
   const root = makeTempDirectory(CLI_TEST_PREFIX);
   const mockRegistry = await startMockRegistry((request, response) => {
@@ -335,13 +347,154 @@ test("spawned CLI: search prints columnar human output", async () => {
     });
     assert.equal(result.status, 0);
     assert.match(result.stdout, /^┌/mu);
-    assert.match(result.stdout, /│ SKILL/mu);
+    assert.match(result.stdout, /│\s*#\s*│\s*SKILL/mu);
     assert.match(result.stdout, /LATEST/mu);
     assert.match(result.stdout, /UPDATED/mu);
     assert.doesNotMatch(result.stdout, /BETA/mu);
+    assert.match(result.stdout, /│\s*1\s*│\s*@core\//mu);
     assert.match(result.stdout, /@core\//);
     assert.match(result.stdout, /2026-03-02T09:00/);
     assert.match(result.stdout, /Next page: skillmd search agent --limit 2 --cursor cursor_2/);
+  } finally {
+    await mockRegistry.close();
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: search row numbers continue across cursor pages", async () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  const mockRegistry = await startMockRegistry((request, response) => {
+    const url = new URL(request.url, "http://127.0.0.1");
+    if (
+      request.method === "GET" &&
+      url.pathname === "/v1/skills/search" &&
+      url.searchParams.get("q") === "agent"
+    ) {
+      const cursor = url.searchParams.get("cursor");
+      response.writeHead(200, { "content-type": "application/json" });
+
+      if (!cursor) {
+        response.end(
+          JSON.stringify({
+            query: "agent",
+            limit: 1,
+            results: [
+              {
+                skillId: "@core/agent-skill-1",
+                owner: "@core",
+                ownerLogin: "core",
+                skill: "agent-skill-1",
+                description: "first page",
+                channels: {
+                  latest: "1.0.0",
+                },
+                updatedAt: "2026-03-02T09:00:00.000Z",
+              },
+            ],
+            nextCursor: "cursor_2",
+          }),
+        );
+        return;
+      }
+
+      response.end(
+        JSON.stringify({
+          query: "agent",
+          limit: 1,
+          results: [
+            {
+              skillId: "@core/agent-skill-2",
+              owner: "@core",
+              ownerLogin: "core",
+              skill: "agent-skill-2",
+              description: "second page",
+              channels: {
+                latest: "1.0.1",
+              },
+              updatedAt: "2026-03-02T09:01:00.000Z",
+            },
+          ],
+          nextCursor: null,
+        }),
+      );
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: { code: "invalid_request", message: "not found" } }));
+  });
+
+  try {
+    const env = {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
+    };
+    const pageOne = await runCliAsync(["search", "agent", "--limit", "1"], root, env);
+    assert.equal(pageOne.status, 0);
+    assert.match(pageOne.stdout, /│\s*1\s*│\s*@core\/agent-skill-1/mu);
+    assert.match(pageOne.stdout, /Next page: skillmd search agent --limit 1 --cursor cursor_2/);
+
+    const pageTwo = await runCliAsync(
+      ["search", "agent", "--limit", "1", "--cursor", "cursor_2"],
+      root,
+      env,
+    );
+    assert.equal(pageTwo.status, 0);
+    assert.match(pageTwo.stdout, /│\s*2\s*│\s*@core\/agent-skill-2/mu);
+  } finally {
+    await mockRegistry.close();
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: view resolves numeric index from cached search results", async () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  const mockRegistry = await startMockRegistry((request, response) => {
+    if (request.method === "GET" && request.url === "/v1/skills/core/agent-skill") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@core",
+          ownerLogin: "core",
+          skill: "agent-skill",
+          description: "Sample description for integration test output",
+          visibility: "public",
+          channels: {
+            latest: "1.0.0",
+          },
+          updatedAt: "2026-03-02T09:00:00.000Z",
+        }),
+      );
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: { code: "invalid_request", message: "not found" } }));
+  });
+
+  try {
+    const skillmdDir = path.join(root, ".skillmd");
+    fs.mkdirSync(skillmdDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(skillmdDir, "search-cache.json"),
+      JSON.stringify(
+        {
+          registryBaseUrl: mockRegistry.baseUrl,
+          createdAt: "2026-03-02T12:00:00.000Z",
+          skillIds: ["@core/agent-skill"],
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    const result = await runCliAsync(["view", "1"], root, {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
+    });
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Skill: @core\/agent-skill/);
   } finally {
     await mockRegistry.close();
     cleanupDirectory(root);

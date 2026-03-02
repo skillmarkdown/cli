@@ -6,9 +6,9 @@ const { requireDist } = require("../helpers/dist-imports.js");
 const { resolveRegistryHost, resolveInstalledSkillPath, resolveInstallTempRoot } =
   requireDist("lib/use/pathing.js");
 
-test("resolveRegistryHost normalizes host casing", () => {
+test("resolveRegistryHost always returns canonical install host", () => {
   const host = resolveRegistryHost("https://RegistryAPI-SM46RM3RJA-UC.A.RUN.APP");
-  assert.equal(host, "registryapi-sm46rm3rja-uc.a.run.app");
+  assert.equal(host, "registry.skillmarkdown.com");
 });
 
 test("resolveInstalledSkillPath builds project-local host/owner/skill path", () => {
@@ -20,7 +20,7 @@ test("resolveInstalledSkillPath builds project-local host/owner/skill path", () 
   );
   assert.equal(
     path,
-    "/workspace/project/.agent/skills/registryapi-sm46rm3rja-uc.a.run.app/stefdevscore/pagetest-01",
+    "/workspace/project/.agent/skills/registry.skillmarkdown.com/stefdevscore/pagetest-01",
   );
 });
 
