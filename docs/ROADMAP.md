@@ -32,10 +32,10 @@ Discover published skills with a simple, reliable query UX.
 Goal:
 Inspect a skill's immutable publish timeline with stable pagination.
 
-5. `skillmd install`
+5. `skillmd use` (implemented)
 
 Goal:
-Install skills locally from search/discovery results or explicit identifiers.
+Install skills locally from discovery results or explicit identifiers with integrity verification.
 
 ## Optional
 

@@ -53,6 +53,12 @@ skillmd search agent --limit 10
 skillmd history @owner/skill --limit 20
 ```
 
+7. Install a published skill into the current workspace:
+
+```bash
+skillmd use @owner/skill
+```
+
 ## Commands
 
 ### `skillmd init`
@@ -137,6 +143,20 @@ Notes:
 
 - `<skill-id>` accepts `@owner/skill` or `owner/skill`.
 - Output includes digest, publish timestamp, artifact size/media type, and yank metadata.
+
+### `skillmd use`
+
+Install a published skill into this workspace.
+
+```bash
+skillmd use <skill-id> [--version <semver> | --channel <latest|beta>] [--allow-yanked] [--json]
+```
+
+Notes:
+
+- Default selector is `latest` channel when `--version`/`--channel` are omitted.
+- Installed path is `.agent/skills/<registry-host>/<owner>/<skill>` under current working directory.
+- Existing target install path is replaced atomically.
 
 ## Optional Configuration
 

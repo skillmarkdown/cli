@@ -179,3 +179,37 @@ Contract:
 
 Rationale:
 Search is skill-level discovery, while history provides immutable version auditability needed before install/pinning workflows.
+
+---
+
+## D-010: Use Command Installs Verified Registry Artifacts Into Project-Local Agent Path
+
+`skillmd use` is introduced for non-interactive local installation from public registry metadata.
+
+Contract:
+
+- command surface:
+  - `skillmd use <skill-id> [--version <semver> | --channel <latest|beta>] [--allow-yanked] [--json]`
+- `<skill-id>` accepts `@owner/skill` and `owner/skill` input forms.
+- selection behavior:
+  - default selector is `latest` channel
+  - `--version` and `--channel` are mutually exclusive
+- install target:
+  - project-local path `.agent/skills/<registry-host>/<owner>/<skill>` rooted at current working directory
+- integrity guarantees before install:
+  - verify expected media type
+  - verify downloaded bytes length equals declared `sizeBytes`
+  - verify downloaded digest equals declared `sha256` digest
+- yanked handling:
+  - yanked versions are blocked by default
+  - explicit `--allow-yanked` is required to install yanked versions
+- replacement strategy:
+  - existing target directory is replaced atomically via temp extraction + rename swap
+- provenance:
+  - write `.skillmd-install.json` in installed skill directory with source/version metadata
+- output modes:
+  - human-readable install summary by default
+  - raw JSON result via `--json`
+
+Rationale:
+This creates a safe bridge from discovery (`search`, `history`) to practical local usage while keeping automation-friendly command semantics and reproducible provenance.

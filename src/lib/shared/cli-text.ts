@@ -1,4 +1,4 @@
-export const ROOT_USAGE = "Usage: skillmd <init|validate|login|logout|publish|search|history>";
+export const ROOT_USAGE = "Usage: skillmd <init|validate|login|logout|publish|search|history|use>";
 export const INIT_USAGE = "Usage: skillmd init [--no-validate] [--template <minimal|verbose>]";
 export const VALIDATE_USAGE = "Usage: skillmd validate [path] [--strict] [--parity]";
 export const LOGIN_USAGE = "Usage: skillmd login [--status|--reauth]";
@@ -9,3 +9,5 @@ export const SEARCH_USAGE =
   "Usage: skillmd search [query] [--limit <1-50>] [--cursor <token>] [--json]";
 export const HISTORY_USAGE =
   "Usage: skillmd history <skill-id> [--limit <1-50>] [--cursor <token>] [--json]";
+export const USE_USAGE =
+  "Usage: skillmd use <skill-id> [--version <semver> | --channel <latest|beta>] [--allow-yanked] [--json]";

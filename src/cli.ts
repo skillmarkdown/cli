@@ -6,6 +6,7 @@ import { runLoginCommand } from "./commands/login";
 import { runLogoutCommand } from "./commands/logout";
 import { runPublishCommand } from "./commands/publish";
 import { runSearchCommand } from "./commands/search";
+import { runUseCommand } from "./commands/use";
 import { runValidateCommand } from "./commands/validate";
 import { ROOT_USAGE } from "./lib/shared/cli-text";
 
@@ -19,6 +20,7 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   logout: runLogoutCommand,
   publish: runPublishCommand,
   search: runSearchCommand,
+  use: runUseCommand,
 };
 
 async function main(): Promise<void> {

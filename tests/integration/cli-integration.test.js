@@ -106,7 +106,7 @@ test("spawned CLI: unknown command fails with usage", () => {
     assert.equal(result.status, 1);
     assert.match(
       result.stderr,
-      /Usage: skillmd <init\|validate\|login\|logout\|publish\|search\|history>/,
+      /Usage: skillmd <init\|validate\|login\|logout\|publish\|search\|history\|use>/,
     );
   } finally {
     cleanupDirectory(root);
