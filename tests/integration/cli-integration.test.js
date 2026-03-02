@@ -1,9 +1,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const http = require("node:http");
 const childProcess = require("node:child_process");
+const tar = require("tar");
 
 const { makeTempDirectory, cleanupDirectory } = require("../helpers/fs-test-utils.js");
 const {
@@ -82,6 +84,29 @@ function listScaffoldFiles(dir) {
   }
 
   return files.sort();
+}
+
+async function createSkillArchive(root, folderName, skillName) {
+  const sourceDir = path.join(root, ".archive-src", folderName);
+  const archiveDir = path.join(root, ".archive-dist");
+  const archivePath = path.join(archiveDir, `${folderName}.tgz`);
+
+  fs.mkdirSync(sourceDir, { recursive: true });
+  fs.mkdirSync(archiveDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(sourceDir, "SKILL.md"),
+    `---\nname: ${skillName}\n---\n\n# ${skillName}\n`,
+    "utf8",
+  );
+
+  await tar.c({ gzip: true, file: archivePath, cwd: sourceDir }, ["."]);
+  const bytes = fs.readFileSync(archivePath);
+  return {
+    bytes,
+    digest: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
+    sizeBytes: bytes.length,
+    mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+  };
 }
 
 async function startMockRegistry(handler) {
@@ -163,7 +188,7 @@ test("spawned CLI: unknown command fails with usage", () => {
     assert.equal(result.status, 1);
     assert.match(
       result.stderr,
-      /Usage: skillmd <init\|validate\|login\|logout\|publish\|search\|view\|history\|use>/,
+      /Usage: skillmd <init\|validate\|login\|logout\|publish\|search\|view\|history\|use\|update>/,
     );
   } finally {
     cleanupDirectory(root);
@@ -551,6 +576,307 @@ test("spawned CLI: history prints columnar human output", async () => {
       result.stdout,
       /Next page: skillmd history @core\/agent-skill --limit 2 --cursor cursor_3/,
     );
+  } finally {
+    await mockRegistry.close();
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: update --all updates installed skills", async () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  const installedRoot = path.join(root, ".agent", "skills", "registry.skillmarkdown.com", "owner");
+  fs.mkdirSync(path.join(installedRoot, "skill-a"), { recursive: true });
+  fs.mkdirSync(path.join(installedRoot, "skill-b"), { recursive: true });
+  fs.writeFileSync(
+    path.join(installedRoot, "skill-a", ".skillmd-install.json"),
+    JSON.stringify(
+      {
+        skillId: "@owner/skill-a",
+        version: "1.0.0",
+        sourceCommand: "skillmd use @owner/skill-a",
+        installIntent: {
+          strategy: "latest_fallback_beta",
+          value: null,
+        },
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(installedRoot, "skill-b", ".skillmd-install.json"),
+    JSON.stringify(
+      {
+        skillId: "@owner/skill-b",
+        version: "2.0.0-beta.1",
+        sourceCommand: "skillmd use @owner/skill-b --channel beta",
+        installIntent: {
+          strategy: "channel",
+          value: "beta",
+        },
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+
+  const archiveA = await createSkillArchive(root, "skill-a-1.1.0", "skill-a");
+  const archiveB = await createSkillArchive(root, "skill-b-2.0.0-beta.2", "skill-b");
+
+  let baseUrl = "";
+  const mockRegistry = await startMockRegistry((request, response) => {
+    const url = new URL(request.url, "http://127.0.0.1");
+    if (
+      request.method === "GET" &&
+      url.pathname === "/v1/skills/owner/skill-a/resolve" &&
+      url.searchParams.get("channel") === "latest"
+    ) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@owner",
+          ownerLogin: "owner",
+          skill: "skill-a",
+          channel: "latest",
+          version: "1.1.0",
+        }),
+      );
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      url.pathname === "/v1/skills/owner/skill-b/resolve" &&
+      url.searchParams.get("channel") === "beta"
+    ) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@owner",
+          ownerLogin: "owner",
+          skill: "skill-b",
+          channel: "beta",
+          version: "2.0.0-beta.2",
+        }),
+      );
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      url.pathname === "/v1/skills/owner/skill-a/versions/1.1.0/artifact"
+    ) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@owner",
+          ownerLogin: "owner",
+          skill: "skill-a",
+          version: "1.1.0",
+          digest: archiveA.digest,
+          sizeBytes: archiveA.sizeBytes,
+          mediaType: archiveA.mediaType,
+          yanked: false,
+          yankedAt: null,
+          yankedReason: null,
+          downloadUrl: `${baseUrl}/download/skill-a/1.1.0`,
+          downloadExpiresAt: "2026-03-02T13:00:00.000Z",
+        }),
+      );
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      url.pathname === "/v1/skills/owner/skill-b/versions/2.0.0-beta.2/artifact"
+    ) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@owner",
+          ownerLogin: "owner",
+          skill: "skill-b",
+          version: "2.0.0-beta.2",
+          digest: archiveB.digest,
+          sizeBytes: archiveB.sizeBytes,
+          mediaType: archiveB.mediaType,
+          yanked: false,
+          yankedAt: null,
+          yankedReason: null,
+          downloadUrl: `${baseUrl}/download/skill-b/2.0.0-beta.2`,
+          downloadExpiresAt: "2026-03-02T13:00:00.000Z",
+        }),
+      );
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/download/skill-a/1.1.0") {
+      response.writeHead(200, { "content-type": archiveA.mediaType });
+      response.end(archiveA.bytes);
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/download/skill-b/2.0.0-beta.2") {
+      response.writeHead(200, { "content-type": archiveB.mediaType });
+      response.end(archiveB.bytes);
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: { code: "invalid_request", message: "not found" } }));
+  });
+  baseUrl = mockRegistry.baseUrl;
+
+  try {
+    const result = await runCliAsync(["update", "--all", "--json"], root, {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
+    });
+
+    assert.equal(result.status, 0);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.mode, "all");
+    assert.equal(parsed.updated.length, 2);
+    assert.equal(parsed.failed.length, 0);
+
+    const updatedSkillAMetadata = JSON.parse(
+      fs.readFileSync(path.join(installedRoot, "skill-a", ".skillmd-install.json"), "utf8"),
+    );
+    const updatedSkillBMetadata = JSON.parse(
+      fs.readFileSync(path.join(installedRoot, "skill-b", ".skillmd-install.json"), "utf8"),
+    );
+    assert.equal(updatedSkillAMetadata.version, "1.1.0");
+    assert.equal(updatedSkillAMetadata.installIntent.strategy, "latest_fallback_beta");
+    assert.equal(updatedSkillBMetadata.version, "2.0.0-beta.2");
+    assert.equal(updatedSkillBMetadata.installIntent.strategy, "channel");
+    assert.equal(updatedSkillBMetadata.installIntent.value, "beta");
+  } finally {
+    await mockRegistry.close();
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: update continues when one skill fails", async () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  const installedRoot = path.join(root, ".agent", "skills", "registry.skillmarkdown.com", "owner");
+  fs.mkdirSync(path.join(installedRoot, "skill-a"), { recursive: true });
+  fs.mkdirSync(path.join(installedRoot, "skill-b"), { recursive: true });
+  fs.writeFileSync(
+    path.join(installedRoot, "skill-a", ".skillmd-install.json"),
+    JSON.stringify(
+      {
+        skillId: "@owner/skill-a",
+        version: "1.0.0",
+        sourceCommand: "skillmd use @owner/skill-a",
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(installedRoot, "skill-b", ".skillmd-install.json"),
+    JSON.stringify(
+      {
+        skillId: "@owner/skill-b",
+        version: "2.0.0-beta.1",
+        sourceCommand: "skillmd use @owner/skill-b --channel beta",
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+
+  const archiveB = await createSkillArchive(root, "skill-b-2.0.0-beta.2", "skill-b");
+
+  let baseUrl = "";
+  const mockRegistry = await startMockRegistry((request, response) => {
+    const url = new URL(request.url, "http://127.0.0.1");
+
+    if (
+      request.method === "GET" &&
+      url.pathname === "/v1/skills/owner/skill-a/resolve" &&
+      url.searchParams.get("channel") === "latest"
+    ) {
+      response.writeHead(404, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          error: {
+            code: "invalid_request",
+            message: "channel not set for skill",
+          },
+        }),
+      );
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      url.pathname === "/v1/skills/owner/skill-b/resolve" &&
+      url.searchParams.get("channel") === "beta"
+    ) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@owner",
+          ownerLogin: "owner",
+          skill: "skill-b",
+          channel: "beta",
+          version: "2.0.0-beta.2",
+        }),
+      );
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      url.pathname === "/v1/skills/owner/skill-b/versions/2.0.0-beta.2/artifact"
+    ) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@owner",
+          ownerLogin: "owner",
+          skill: "skill-b",
+          version: "2.0.0-beta.2",
+          digest: archiveB.digest,
+          sizeBytes: archiveB.sizeBytes,
+          mediaType: archiveB.mediaType,
+          yanked: false,
+          yankedAt: null,
+          yankedReason: null,
+          downloadUrl: `${baseUrl}/download/skill-b/2.0.0-beta.2`,
+          downloadExpiresAt: "2026-03-02T13:00:00.000Z",
+        }),
+      );
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/download/skill-b/2.0.0-beta.2") {
+      response.writeHead(200, { "content-type": archiveB.mediaType });
+      response.end(archiveB.bytes);
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: { code: "invalid_request", message: "not found" } }));
+  });
+  baseUrl = mockRegistry.baseUrl;
+
+  try {
+    const result = await runCliAsync(["update", "--all", "--json"], root, {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
+    });
+
+    assert.equal(result.status, 1);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.updated.length, 1);
+    assert.equal(parsed.failed.length, 1);
+    assert.match(parsed.failed[0].reason, /(channel not set for skill|not found)/i);
   } finally {
     await mockRegistry.close();
     cleanupDirectory(root);

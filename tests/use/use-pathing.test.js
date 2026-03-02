@@ -3,8 +3,12 @@ const assert = require("node:assert/strict");
 
 const { requireDist } = require("../helpers/dist-imports.js");
 
-const { resolveRegistryHost, resolveInstalledSkillPath, resolveInstallTempRoot } =
-  requireDist("lib/use/pathing.js");
+const {
+  resolveRegistryHost,
+  resolveInstalledSkillPath,
+  resolveInstallTempRoot,
+  resolveInstalledSkillsHostRoot,
+} = requireDist("lib/use/pathing.js");
 
 test("resolveRegistryHost always returns canonical install host", () => {
   const host = resolveRegistryHost("https://RegistryAPI-SM46RM3RJA-UC.A.RUN.APP");
@@ -26,4 +30,11 @@ test("resolveInstalledSkillPath builds project-local host/owner/skill path", () 
 
 test("resolveInstallTempRoot builds .agent temp root", () => {
   assert.equal(resolveInstallTempRoot("/workspace/project"), "/workspace/project/.agent/.tmp");
+});
+
+test("resolveInstalledSkillsHostRoot builds canonical host root", () => {
+  assert.equal(
+    resolveInstalledSkillsHostRoot("/workspace/project", "https://registry.example.com"),
+    "/workspace/project/.agent/skills/registry.skillmarkdown.com",
+  );
 });

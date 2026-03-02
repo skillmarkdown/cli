@@ -91,6 +91,10 @@ test("installs with default latest selector and prints human output", async () =
     ),
   );
   assert.equal(installInput.metadata.downloadedFrom, "https://storage.example.com");
+  assert.deepEqual(installInput.metadata.installIntent, {
+    strategy: "latest_fallback_beta",
+    value: null,
+  });
 });
 
 test("falls back to beta when latest channel is not set by default", async () => {
@@ -142,6 +146,10 @@ test("falls back to beta when latest channel is not set by default", async () =>
     installInput.metadata.sourceCommand,
     "skillmd use @stefdevscore/test-skill --channel beta",
   );
+  assert.deepEqual(installInput.metadata.installIntent, {
+    strategy: "latest_fallback_beta",
+    value: null,
+  });
 });
 
 test("prints json output with --json", async () => {
@@ -226,6 +234,7 @@ test("maps use API errors", async () => {
 
 test("uses explicit --version without calling resolve endpoint", async () => {
   let resolveCalled = false;
+  let installInput;
   const { result } = await captureConsole(() =>
     runUseCommand(
       ["@stefdevscore/test-skill", "--version", "1.2.3"],
@@ -234,12 +243,19 @@ test("uses explicit --version without calling resolve endpoint", async () => {
           resolveCalled = true;
           throw new Error("should not be called");
         },
+        installArtifact: async (input) => {
+          installInput = input;
+        },
       }),
     ),
   );
 
   assert.equal(result, 0);
   assert.equal(resolveCalled, false);
+  assert.deepEqual(installInput.metadata.installIntent, {
+    strategy: "version",
+    value: "1.2.3",
+  });
 });
 
 test("passes --channel beta to resolve and records sourceCommand", async () => {
@@ -286,4 +302,8 @@ test("passes --channel beta to resolve and records sourceCommand", async () => {
     installInput.metadata.sourceCommand,
     "skillmd use @stefdevscore/test-skill --channel beta",
   );
+  assert.deepEqual(installInput.metadata.installIntent, {
+    strategy: "channel",
+    value: "beta",
+  });
 });

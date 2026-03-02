@@ -65,6 +65,12 @@ skillmd history @owner/skill --limit 20
 skillmd use @owner/skill
 ```
 
+9. Update installed skills in the current workspace:
+
+```bash
+skillmd update --all
+```
+
 ## Commands
 
 ### `skillmd init`
@@ -200,6 +206,22 @@ Notes:
 - Default selector is `latest` when `--version`/`--channel` are omitted; if `latest` is unset, CLI falls back to `beta`.
 - Installed path is `.agent/skills/registry.skillmarkdown.com/<owner>/<skill>` under current working directory (same in dev and prod).
 - Existing target install path is replaced atomically.
+
+### `skillmd update`
+
+Update installed skills in this workspace.
+
+```bash
+skillmd update [skill-id ...] [--all] [--allow-yanked] [--json]
+```
+
+Notes:
+
+- `skillmd update` and `skillmd update --all` are equivalent.
+- `--all` scans `.agent/skills/registry.skillmarkdown.com/*/*` in the current directory.
+- explicit IDs only update those installed skills; missing installs are reported as failures.
+- version-pinned installs are skipped (non-fatal).
+- batch mode continues on per-skill errors and exits non-zero if any failures occur.
 
 ## Optional Configuration
 

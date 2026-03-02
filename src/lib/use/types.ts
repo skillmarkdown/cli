@@ -50,6 +50,13 @@ export interface UseDownloadResult {
   contentType?: string;
 }
 
+export type InstallIntentStrategy = "version" | "channel" | "latest_fallback_beta";
+
+export interface InstallIntent {
+  strategy: InstallIntentStrategy;
+  value: string | null;
+}
+
 export interface InstalledSkillMetadata {
   skillId: string;
   ownerLogin: string;
@@ -62,6 +69,7 @@ export interface InstalledSkillMetadata {
   downloadedFrom: string;
   installedAt: string;
   sourceCommand: string;
+  installIntent: InstallIntent;
 }
 
 export interface UseCommandResult {
@@ -76,4 +84,15 @@ export interface UseCommandResult {
   registryBaseUrl: string;
   installedAt: string;
   source: "registry";
+}
+
+export type InstallSelector =
+  | { strategy: "version"; version: string }
+  | { strategy: "channel"; channel: PublishChannel }
+  | { strategy: "latest_fallback_beta" };
+
+export interface InstallWorkflowResult {
+  result: UseCommandResult;
+  metadata: InstalledSkillMetadata;
+  resolvedChannel?: PublishChannel;
 }

@@ -6,6 +6,7 @@ import { runLoginCommand } from "./commands/login";
 import { runLogoutCommand } from "./commands/logout";
 import { runPublishCommand } from "./commands/publish";
 import { runSearchCommand } from "./commands/search";
+import { runUpdateCommand } from "./commands/update";
 import { runUseCommand } from "./commands/use";
 import { runValidateCommand } from "./commands/validate";
 import { runViewCommand } from "./commands/view";
@@ -23,6 +24,7 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   search: runSearchCommand,
   view: runViewCommand,
   use: runUseCommand,
+  update: runUpdateCommand,
 };
 
 async function main(): Promise<void> {

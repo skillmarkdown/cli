@@ -439,3 +439,45 @@ node "$REPO_DIR/dist/cli.js" view @owner/skill --json
 Expected:
 
 - valid JSON payload with owner/skill/description/channels/updatedAt fields.
+
+## 13) Manual installed-skill refresh smoke (`update`)
+
+Install/update in development environment:
+
+```bash
+REPO_DIR="$(pwd)"
+export SKILLMD_FIREBASE_PROJECT_ID="skillmarkdown-development"
+export SKILLMD_REGISTRY_BASE_URL="https://registryapi-sm46rm3rja-uc.a.run.app"
+node "$REPO_DIR/dist/cli.js" update --all
+```
+
+Expected:
+
+- command scans `.agent/skills/registry.skillmarkdown.com/*/*` in current project
+- output table has `SKILL`, `FROM`, `TO`, `STATUS`, `DETAIL`
+- summary line reports total/updated/skipped/failed counts
+
+Targeted update by skill id:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" update @owner/skill-a @owner/skill-b
+```
+
+Expected:
+
+- only listed skills are processed
+- missing local installs are reported as failed entries
+- command continues through all entries and exits non-zero only if any failures occurred
+
+JSON mode:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" update --all --json
+```
+
+Expected:
+
+- valid JSON payload with `mode`, `total`, `updated[]`, `skipped[]`, `failed[]`
+- version-pinned installs appear in `skipped[]` with `status: \"skipped_pinned\"`

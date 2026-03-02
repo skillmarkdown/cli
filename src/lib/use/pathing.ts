@@ -13,9 +13,13 @@ export function resolveInstalledSkillPath(
   ownerSlug: string,
   skillSlug: string,
 ): string {
-  return join(cwd, ".agent", "skills", resolveRegistryHost(registryBaseUrl), ownerSlug, skillSlug);
+  return join(resolveInstalledSkillsHostRoot(cwd, registryBaseUrl), ownerSlug, skillSlug);
 }
 
 export function resolveInstallTempRoot(cwd: string): string {
   return join(cwd, ".agent", ".tmp");
+}
+
+export function resolveInstalledSkillsHostRoot(cwd: string, registryBaseUrl: string): string {
+  return join(cwd, ".agent", "skills", resolveRegistryHost(registryBaseUrl));
 }

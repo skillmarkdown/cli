@@ -37,6 +37,11 @@ Inspect a skill's immutable publish timeline with stable pagination.
 Goal:
 Install skills locally from discovery results or explicit identifiers with integrity verification.
 
+6. `skillmd update` (implemented)
+
+Goal:
+Refresh installed project-local skills non-interactively with deterministic selector intent.
+
 ## Optional
 
 - `skillmd list`

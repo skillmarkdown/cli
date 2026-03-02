@@ -213,3 +213,30 @@ Contract:
 
 Rationale:
 This creates a safe bridge from discovery (`search`, `history`) to practical local usage while keeping automation-friendly command semantics and reproducible provenance.
+
+---
+
+## D-011: Update Command Performs Deterministic Project-Local Installed Skill Refresh
+
+`skillmd update` is introduced for non-interactive local refresh of previously installed skills.
+
+Contract:
+
+- command surface:
+  - `skillmd update [skill-id ...] [--all] [--allow-yanked] [--json]`
+- targeting behavior:
+  - no args and `--all` are equivalent
+  - `--all` scans `.agent/skills/registry.skillmarkdown.com/*/*` rooted at current working directory
+  - explicit `skill-id` arguments update only that subset
+- selection behavior:
+  - version-pinned installs are skipped (non-fatal)
+  - channel/latest installs use persisted install intent metadata
+  - legacy installs without `installIntent` infer strategy from `sourceCommand` and otherwise default to `latest` with `beta` fallback
+- execution behavior:
+  - batch continues across per-skill failures
+  - command exits non-zero if any per-skill failures occurred
+- metadata behavior:
+  - installs write deterministic `installIntent` metadata for future update decisions
+
+Rationale:
+This preserves automation-friendly behavior while adding a safe, deterministic refresh path for project-local installed skills.
