@@ -71,6 +71,12 @@ skillmd use @owner/skill
 skillmd update --all
 ```
 
+## Deep Docs
+
+- [CLI architecture deep dive](docs/architecture.md)
+- [CLI deep review (`2026-03`)](docs/review-2026-03.md)
+- [Cross-repo docs hub](../docs/README.md)
+
 ## Commands
 
 ### `skillmd init`
