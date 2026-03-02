@@ -1,6 +1,6 @@
 # @skillmarkdown/cli
 
-`@skillmarkdown/cli` is the official CLI for creating, validating, and publishing Agent Skills.
+`@skillmarkdown/cli` is a fast, friendly CLI for creating, validating, and publishing Agent Skills.
 
 ## Install
 
