@@ -22,15 +22,25 @@ Establish authenticated user context for later remote operations.
 Goal:
 Publish validated skills through the supported distribution flow.
 
-3. `skillmd search` (next)
+3. `skillmd search` (implemented)
 
 Goal:
 Discover published skills with a simple, reliable query UX.
 
-4. `skillmd install`
+4. `skillmd history` (implemented)
 
 Goal:
-Install skills locally from search/discovery results or explicit identifiers.
+Inspect a skill's immutable publish timeline with stable pagination.
+
+5. `skillmd use` (implemented)
+
+Goal:
+Install skills locally from discovery results or explicit identifiers with integrity verification.
+
+6. `skillmd update` (implemented)
+
+Goal:
+Refresh installed project-local skills non-interactively with deterministic selector intent.
 
 ## Optional
 

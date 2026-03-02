@@ -41,6 +41,42 @@ skillmd login
 skillmd publish --version 1.0.0
 ```
 
+5. Search published skills:
+
+```bash
+skillmd search agent --limit 10
+```
+
+6. View skill details:
+
+```bash
+skillmd view @owner/skill
+```
+
+7. View version history for a skill:
+
+```bash
+skillmd history @owner/skill --limit 20
+```
+
+8. Install a published skill into the current workspace:
+
+```bash
+skillmd use @owner/skill
+```
+
+9. Update installed skills in the current workspace:
+
+```bash
+skillmd update --all
+```
+
+## Deep Docs
+
+- [CLI architecture deep dive](docs/architecture.md)
+- [CLI deep review (`2026-03`)](docs/review-2026-03.md)
+- [Cross-repo docs hub](../docs/README.md)
+
 ## Commands
 
 ### `skillmd init`
@@ -91,7 +127,7 @@ skillmd logout
 Package and publish a skill artifact.
 
 ```bash
-skillmd publish [path] --version <semver> [--channel <latest|beta>] [--dry-run] [--json]
+skillmd publish [path] --version <semver> [--channel <latest|beta>] [--visibility <public|private>] [--dry-run] [--json]
 ```
 
 Notes:
@@ -99,20 +135,103 @@ Notes:
 - Always runs strict local validation before publishing.
 - Owner is derived by the registry from your authenticated GitHub identity (`@githubusername`).
 - Default channel is `latest` for stable versions and `beta` for prerelease versions.
+- Default visibility is `public`.
+- Use `--visibility private` for owner-only registry reads/install.
 
-## Optional Configuration
+### `skillmd search`
 
-Most users can run with defaults.
+Search registry skills.
 
-For custom environments, you can set:
+```bash
+skillmd search [query] [--limit <1-50>] [--cursor <token>] [--scope <public|private>] [--json]
+```
 
-- `SKILLMD_GITHUB_CLIENT_ID`
-- `SKILLMD_FIREBASE_API_KEY`
-- `SKILLMD_FIREBASE_PROJECT_ID`
-- `SKILLMD_REGISTRY_BASE_URL`
-- `SKILLMD_REGISTRY_TIMEOUT_MS`
+Notes:
 
-You can place these in `~/.skillmd/.env`.
+- No `query` means browse latest published skills.
+- Results include `skillId` (`@owner/skill`) and channel pointers.
+- `#` row numbers continue across `--cursor` pages for the same query and limit.
+- `--scope` defaults to `public`.
+- `--scope private` requires login and returns owner-only private skills.
+
+Example human output:
+
+```text
+┌────┬──────────────────────────────────────┬────────────┬──────────────────┬──────────────────────────────────────────────────────────────────┐
+│  # │ SKILL                                │ LATEST     │ UPDATED          │ DESCRIPTION                                                      │
+├────┼──────────────────────────────────────┼────────────┼──────────────────┼──────────────────────────────────────────────────────────────────┤
+│  1 │ @core/agent-skill                    │ 1.0.0      │ 2026-03-02T09:00 │ Sample description                                               │
+└────┴──────────────────────────────────────┴────────────┴──────────────────┴──────────────────────────────────────────────────────────────────┘
+Next page: skillmd search agent --limit 10 --cursor <token>
+```
+
+### `skillmd view`
+
+Show full details for a specific skill.
+
+```bash
+skillmd view <skill-id|index> [--json]
+```
+
+Notes:
+
+- `<skill-id>` accepts `@owner/skill` or `owner/skill`.
+- `<index>` resolves from the visible `#` values on the most recent `skillmd search` result page (for example `skillmd view 4`).
+- Shows owner, visibility, full channel pointers, update time, and description.
+
+### `skillmd history`
+
+List published versions for a single skill.
+
+```bash
+skillmd history <skill-id> [--limit <1-50>] [--cursor <token>] [--json]
+```
+
+Notes:
+
+- `<skill-id>` accepts `@owner/skill` or `owner/skill`.
+- Output includes digest, publish timestamp, artifact size/media type, and yank metadata.
+
+Example human output:
+
+```text
+┌────────────┬──────────────────────┬──────────────────────────┬────────────┬───────────────────────┬────────────────────────────────────────────┐
+│ VERSION    │ PUBLISHED            │ YANKED                   │ SIZE       │ DIGEST                │ MEDIA                                      │
+├────────────┼──────────────────────┼──────────────────────────┼────────────┼───────────────────────┼────────────────────────────────────────────┤
+│ 1.2.3      │ 2026-03-02T09:00:... │ yes:security issue       │      12345 │ sha256:1234567890ab...│ application/vnd.skillmarkdown.skill.v1+tar │
+└────────────┴──────────────────────┴──────────────────────────┴────────────┴───────────────────────┴────────────────────────────────────────────┘
+Next page: skillmd history @owner/skill --limit 20 --cursor <token>
+```
+
+### `skillmd use`
+
+Install a published skill into this workspace.
+
+```bash
+skillmd use <skill-id> [--version <semver> | --channel <latest|beta>] [--allow-yanked] [--json]
+```
+
+Notes:
+
+- Default selector is `latest` when `--version`/`--channel` are omitted; if `latest` is unset, CLI falls back to `beta`.
+- Installed path is `.agent/skills/registry.skillmarkdown.com/<owner>/<skill>` under current working directory (same in dev and prod).
+- Existing target install path is replaced atomically.
+
+### `skillmd update`
+
+Update installed skills in this workspace.
+
+```bash
+skillmd update [skill-id ...] [--all] [--allow-yanked] [--json]
+```
+
+Notes:
+
+- `skillmd update` and `skillmd update --all` are equivalent.
+- `--all` scans `.agent/skills/registry.skillmarkdown.com/*/*` in the current directory.
+- explicit IDs only update those installed skills; missing installs are reported as failures.
+- version-pinned installs are skipped (non-fatal).
+- batch mode continues on per-skill errors and exits non-zero if any failures occur.
 
 ## Learn More
 

@@ -3,11 +3,14 @@ export const MAX_PUBLISH_ARTIFACT_SIZE_BYTES = 25 * 1024 * 1024;
 
 export const PUBLISH_CHANNELS = ["latest", "beta"] as const;
 export type PublishChannel = (typeof PUBLISH_CHANNELS)[number];
+export const PUBLISH_VISIBILITIES = ["public", "private"] as const;
+export type PublishVisibility = (typeof PUBLISH_VISIBILITIES)[number];
 
 export interface PublishFlags {
   pathArg?: string;
   version?: string;
   channel?: PublishChannel;
+  visibility?: PublishVisibility;
   dryRun: boolean;
   json: boolean;
   valid: boolean;
@@ -50,6 +53,7 @@ export interface PreparePublishRequest {
   skill: string;
   version: string;
   channel: PublishChannel;
+  visibility?: PublishVisibility;
   digest: string;
   sizeBytes: number;
   mediaType: string;

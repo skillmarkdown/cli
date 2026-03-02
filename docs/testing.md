@@ -313,6 +313,7 @@ tmpdir="$(mktemp -d)"
 mkdir "$tmpdir/publish-skill"
 (cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" init --template verbose --no-validate)
 (cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" publish --version 1.0.0 --dry-run)
+(cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" publish --version 1.0.1 --visibility private --dry-run)
 ```
 
 Expected:
@@ -321,6 +322,7 @@ Expected:
 - CLI prints a dry-run summary with:
   - `@owner/skill@version`
   - channel (`latest` for stable semver)
+  - visibility (`public` by default, `private` when explicitly set)
   - digest (`sha256:...`)
   - artifact size bytes
 
@@ -350,3 +352,136 @@ Expected when session/config projects differ:
 
 - non-zero exit
 - guidance to run `skillmd login --reauth`
+
+## 11) Manual discovery output smoke (`search` and `history`)
+
+Use development registry:
+
+```bash
+REPO_DIR="$(pwd)"
+export SKILLMD_FIREBASE_PROJECT_ID="skillmarkdown-development"
+export SKILLMD_REGISTRY_BASE_URL="https://registryapi-sm46rm3rja-uc.a.run.app"
+node "$REPO_DIR/dist/cli.js" search --limit 5
+node "$REPO_DIR/dist/cli.js" search --scope private --limit 5
+```
+
+Expected:
+
+- output starts with a boxed table:
+  - top border begins with `┌`
+  - header row contains `#`, `SKILL`, `LATEST`, `UPDATED`, `DESCRIPTION`
+- row columns remain aligned
+- next page hint prints when cursor exists
+- private scope requires login and only returns caller-owned private skills
+
+Search pagination:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" search agent --limit 5 --cursor "<token>"
+```
+
+Expected:
+
+- page returns successfully with the same header format
+- `#` numbering continues from previous page (does not reset to `1`)
+
+History output:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" history @owner/skill --limit 5
+```
+
+Expected:
+
+- output starts with a boxed table:
+  - top border begins with `┌`
+  - header row contains `VERSION`, `PUBLISHED`, `YANKED`, `SIZE`, `DIGEST`, `MEDIA`
+- digest is shortened in human mode (`sha256:<prefix>...`)
+- yanked rows show `yes:<reason>` in `YANKED`
+- next page hint prints when cursor exists
+
+History pagination:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" history @owner/skill --limit 5 --cursor "<token>"
+```
+
+Expected:
+
+- page returns successfully with same column layout
+
+## 12) Manual skill detail smoke (`view`)
+
+```bash
+REPO_DIR="$(pwd)"
+export SKILLMD_FIREBASE_PROJECT_ID="skillmarkdown-development"
+export SKILLMD_REGISTRY_BASE_URL="https://registryapi-sm46rm3rja-uc.a.run.app"
+node "$REPO_DIR/dist/cli.js" view @owner/skill
+node "$REPO_DIR/dist/cli.js" view 1
+```
+
+Expected:
+
+- output includes:
+  - `Skill: @owner/skill`
+  - `Owner: ...`
+  - `Updated: ...`
+  - `Visibility: ...`
+  - `Channels:` with `latest` and `beta`
+- `view <n>` resolves from the visible `#` column on the latest `search` page in the same registry environment
+
+JSON mode:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" view @owner/skill --json
+```
+
+Expected:
+
+- valid JSON payload with owner/skill/description/channels/updatedAt fields.
+
+## 13) Manual installed-skill refresh smoke (`update`)
+
+Install/update in development environment:
+
+```bash
+REPO_DIR="$(pwd)"
+export SKILLMD_FIREBASE_PROJECT_ID="skillmarkdown-development"
+export SKILLMD_REGISTRY_BASE_URL="https://registryapi-sm46rm3rja-uc.a.run.app"
+node "$REPO_DIR/dist/cli.js" update --all
+```
+
+Expected:
+
+- command scans `.agent/skills/registry.skillmarkdown.com/*/*` in current project
+- output table has `SKILL`, `FROM`, `TO`, `STATUS`, `DETAIL`
+- summary line reports total/updated/skipped/failed counts
+
+Targeted update by skill id:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" update @owner/skill-a @owner/skill-b
+```
+
+Expected:
+
+- only listed skills are processed
+- missing local installs are reported as failed entries
+- command continues through all entries and exits non-zero only if any failures occurred
+
+JSON mode:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/dist/cli.js" update --all --json
+```
+
+Expected:
+
+- valid JSON payload with `mode`, `total`, `updated[]`, `skipped[]`, `failed[]`
+- version-pinned installs appear in `skipped[]` with `status: \"skipped_pinned\"`

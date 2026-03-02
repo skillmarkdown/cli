@@ -1,10 +1,22 @@
-import { type PublishChannel, PUBLISH_CHANNELS, type PublishFlags } from "./types";
+import {
+  type PublishChannel,
+  PUBLISH_CHANNELS,
+  type PublishFlags,
+  type PublishVisibility,
+  PUBLISH_VISIBILITIES,
+} from "./types";
 
 const SEMVER_PATTERN =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
 function resolveChannel(value: string): PublishChannel | null {
   return PUBLISH_CHANNELS.includes(value as PublishChannel) ? (value as PublishChannel) : null;
+}
+
+function resolveVisibility(value: string): PublishVisibility | null {
+  return PUBLISH_VISIBILITIES.includes(value as PublishVisibility)
+    ? (value as PublishVisibility)
+    : null;
 }
 
 function parseValueArg(args: string[], index: number): { value?: string; nextIndex: number } {
@@ -29,6 +41,7 @@ export function parsePublishFlags(args: string[]): PublishFlags {
   let pathArg: string | undefined;
   let version: string | undefined;
   let channel: PublishChannel | undefined;
+  let visibility: PublishVisibility | undefined;
   let dryRun = false;
   let json = false;
 
@@ -86,6 +99,32 @@ export function parsePublishFlags(args: string[]): PublishFlags {
       continue;
     }
 
+    if (arg === "--visibility") {
+      const parsed = parseValueArg(args, index);
+      if (!parsed.value) {
+        return { dryRun: false, json: false, valid: false };
+      }
+
+      const resolved = resolveVisibility(parsed.value);
+      if (!resolved) {
+        return { dryRun: false, json: false, valid: false };
+      }
+
+      visibility = resolved;
+      index = parsed.nextIndex;
+      continue;
+    }
+
+    if (arg.startsWith("--visibility=")) {
+      const resolved = resolveVisibility(arg.slice("--visibility=".length));
+      if (!resolved) {
+        return { dryRun: false, json: false, valid: false };
+      }
+
+      visibility = resolved;
+      continue;
+    }
+
     if (arg.startsWith("-")) {
       return { dryRun: false, json: false, valid: false };
     }
@@ -105,6 +144,7 @@ export function parsePublishFlags(args: string[]): PublishFlags {
     pathArg,
     version,
     channel,
+    visibility,
     dryRun,
     json,
     valid: true,

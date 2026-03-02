@@ -12,6 +12,7 @@ test("parses required flags with separate values", () => {
     pathArg: "./my-skill",
     version: "1.2.3",
     channel: undefined,
+    visibility: undefined,
     dryRun: true,
     json: false,
     valid: true,
@@ -25,10 +26,17 @@ test("parses equals syntax and json/channel flags", () => {
     pathArg: undefined,
     version: "1.2.3-beta.1",
     channel: "beta",
+    visibility: undefined,
     dryRun: false,
     json: true,
     valid: true,
   });
+});
+
+test("parses optional visibility flag", () => {
+  const parsed = parsePublishFlags(["--version", "1.2.3", "--visibility", "private"]);
+  assert.equal(parsed.valid, true);
+  assert.equal(parsed.visibility, "private");
 });
 
 for (const args of [
@@ -55,6 +63,7 @@ test("accepts version-only publish flags", () => {
     pathArg: undefined,
     version: "1.2.3",
     channel: undefined,
+    visibility: undefined,
     dryRun: false,
     json: false,
     valid: true,

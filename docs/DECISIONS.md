@@ -110,7 +110,7 @@ Although not implemented in v0, all CLI decisions must preserve this direction.
 Contract:
 
 - command surface:
-  - `skillmd publish [path] --version <semver> [--channel <latest|beta>] [--dry-run] [--json]`
+  - `skillmd publish [path] --version <semver> [--channel <latest|beta>] [--visibility <public|private>] [--dry-run] [--json]`
 - owner is derived from authenticated GitHub identity (`@githubusername`), not passed as a CLI flag.
 - publish API owner identity is derived server-side from auth claims (not client-supplied request fields).
 - strict local validation is mandatory before packaging/publish.
@@ -121,6 +121,9 @@ Contract:
 - default channel selection:
   - prerelease semver => `beta`
   - stable semver => `latest`
+- default visibility selection:
+  - omitted visibility => `public`
+  - explicit `--visibility private` => owner-only reads/search/install
 - authenticated write model:
   - publish requires local login session.
   - CLI exchanges Firebase refresh token for ID token at publish time.
@@ -131,3 +134,115 @@ Contract:
 
 Rationale:
 This keeps the publish surface simple while preserving integrity guarantees required for future search/install workflows.
+
+---
+
+## D-008: Search Command Supports Public and Owner-Private Discovery (Single-Term v1)
+
+`skillmd search` is introduced for remote discovery.
+
+Contract:
+
+- command surface:
+  - `skillmd search [query] [--limit <1-50>] [--cursor <token>] [--scope <public|private>] [--json]`
+- `query` is optional:
+  - omitted query => browse latest published skills
+  - provided query => single search token in v1
+- scope behavior:
+  - default `--scope public`
+  - `--scope private` requires login and returns owner-only private skills
+- cursor-based pagination is supported through opaque `nextCursor` values.
+- output modes:
+  - human-readable summary output by default
+  - raw API payload via `--json`
+- this command is read-only and does not mutate local skill state.
+
+Rationale:
+Search is the lowest-risk step toward install/use flows and web listing while keeping implementation and API semantics stable.
+
+---
+
+## D-009: History Command Lists Versions Per Skill (Cursor-Paginated v1)
+
+`skillmd history` is introduced for public per-skill version timeline reads.
+
+Contract:
+
+- command surface:
+  - `skillmd history <skill-id> [--limit <1-50>] [--cursor <token>] [--json]`
+- `<skill-id>` accepts `@owner/skill` and `owner/skill` input forms.
+- endpoint shape:
+  - `GET /v1/skills/{owner}/{skill}/versions`
+  - existing `GET /v1/skills/{owner}/{skill}/versions/{version}` remains unchanged.
+- pagination:
+  - default limit `20`, min `1`, max `50`
+  - opaque cursor in/out
+  - stable ordering by `publishedAt` then `version`
+- output modes:
+  - human-readable version lines by default
+  - raw API payload via `--json`
+- this command is read-only and does not mutate local or remote state.
+
+Rationale:
+Search is skill-level discovery, while history provides immutable version auditability needed before install/pinning workflows.
+
+---
+
+## D-010: Use Command Installs Verified Registry Artifacts Into Project-Local Agent Path
+
+`skillmd use` is introduced for non-interactive local installation from public registry metadata.
+
+Contract:
+
+- command surface:
+  - `skillmd use <skill-id> [--version <semver> | --channel <latest|beta>] [--allow-yanked] [--json]`
+- `<skill-id>` accepts `@owner/skill` and `owner/skill` input forms.
+- selection behavior:
+  - default selector is `latest` channel
+  - `--version` and `--channel` are mutually exclusive
+- install target:
+  - project-local path `.agent/skills/<registry-host>/<owner>/<skill>` rooted at current working directory
+- integrity guarantees before install:
+  - verify expected media type
+  - verify downloaded bytes length equals declared `sizeBytes`
+  - verify downloaded digest equals declared `sha256` digest
+- yanked handling:
+  - yanked versions are blocked by default
+  - explicit `--allow-yanked` is required to install yanked versions
+- replacement strategy:
+  - existing target directory is replaced atomically via temp extraction + rename swap
+- provenance:
+  - write `.skillmd-install.json` in installed skill directory with source/version metadata
+- output modes:
+  - human-readable install summary by default
+  - raw JSON result via `--json`
+
+Rationale:
+This creates a safe bridge from discovery (`search`, `history`) to practical local usage while keeping automation-friendly command semantics and reproducible provenance.
+
+---
+
+## D-011: Update Command Performs Deterministic Project-Local Installed Skill Refresh
+
+`skillmd update` is introduced for non-interactive local refresh of previously installed skills.
+
+Contract:
+
+- command surface:
+  - `skillmd update [skill-id ...] [--all] [--allow-yanked] [--json]`
+- targeting behavior:
+  - no args and `--all` are equivalent
+  - `--all` scans `.agent/skills/registry.skillmarkdown.com/*/*` rooted at current working directory
+  - explicit `skill-id` arguments update only that subset
+- selection behavior:
+  - version-pinned installs are skipped (non-fatal)
+  - channel/latest installs use persisted install intent metadata
+  - legacy installs without `installIntent` infer strategy from `sourceCommand` and otherwise default to `latest` with `beta` fallback
+- execution behavior:
+  - batch continues across per-skill failures
+  - command exits non-zero if any per-skill failures occurred
+- metadata behavior:
+  - installs write deterministic `installIntent` metadata for future update decisions
+
+Rationale:
+This preserves automation-friendly behavior while adding a safe, deterministic refresh path for project-local installed skills.
