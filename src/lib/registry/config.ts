@@ -1,7 +1,7 @@
 const DEFAULT_REGISTRY_TIMEOUT_MS = 10_000;
 
 export const REGISTRY_BY_PROJECT: Record<string, string> = {
-  skillmarkdown: "https://registryapi-pfd5mx23uq-uc.a.run.app",
+  skillmarkdown: "https://registry.skillmarkdown.com",
   "skillmarkdown-development": "https://registryapi-sm46rm3rja-uc.a.run.app",
 };
 

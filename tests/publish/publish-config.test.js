@@ -16,7 +16,7 @@ test("maps production project to default prod registry URL", () => {
     SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown",
   });
   assert.equal(config.firebaseProjectId, "skillmarkdown");
-  assert.equal(config.registryBaseUrl, "https://registryapi-pfd5mx23uq-uc.a.run.app");
+  assert.equal(config.registryBaseUrl, "https://registry.skillmarkdown.com");
 });
 
 test("respects explicit registry base URL override", () => {
