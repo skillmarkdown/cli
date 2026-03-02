@@ -121,7 +121,7 @@ skillmd logout
 Package and publish a skill artifact.
 
 ```bash
-skillmd publish [path] --version <semver> [--channel <latest|beta>] [--dry-run] [--json]
+skillmd publish [path] --version <semver> [--channel <latest|beta>] [--visibility <public|private>] [--dry-run] [--json]
 ```
 
 Notes:
@@ -129,13 +129,15 @@ Notes:
 - Always runs strict local validation before publishing.
 - Owner is derived by the registry from your authenticated GitHub identity (`@githubusername`).
 - Default channel is `latest` for stable versions and `beta` for prerelease versions.
+- Default visibility is `public`.
+- Use `--visibility private` for owner-only registry reads/install.
 
 ### `skillmd search`
 
-Search public registry skills.
+Search registry skills.
 
 ```bash
-skillmd search [query] [--limit <1-50>] [--cursor <token>] [--json]
+skillmd search [query] [--limit <1-50>] [--cursor <token>] [--scope <public|private>] [--json]
 ```
 
 Notes:
@@ -143,6 +145,8 @@ Notes:
 - No `query` means browse latest published skills.
 - Results include `skillId` (`@owner/skill`) and channel pointers.
 - `#` row numbers continue across `--cursor` pages for the same query and limit.
+- `--scope` defaults to `public`.
+- `--scope private` requires login and returns owner-only private skills.
 
 Example human output:
 
@@ -222,20 +226,6 @@ Notes:
 - explicit IDs only update those installed skills; missing installs are reported as failures.
 - version-pinned installs are skipped (non-fatal).
 - batch mode continues on per-skill errors and exits non-zero if any failures occur.
-
-## Optional Configuration
-
-Most users can run with defaults.
-
-For custom environments, you can set:
-
-- `SKILLMD_GITHUB_CLIENT_ID`
-- `SKILLMD_FIREBASE_API_KEY`
-- `SKILLMD_FIREBASE_PROJECT_ID`
-- `SKILLMD_REGISTRY_BASE_URL`
-- `SKILLMD_REGISTRY_TIMEOUT_MS`
-
-You can place these in `~/.skillmd/.env`.
 
 ## Learn More
 
