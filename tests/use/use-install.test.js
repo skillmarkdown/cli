@@ -33,6 +33,27 @@ async function createArchiveBytes(files) {
   }
 }
 
+async function createArchiveBytesWithSymlink(linkPath, targetPath, files = {}) {
+  const root = makeTempDirectory(TEST_PREFIX);
+  const sourceDir = path.join(root, "source");
+  const archivePath = path.join(root, "artifact.tgz");
+
+  try {
+    fs.mkdirSync(sourceDir, { recursive: true });
+    for (const [relativePath, content] of Object.entries(files)) {
+      const absolutePath = path.join(sourceDir, relativePath);
+      fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+      fs.writeFileSync(absolutePath, content, "utf8");
+    }
+    fs.symlinkSync(targetPath, path.join(sourceDir, linkPath));
+
+    await tar.c({ gzip: true, file: archivePath, cwd: sourceDir }, ["."]);
+    return fs.readFileSync(archivePath);
+  } finally {
+    cleanupDirectory(root);
+  }
+}
+
 test("verifyDownloadedArtifact validates descriptor against bytes", async () => {
   const bytes = Buffer.from("hello", "utf8");
   const descriptor = {
@@ -167,6 +188,47 @@ test("installSkillArtifact fails when SKILL.md is missing from archive root", as
   }
 });
 
+test("installSkillArtifact fails when SKILL.md is a symlink", async () => {
+  const root = makeTempDirectory(TEST_PREFIX);
+
+  try {
+    const archiveBytes = await createArchiveBytesWithSymlink("SKILL.md", "REAL.md", {
+      "REAL.md": "---\nname: not-regular\n---\n",
+    });
+
+    await assert.rejects(
+      installSkillArtifact({
+        targetPath: path.join(
+          root,
+          ".agent",
+          "skills",
+          "registry.example.com",
+          "owner",
+          "symlink-skill",
+        ),
+        tempRoot: path.join(root, ".agent", ".tmp"),
+        archiveBytes,
+        metadata: {
+          skillId: "@owner/symlink-skill",
+          ownerLogin: "owner",
+          skill: "symlink-skill",
+          version: "1.0.0",
+          digest: "sha256:test",
+          sizeBytes: archiveBytes.length,
+          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+          registryBaseUrl: "https://registry.example.com",
+          downloadedFrom: "https://storage.example.com/object",
+          installedAt: "2026-03-02T12:00:00.000Z",
+          sourceCommand: "skillmd use @owner/symlink-skill --version 1.0.0",
+        },
+      }),
+      /regular file/i,
+    );
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
 test("installSkillArtifact restores previous target if install swap fails", async () => {
   const root = makeTempDirectory(TEST_PREFIX);
 
@@ -190,6 +252,7 @@ test("installSkillArtifact restores previous target if install swap fails", asyn
     const fileOps = {
       access: fsp.access,
       stat: fsp.stat,
+      lstat: fsp.lstat,
       mkdir: fsp.mkdir,
       writeFile: fsp.writeFile,
       rm: fsp.rm,
@@ -255,6 +318,7 @@ test("installSkillArtifact surfaces restore failure details", async () => {
     const fileOps = {
       access: fsp.access,
       stat: fsp.stat,
+      lstat: fsp.lstat,
       mkdir: fsp.mkdir,
       writeFile: fsp.writeFile,
       rm: fsp.rm,

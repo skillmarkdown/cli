@@ -1,4 +1,10 @@
 import { fetchWithTimeout } from "../shared/http";
+import {
+  authHeaders,
+  extractApiErrorFields,
+  parseJsonOrThrow,
+  type ApiErrorPayload,
+} from "../shared/api-client";
 import { HistoryApiError } from "./errors";
 import { type HistoryRequest, type HistoryResponse } from "./types";
 
@@ -7,32 +13,9 @@ interface HistoryClientOptions {
   idToken?: string;
 }
 
-interface ApiErrorPayload {
-  error?: {
-    code?: string;
-    message?: string;
-    details?: unknown;
-  };
-  code?: string;
-  message?: string;
-  details?: unknown;
-}
-
-async function parseJsonOrThrow<T>(response: Response): Promise<T> {
-  const text = await response.text();
-
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error(`History API returned non-JSON response (${response.status})`);
-  }
-}
-
 function toHistoryApiError(status: number, payload: ApiErrorPayload): HistoryApiError {
-  const nested = payload.error;
-  const code = nested?.code || payload.code || "unknown_error";
-  const message = nested?.message || payload.message || `history API request failed (${status})`;
-  return new HistoryApiError(status, code, message, nested?.details ?? payload.details);
+  const parsed = extractApiErrorFields(status, payload, `history API request failed (${status})`);
+  return new HistoryApiError(status, parsed.code, parsed.message, parsed.details);
 }
 
 function isHistoryResponse(value: unknown): value is HistoryResponse {
@@ -65,18 +48,12 @@ export async function listSkillVersionHistory(
     url.searchParams.set("cursor", request.cursor);
   }
 
-  const headers: HeadersInit | undefined = options.idToken
-    ? {
-        Authorization: `Bearer ${options.idToken}`,
-      }
-    : undefined;
-
   const response = await fetchWithTimeout(
     url,
-    { method: "GET", headers },
+    { method: "GET", headers: authHeaders(options.idToken) },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<HistoryResponse | ApiErrorPayload>(response);
+  const parsed = await parseJsonOrThrow<HistoryResponse | ApiErrorPayload>(response, "History API");
 
   if (!response.ok) {
     throw toHistoryApiError(response.status, parsed as ApiErrorPayload);

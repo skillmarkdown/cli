@@ -1,4 +1,5 @@
 import { type PublishChannel } from "../publish/types";
+import { callWithReadTokenRetry } from "../auth/read-token-retry";
 import { resolveInstalledSkillPath, resolveInstallTempRoot } from "./pathing";
 import {
   downloadArtifact as defaultDownloadArtifact,
@@ -132,25 +133,14 @@ export async function installFromRegistry(
   async function callWithOptionalReadTokenRetry<T>(
     request: (token?: string) => Promise<T>,
   ): Promise<T> {
-    try {
-      return await request(idToken);
-    } catch (error) {
-      if (!input.resolveReadIdToken || !shouldRetryWithReadToken(error)) {
-        throw error;
-      }
-
-      if (idToken) {
-        throw error;
-      }
-
-      const resolvedIdToken = await input.resolveReadIdToken();
-      if (!resolvedIdToken) {
-        throw error;
-      }
-
-      idToken = resolvedIdToken;
-      return request(idToken);
-    }
+    const response = await callWithReadTokenRetry({
+      request,
+      resolveReadIdToken: input.resolveReadIdToken,
+      shouldRetry: shouldRetryWithReadToken,
+      idToken,
+    });
+    idToken = response.idToken;
+    return response.result;
   }
 
   let selectedVersion: string;

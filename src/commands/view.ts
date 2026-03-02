@@ -8,6 +8,7 @@ import { isViewApiError } from "../lib/view/errors";
 import { parseViewFlags } from "../lib/view/flags";
 import { type ViewResponse } from "../lib/view/types";
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
+import { callWithReadTokenRetry, isReadTokenRetryableStatus } from "../lib/auth/read-token-retry";
 
 interface ViewCommandOptions {
   env?: NodeJS.ProcessEnv;
@@ -22,9 +23,7 @@ interface ViewCommandOptions {
 }
 
 function shouldRetryWithReadToken(error: unknown): boolean {
-  return (
-    isViewApiError(error) && (error.status === 401 || error.status === 403 || error.status === 404)
-  );
+  return isViewApiError(error) && isReadTokenRetryableStatus(error.status);
 }
 
 function printJson(payload: Record<string, unknown>): void {
@@ -122,26 +121,15 @@ export async function runViewCommand(
       ownerSlug: parsedSkillId.ownerSlug,
       skillSlug: parsedSkillId.skillSlug,
     };
-    let response: ViewResponse;
-    try {
-      response = await getSkillViewFn(config.registryBaseUrl, request, {
-        timeoutMs: config.requestTimeoutMs,
-      });
-    } catch (error) {
-      if (!shouldRetryWithReadToken(error)) {
-        throw error;
-      }
-
-      const idToken = await resolveReadIdTokenFn();
-      if (!idToken) {
-        throw error;
-      }
-
-      response = await getSkillViewFn(config.registryBaseUrl, request, {
-        timeoutMs: config.requestTimeoutMs,
-        idToken,
-      });
-    }
+    const { result: response } = await callWithReadTokenRetry<ViewResponse>({
+      request: (idToken) =>
+        getSkillViewFn(config.registryBaseUrl, request, {
+          timeoutMs: config.requestTimeoutMs,
+          idToken,
+        }),
+      resolveReadIdToken: resolveReadIdTokenFn,
+      shouldRetry: shouldRetryWithReadToken,
+    });
 
     if (parsed.json) {
       printJson(response as unknown as Record<string, unknown>);

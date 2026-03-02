@@ -1,4 +1,9 @@
 import { fetchWithTimeout } from "../shared/http";
+import {
+  extractApiErrorFields,
+  parseJsonOrThrow,
+  type ApiErrorPayload,
+} from "../shared/api-client";
 import { PublishApiError } from "./errors";
 import {
   type CommitPublishRequest,
@@ -11,32 +16,9 @@ interface PublishClientOptions {
   timeoutMs?: number;
 }
 
-interface ApiErrorPayload {
-  error?: {
-    code?: string;
-    message?: string;
-    details?: unknown;
-  };
-  code?: string;
-  message?: string;
-  details?: unknown;
-}
-
-async function parseJsonOrThrow<T>(response: Response, label: string): Promise<T> {
-  const text = await response.text();
-
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error(`${label} returned non-JSON response (${response.status})`);
-  }
-}
-
 function toPublishApiError(status: number, payload: ApiErrorPayload): PublishApiError {
-  const nested = payload.error;
-  const code = nested?.code || payload.code || "unknown_error";
-  const message = nested?.message || payload.message || `publish API request failed (${status})`;
-  return new PublishApiError(status, code, message, nested?.details ?? payload.details);
+  const parsed = extractApiErrorFields(status, payload, `publish API request failed (${status})`);
+  return new PublishApiError(status, parsed.code, parsed.message, parsed.details);
 }
 
 function parseHeaders(headers: Record<string, string> | undefined): HeadersInit | undefined {

@@ -64,6 +64,23 @@ test("requires login for private scope when no read token is available", async (
   assert.match(errors.join("\n"), /private scope requires login/i);
 });
 
+test("surfaces read token resolution errors for private scope", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runSearchCommand(
+      ["agent", "--scope", "private"],
+      baseOptions({
+        resolveReadIdToken: async () => {
+          throw new Error("unable to resolve read token: request timed out");
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /unable to resolve read token: request timed out/i);
+  assert.doesNotMatch(errors.join("\n"), /private scope requires login/i);
+});
+
 test("does not resolve read token for public scope", async () => {
   const { result } = await captureConsole(() =>
     runSearchCommand(

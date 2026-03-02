@@ -1,4 +1,10 @@
 import { fetchWithTimeout } from "../shared/http";
+import {
+  authHeaders,
+  extractApiErrorFields,
+  parseJsonOrThrow,
+  type ApiErrorPayload,
+} from "../shared/api-client";
 import { SearchApiError } from "./errors";
 import { type SearchSkillsRequest, type SearchSkillsResponse } from "./types";
 
@@ -7,32 +13,9 @@ interface SearchClientOptions {
   idToken?: string;
 }
 
-interface ApiErrorPayload {
-  error?: {
-    code?: string;
-    message?: string;
-    details?: unknown;
-  };
-  code?: string;
-  message?: string;
-  details?: unknown;
-}
-
-async function parseJsonOrThrow<T>(response: Response): Promise<T> {
-  const text = await response.text();
-
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error(`Search API returned non-JSON response (${response.status})`);
-  }
-}
-
 function toSearchApiError(status: number, payload: ApiErrorPayload): SearchApiError {
-  const nested = payload.error;
-  const code = nested?.code || payload.code || "unknown_error";
-  const message = nested?.message || payload.message || `search API request failed (${status})`;
-  return new SearchApiError(status, code, message, nested?.details ?? payload.details);
+  const parsed = extractApiErrorFields(status, payload, `search API request failed (${status})`);
+  return new SearchApiError(status, parsed.code, parsed.message, parsed.details);
 }
 
 function isSearchSkillsResponse(value: unknown): value is SearchSkillsResponse {
@@ -68,21 +51,18 @@ export async function searchSkills(
     url.searchParams.set("scope", request.scope);
   }
 
-  const headers: HeadersInit | undefined = options.idToken
-    ? {
-        Authorization: `Bearer ${options.idToken}`,
-      }
-    : undefined;
-
   const response = await fetchWithTimeout(
     url,
     {
       method: "GET",
-      headers,
+      headers: authHeaders(options.idToken),
     },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<SearchSkillsResponse | ApiErrorPayload>(response);
+  const parsed = await parseJsonOrThrow<SearchSkillsResponse | ApiErrorPayload>(
+    response,
+    "Search API",
+  );
 
   if (!response.ok) {
     throw toSearchApiError(response.status, parsed as ApiErrorPayload);

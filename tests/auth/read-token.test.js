@@ -65,3 +65,46 @@ test("resolveReadIdToken returns null on project mismatch", async () => {
 
   assert.equal(token, null);
 });
+
+test("resolveReadIdToken returns null for invalid refresh token errors", async () => {
+  const token = await resolveReadIdToken({
+    env: {
+      SKILLMD_GITHUB_CLIENT_ID: "client-id",
+      SKILLMD_FIREBASE_API_KEY: "api-key",
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+    },
+    readSession: () => ({
+      provider: "github",
+      uid: "uid_123",
+      refreshToken: "refresh_123",
+      projectId: "skillmarkdown-development",
+    }),
+    exchangeRefreshToken: async () => {
+      throw new Error("Firebase secure token exchange failed (400): INVALID_REFRESH_TOKEN");
+    },
+  });
+
+  assert.equal(token, null);
+});
+
+test("resolveReadIdToken throws on transient exchange failures", async () => {
+  await assert.rejects(
+    resolveReadIdToken({
+      env: {
+        SKILLMD_GITHUB_CLIENT_ID: "client-id",
+        SKILLMD_FIREBASE_API_KEY: "api-key",
+        SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      },
+      readSession: () => ({
+        provider: "github",
+        uid: "uid_123",
+        refreshToken: "refresh_123",
+        projectId: "skillmarkdown-development",
+      }),
+      exchangeRefreshToken: async () => {
+        throw new Error("request timed out");
+      },
+    }),
+    /unable to resolve read token: request timed out/i,
+  );
+});

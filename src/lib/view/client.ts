@@ -1,4 +1,10 @@
 import { fetchWithTimeout } from "../shared/http";
+import {
+  authHeaders,
+  extractApiErrorFields,
+  parseJsonOrThrow,
+  type ApiErrorPayload,
+} from "../shared/api-client";
 import { ViewApiError } from "./errors";
 import { type ViewResponse } from "./types";
 
@@ -7,32 +13,9 @@ interface ViewClientOptions {
   idToken?: string;
 }
 
-interface ApiErrorPayload {
-  error?: {
-    code?: string;
-    message?: string;
-    details?: unknown;
-  };
-  code?: string;
-  message?: string;
-  details?: unknown;
-}
-
-async function parseJsonOrThrow<T>(response: Response): Promise<T> {
-  const text = await response.text();
-
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error(`View API returned non-JSON response (${response.status})`);
-  }
-}
-
 function toViewApiError(status: number, payload: ApiErrorPayload): ViewApiError {
-  const nested = payload.error;
-  const code = nested?.code || payload.code || "unknown_error";
-  const message = nested?.message || payload.message || `view API request failed (${status})`;
-  return new ViewApiError(status, code, message, nested?.details ?? payload.details);
+  const parsed = extractApiErrorFields(status, payload, `view API request failed (${status})`);
+  return new ViewApiError(status, parsed.code, parsed.message, parsed.details);
 }
 
 function isViewResponse(value: unknown): value is ViewResponse {
@@ -59,17 +42,12 @@ export async function getSkillView(
   options: ViewClientOptions = {},
 ): Promise<ViewResponse> {
   const url = new URL(`${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}`);
-  const headers: HeadersInit | undefined = options.idToken
-    ? {
-        Authorization: `Bearer ${options.idToken}`,
-      }
-    : undefined;
   const response = await fetchWithTimeout(
     url,
-    { method: "GET", headers },
+    { method: "GET", headers: authHeaders(options.idToken) },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<ViewResponse | ApiErrorPayload>(response);
+  const parsed = await parseJsonOrThrow<ViewResponse | ApiErrorPayload>(response, "View API");
 
   if (!response.ok) {
     throw toViewApiError(response.status, parsed as ApiErrorPayload);

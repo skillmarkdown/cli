@@ -1,4 +1,10 @@
 import { fetchWithTimeout } from "../shared/http";
+import {
+  authHeaders,
+  extractApiErrorFields,
+  parseJsonOrThrow,
+  type ApiErrorPayload,
+} from "../shared/api-client";
 import { type PublishChannel } from "../publish/types";
 import { UseApiError } from "./errors";
 import {
@@ -13,32 +19,9 @@ interface UseClientOptions {
   idToken?: string;
 }
 
-interface ApiErrorPayload {
-  error?: {
-    code?: string;
-    message?: string;
-    details?: unknown;
-  };
-  code?: string;
-  message?: string;
-  details?: unknown;
-}
-
-async function parseJsonOrThrow<T>(response: Response, label: string): Promise<T> {
-  const text = await response.text();
-
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error(`${label} returned non-JSON response (${response.status})`);
-  }
-}
-
 function toUseApiError(status: number, payload: ApiErrorPayload): UseApiError {
-  const nested = payload.error;
-  const code = nested?.code || payload.code || "unknown_error";
-  const message = nested?.message || payload.message || `use API request failed (${status})`;
-  return new UseApiError(status, code, message, nested?.details ?? payload.details);
+  const parsed = extractApiErrorFields(status, payload, `use API request failed (${status})`);
+  return new UseApiError(status, parsed.code, parsed.message, parsed.details);
 }
 
 function isResolveResponse(value: unknown): value is ResolveSkillVersionResponse {
@@ -95,14 +78,9 @@ export async function resolveSkillVersion(
 ): Promise<ResolveSkillVersionResponse> {
   const url = new URL(`${baseUrl}/v1/skills/${ownerSlug}/${skillSlug}/resolve`);
   url.searchParams.set("channel", channel);
-  const headers: HeadersInit | undefined = options.idToken
-    ? {
-        Authorization: `Bearer ${options.idToken}`,
-      }
-    : undefined;
   const response = await fetchWithTimeout(
     url,
-    { method: "GET", headers },
+    { method: "GET", headers: authHeaders(options.idToken) },
     { timeoutMs: options.timeoutMs },
   );
   const parsed = await parseJsonOrThrow<ResolveSkillVersionResponse | ApiErrorPayload>(
@@ -129,14 +107,9 @@ export async function getArtifactDescriptor(
   const url = new URL(
     `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/versions/${request.version}/artifact`,
   );
-  const headers: HeadersInit | undefined = options.idToken
-    ? {
-        Authorization: `Bearer ${options.idToken}`,
-      }
-    : undefined;
   const response = await fetchWithTimeout(
     url,
-    { method: "GET", headers },
+    { method: "GET", headers: authHeaders(options.idToken) },
     { timeoutMs: options.timeoutMs },
   );
   const parsed = await parseJsonOrThrow<ArtifactDescriptorResponse | ApiErrorPayload>(

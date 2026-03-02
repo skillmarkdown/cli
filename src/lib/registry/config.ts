@@ -1,3 +1,5 @@
+import { getLoginEnvConfig } from "../auth/config";
+
 const DEFAULT_REGISTRY_TIMEOUT_MS = 10_000;
 
 export const REGISTRY_BY_PROJECT: Record<string, string> = {
@@ -18,6 +20,12 @@ export function parseRegistryTimeoutMs(value: string | undefined): number {
   return parsed;
 }
 
+export interface RegistryEnvConfig {
+  firebaseProjectId: string;
+  registryBaseUrl: string;
+  requestTimeoutMs: number;
+}
+
 export function resolveRegistryBaseUrl(projectId: string, envValue: string | undefined): string {
   const candidate = envValue?.trim() || REGISTRY_BY_PROJECT[projectId];
   if (!candidate) {
@@ -36,4 +44,16 @@ export function resolveRegistryBaseUrl(projectId: string, envValue: string | und
   } catch {
     throw new Error(`invalid registry base URL: ${candidate}`);
   }
+}
+
+export function getRegistryEnvConfig(
+  env: NodeJS.ProcessEnv = process.env,
+  options: { firebaseProjectId?: string } = {},
+): RegistryEnvConfig {
+  const firebaseProjectId = options.firebaseProjectId ?? getLoginEnvConfig(env).firebaseProjectId;
+  return {
+    firebaseProjectId,
+    registryBaseUrl: resolveRegistryBaseUrl(firebaseProjectId, env.SKILLMD_REGISTRY_BASE_URL),
+    requestTimeoutMs: parseRegistryTimeoutMs(env.SKILLMD_REGISTRY_TIMEOUT_MS),
+  };
 }

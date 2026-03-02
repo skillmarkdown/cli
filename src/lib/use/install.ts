@@ -16,6 +16,7 @@ interface InstallSkillArtifactInput {
 interface InstallFileOps {
   access: typeof fs.access;
   stat: typeof fs.stat;
+  lstat: typeof fs.lstat;
   mkdir: typeof fs.mkdir;
   writeFile: typeof fs.writeFile;
   rm: typeof fs.rm;
@@ -30,6 +31,7 @@ interface InstallSkillArtifactDependencies {
 const DEFAULT_FILE_OPS: InstallFileOps = {
   access: fs.access.bind(fs),
   stat: fs.stat.bind(fs),
+  lstat: fs.lstat.bind(fs),
   mkdir: fs.mkdir.bind(fs),
   writeFile: fs.writeFile.bind(fs),
   rm: fs.rm.bind(fs),
@@ -49,9 +51,13 @@ async function assertExtractedSkillShape(path: string, fileOps: InstallFileOps):
   const skillFilePath = join(path, "SKILL.md");
   let stats;
   try {
-    stats = await fileOps.stat(skillFilePath);
+    stats = await fileOps.lstat(skillFilePath);
   } catch {
     throw new Error("invalid artifact: SKILL.md not found at archive root");
+  }
+
+  if (stats.isSymbolicLink()) {
+    throw new Error("invalid artifact: SKILL.md must be a regular file");
   }
 
   if (!stats.isFile()) {

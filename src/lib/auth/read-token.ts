@@ -8,6 +8,20 @@ interface ResolveReadTokenOptions {
   exchangeRefreshToken?: (apiKey: string, refreshToken: string) => Promise<FirebaseIdTokenSession>;
 }
 
+const INVALID_SESSION_ERROR_PATTERNS = [
+  /INVALID_REFRESH_TOKEN/u,
+  /TOKEN_EXPIRED/u,
+  /PROJECT_NUMBER_MISMATCH/u,
+];
+
+function isInvalidSessionError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return INVALID_SESSION_ERROR_PATTERNS.some((pattern) => pattern.test(error.message));
+}
+
 export async function resolveReadIdToken(
   options: ResolveReadTokenOptions = {},
 ): Promise<string | null> {
@@ -16,12 +30,7 @@ export async function resolveReadIdToken(
     return null;
   }
 
-  let config;
-  try {
-    config = getLoginEnvConfig(options.env ?? process.env);
-  } catch {
-    return null;
-  }
+  const config = getLoginEnvConfig(options.env ?? process.env);
 
   if (session.projectId && session.projectId !== config.firebaseProjectId) {
     return null;
@@ -33,7 +42,16 @@ export async function resolveReadIdToken(
       session.refreshToken,
     );
     return tokenSession.idToken;
-  } catch {
-    return null;
+  } catch (error) {
+    if (isInvalidSessionError(error)) {
+      return null;
+    }
+
+    const message = error instanceof Error ? error.message : "unknown token exchange error";
+    const wrapped = new Error(`unable to resolve read token: ${message}`) as Error & {
+      cause?: unknown;
+    };
+    wrapped.cause = error;
+    throw wrapped;
   }
 }
