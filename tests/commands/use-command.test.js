@@ -90,6 +90,7 @@ test("installs with default latest selector and prints human output", async () =
       "/.agent/skills/registry.skillmarkdown.com/stefdevscore/test-skill",
     ),
   );
+  assert.equal(installInput.metadata.downloadedFrom, "https://storage.example.com");
 });
 
 test("falls back to beta when latest channel is not set by default", async () => {

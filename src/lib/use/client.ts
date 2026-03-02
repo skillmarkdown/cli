@@ -77,6 +77,14 @@ function isArtifactDescriptorResponse(value: unknown): value is ArtifactDescript
   );
 }
 
+function sanitizeDownloadOrigin(downloadUrl: string): string {
+  try {
+    return new URL(downloadUrl).origin;
+  } catch {
+    return "redacted";
+  }
+}
+
 export async function resolveSkillVersion(
   baseUrl: string,
   ownerSlug: string,
@@ -148,7 +156,7 @@ export async function downloadArtifact(
 
   return {
     bytes,
-    downloadedFrom: downloadUrl,
+    downloadedFrom: sanitizeDownloadOrigin(downloadUrl),
     contentType,
   };
 }

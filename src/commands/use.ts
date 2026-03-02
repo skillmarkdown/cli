@@ -65,6 +65,14 @@ function buildSourceCommand(
   return parts.join(" ");
 }
 
+function sanitizeDownloadedFrom(value: string): string {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return "redacted";
+  }
+}
+
 function printHumanResult(result: UseCommandResult): void {
   console.log(
     `Installed ${result.skillId}@${result.version} to ${result.installedPath} (digest=${result.digest}).`,
@@ -177,7 +185,7 @@ export async function runUseCommand(
       sizeBytes: descriptor.sizeBytes,
       mediaType: descriptor.mediaType,
       registryBaseUrl: config.registryBaseUrl,
-      downloadedFrom: download.downloadedFrom,
+      downloadedFrom: sanitizeDownloadedFrom(download.downloadedFrom),
       installedAt,
       sourceCommand: buildSourceCommand(canonicalSkillId, {
         version: parsed.version,

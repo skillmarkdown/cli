@@ -98,7 +98,29 @@ test("downloadArtifact returns bytes and content type", async () => {
   );
 
   assert.equal(payload.bytes.length, 3);
+  assert.equal(payload.downloadedFrom, "https://storage.example.com");
   assert.equal(payload.contentType, "application/vnd.skillmarkdown.skill.v1+tar");
+});
+
+test("downloadArtifact redacts signed URL path and query details", async () => {
+  const payload = await withMockedFetch(
+    async () => ({
+      ok: true,
+      status: 200,
+      headers: {
+        get() {
+          return null;
+        },
+      },
+      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+    }),
+    () =>
+      downloadArtifact(
+        "https://storage.googleapis.com/skillmarkdown-development.firebasestorage.app/skills/o0npTAUjw5OEnnL966flwJUoQdM2/test-skill/1.0.0/sha256%3Aabc.tgz?X-Goog-Signature=secret",
+      ),
+  );
+
+  assert.equal(payload.downloadedFrom, "https://storage.googleapis.com");
 });
 
 test("maps API errors into UseApiError", async () => {
