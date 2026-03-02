@@ -366,7 +366,7 @@ Expected:
 
 - output starts with a boxed table:
   - top border begins with `┌`
-  - header row contains `SKILL`, `LATEST`, `BETA`, `UPDATED`, `DESCRIPTION`
+  - header row contains `SKILL`, `LATEST`, `UPDATED`, `DESCRIPTION`
 - row columns remain aligned
 - next page hint prints when cursor exists
 

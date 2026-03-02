@@ -59,8 +59,12 @@ test("prints human output for search results", async () => {
   assert.equal(result, 0);
   assert.match(logs[0], /^┌/u);
   assert.match(logs[1], /SKILL/u);
+  assert.match(logs[1], /LATEST/u);
+  assert.match(logs[1], /UPDATED/u);
+  assert.doesNotMatch(logs[1], /BETA/u);
   assert.match(logs[2], /^├/u);
   assert.match(logs[3], /@core\/agent-skill/);
+  assert.match(logs[3], /2026-03-02T09:00/);
   assert.match(logs[4], /^└/u);
   assert.match(logs[5], /Next page:/);
 });
@@ -97,6 +101,42 @@ test("truncates long search descriptions and preserves next-page hint", async ()
   assert.equal(result, 0);
   assert.match(logs[3], /\.\.\./);
   assert.equal(logs[5], "Next page: skillmd search agent --limit 10 --cursor cursor_2");
+});
+
+test("wraps long skill ids across table lines for visibility", async () => {
+  const longSkillId =
+    "@stefdevscore/pagetest-super-long-skill-name-for-table-visibility-check-260302";
+  const { result, logs } = await captureConsole(() =>
+    runSearchCommand(
+      ["agent"],
+      baseOptions({
+        searchSkills: async () => ({
+          query: "agent",
+          limit: 20,
+          results: [
+            {
+              skillId: longSkillId,
+              owner: "@stefdevscore",
+              ownerLogin: "stefdevscore",
+              skill: "pagetest-super-long-skill-name-for-table-visibility-check-260302",
+              description: "short description",
+              channels: {
+                latest: "0.1.0",
+              },
+              updatedAt: "2026-03-02T12:56:00.000Z",
+            },
+          ],
+          nextCursor: null,
+        }),
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  const output = logs.join("\n");
+  assert.match(output, /@stefdevscore\/pagetest-super-long-skill-name/u);
+  assert.match(output, /visibility-check-260302/u);
+  assert.match(output, /2026-03-02T12:56/u);
 });
 
 test("prints json output with --json", async () => {

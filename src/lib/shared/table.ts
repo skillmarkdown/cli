@@ -4,6 +4,8 @@ export interface TableColumn<T> {
   minWidth?: number;
   maxWidth?: number;
   shrinkPriority?: number;
+  wrap?: boolean;
+  maxLines?: number;
   align?: "left" | "right";
   value: (row: T) => string | number | null | undefined;
 }
@@ -121,12 +123,61 @@ function padToWidth(value: string, width: number, align: "left" | "right"): stri
   return `${clipped}${" ".repeat(padding)}`;
 }
 
-function renderCell(
+function wrapToWidth(value: string, width: number): string[] {
+  if (value.length === 0) {
+    return [""];
+  }
+
+  const lines: string[] = [];
+  let current = "";
+  let currentWidth = 0;
+
+  for (const grapheme of splitGraphemes(value)) {
+    const nextWidth = graphemeWidth(grapheme);
+
+    if (currentWidth > 0 && currentWidth + nextWidth > width) {
+      lines.push(current);
+      current = grapheme;
+      currentWidth = nextWidth;
+      continue;
+    }
+
+    current += grapheme;
+    currentWidth += nextWidth;
+  }
+
+  if (current.length > 0) {
+    lines.push(current);
+  }
+
+  return lines.length > 0 ? lines : [""];
+}
+
+function renderCellLines(
   value: string | number | null | undefined,
   column: TableColumn<unknown>,
-): string {
+): string[] {
   const width = column.width ?? 1;
-  return padToWidth(normalizeValue(value), width, column.align ?? "left");
+  const align = column.align ?? "left";
+  const normalized = normalizeValue(value);
+
+  if (!column.wrap) {
+    return [padToWidth(normalized, width, align)];
+  }
+
+  const wrapped = wrapToWidth(normalized, width);
+  const maxLines = Math.max(1, column.maxLines ?? wrapped.length);
+  let lines = wrapped.slice(0, maxLines);
+
+  if (wrapped.length > maxLines) {
+    if (width <= 3) {
+      lines[maxLines - 1] = ".".repeat(width);
+    } else {
+      lines[maxLines - 1] = `${truncateToWidth(lines[maxLines - 1], width - 3)}...`;
+    }
+  }
+
+  return lines.map((line) => padToWidth(line, width, align));
 }
 
 function tableWidth(columns: TableColumn<unknown>[]): number {
@@ -216,22 +267,30 @@ export function renderTable<T>(
   lines.push(renderBorder(unknownColumns, "┌", "┬", "┐"));
   lines.push(
     `│ ${unknownColumns
-      .map((column) =>
-        renderCell(column.header, {
-          ...column,
-          align: "left",
-          value: () => "",
-        }),
-      )
+      .map((column) => padToWidth(column.header, column.width ?? 1, "left"))
       .join(" │ ")} │`,
   );
   lines.push(renderBorder(unknownColumns, "├", "┼", "┤"));
   for (const row of rows) {
-    lines.push(
-      `│ ${unknownColumns
-        .map((column) => renderCell(column.value(row as T), column))
-        .join(" │ ")} │`,
+    const renderedCells = unknownColumns.map((column) =>
+      renderCellLines(column.value(row as T), column),
     );
+    const rowHeight = renderedCells.reduce((max, cellLines) => Math.max(max, cellLines.length), 1);
+
+    for (let lineIndex = 0; lineIndex < rowHeight; lineIndex += 1) {
+      lines.push(
+        `│ ${unknownColumns
+          .map((column, columnIndex) => {
+            const line = renderedCells[columnIndex][lineIndex];
+            if (typeof line === "string") {
+              return line;
+            }
+
+            return " ".repeat(column.width ?? 1);
+          })
+          .join(" │ ")} │`,
+      );
+    }
   }
   lines.push(renderBorder(unknownColumns, "└", "┴", "┘"));
 

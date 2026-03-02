@@ -336,7 +336,11 @@ test("spawned CLI: search prints columnar human output", async () => {
     assert.equal(result.status, 0);
     assert.match(result.stdout, /^┌/mu);
     assert.match(result.stdout, /│ SKILL/mu);
+    assert.match(result.stdout, /LATEST/mu);
+    assert.match(result.stdout, /UPDATED/mu);
+    assert.doesNotMatch(result.stdout, /BETA/mu);
     assert.match(result.stdout, /@core\//);
+    assert.match(result.stdout, /2026-03-02T09:00/);
     assert.match(result.stdout, /Next page: skillmd search agent --limit 2 --cursor cursor_2/);
   } finally {
     await mockRegistry.close();

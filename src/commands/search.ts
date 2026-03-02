@@ -21,6 +21,20 @@ function printJson(payload: Record<string, unknown>): void {
   console.log(JSON.stringify(payload, null, 2));
 }
 
+function formatUpdatedAtForTable(value: string): string {
+  const isoPrefix = value.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
+  if (isoPrefix) {
+    return isoPrefix[1];
+  }
+
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 16);
+  }
+
+  return value;
+}
+
 function printHumanResults(
   query: string | undefined,
   limit: number | undefined,
@@ -35,9 +49,11 @@ function printHumanResults(
       [
         {
           header: "SKILL",
-          minWidth: 16,
-          maxWidth: 36,
-          shrinkPriority: 1,
+          minWidth: 28,
+          maxWidth: 48,
+          shrinkPriority: 0,
+          wrap: true,
+          maxLines: 3,
           value: (row) => row.skillId,
         },
         {
@@ -46,20 +62,16 @@ function printHumanResults(
           value: (row) => row.channels.latest ?? "-",
         },
         {
-          header: "BETA",
-          width: 12,
-          value: (row) => row.channels.beta ?? "-",
-        },
-        {
           header: "UPDATED",
-          width: 24,
-          value: (row) => row.updatedAt,
+          width: 16,
+          minWidth: 16,
+          value: (row) => formatUpdatedAtForTable(row.updatedAt),
         },
         {
           header: "DESCRIPTION",
-          minWidth: 18,
+          minWidth: 12,
           maxWidth: 64,
-          shrinkPriority: 3,
+          shrinkPriority: 5,
           value: (row) => row.description ?? "",
         },
       ],
