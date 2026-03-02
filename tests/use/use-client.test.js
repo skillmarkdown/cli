@@ -34,6 +34,21 @@ test("resolveSkillVersion returns parsed payload", async () => {
   assert.equal(payload.version, "1.2.3");
 });
 
+test("resolveSkillVersion rejects malformed success payloads", async () => {
+  await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        owner: "@stefdevscore",
+      }),
+    async () => {
+      await assert.rejects(
+        resolveSkillVersion("https://registry.example.com", "stefdevscore", "test-skill", "latest"),
+        /missing required fields/i,
+      );
+    },
+  );
+});
+
 test("getArtifactDescriptor returns parsed payload", async () => {
   const payload = await withMockedFetch(
     async (input) => {
@@ -137,6 +152,22 @@ test("downloadArtifact fails on non-2xx responses", async () => {
     async () => mockTextResponse(403, "forbidden"),
     async () => {
       await assert.rejects(downloadArtifact("https://storage.example.com/object"), /failed/);
+    },
+  );
+});
+
+test("getArtifactDescriptor reports non-JSON responses", async () => {
+  await withMockedFetch(
+    async () => mockTextResponse(502, "<html>bad gateway</html>"),
+    async () => {
+      await assert.rejects(
+        getArtifactDescriptor("https://registry.example.com", {
+          ownerSlug: "stefdevscore",
+          skillSlug: "test-skill",
+          version: "1.2.3",
+        }),
+        /non-JSON/i,
+      );
     },
   );
 });

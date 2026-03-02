@@ -222,3 +222,18 @@ test("spawned CLI: publish fails fast on invalid strict scaffold", () => {
     cleanupDirectory(root);
   }
 });
+
+test("spawned CLI: use fails with usage when skill-id is missing", () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+
+  try {
+    const result = runCli(["use"], root);
+    assert.equal(result.status, 1);
+    assert.match(
+      result.stderr,
+      /Usage: skillmd use <skill-id> \[--version <semver> \| --channel <latest\|beta>\] \[--allow-yanked\] \[--json\]/,
+    );
+  } finally {
+    cleanupDirectory(root);
+  }
+});

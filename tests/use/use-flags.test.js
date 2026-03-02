@@ -46,7 +46,9 @@ test("parses channel selector in equals form", () => {
 
 for (const args of [
   [],
+  ["owner/skill", "--version"],
   ["owner/skill", "--version", "x"],
+  ["owner/skill", "--channel"],
   ["owner/skill", "--channel", "rc"],
   ["owner/skill", "--version", "1.2.3", "--channel", "latest"],
   ["owner/skill", "--unknown"],

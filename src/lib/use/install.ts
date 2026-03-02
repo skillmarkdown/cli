@@ -13,20 +13,43 @@ interface InstallSkillArtifactInput {
   metadata: InstalledSkillMetadata;
 }
 
-async function exists(path: string): Promise<boolean> {
+interface InstallFileOps {
+  access: typeof fs.access;
+  stat: typeof fs.stat;
+  mkdir: typeof fs.mkdir;
+  writeFile: typeof fs.writeFile;
+  rm: typeof fs.rm;
+  rename: typeof fs.rename;
+}
+
+interface InstallSkillArtifactDependencies {
+  fileOps?: InstallFileOps;
+  tarExtract?: typeof tar.x;
+}
+
+const DEFAULT_FILE_OPS: InstallFileOps = {
+  access: fs.access.bind(fs),
+  stat: fs.stat.bind(fs),
+  mkdir: fs.mkdir.bind(fs),
+  writeFile: fs.writeFile.bind(fs),
+  rm: fs.rm.bind(fs),
+  rename: fs.rename.bind(fs),
+};
+
+async function exists(path: string, fileOps: InstallFileOps): Promise<boolean> {
   try {
-    await fs.access(path);
+    await fileOps.access(path);
     return true;
   } catch {
     return false;
   }
 }
 
-async function assertExtractedSkillShape(path: string): Promise<void> {
+async function assertExtractedSkillShape(path: string, fileOps: InstallFileOps): Promise<void> {
   const skillFilePath = join(path, "SKILL.md");
   let stats;
   try {
-    stats = await fs.stat(skillFilePath);
+    stats = await fileOps.stat(skillFilePath);
   } catch {
     throw new Error("invalid artifact: SKILL.md not found at archive root");
   }
@@ -36,7 +59,12 @@ async function assertExtractedSkillShape(path: string): Promise<void> {
   }
 }
 
-export async function installSkillArtifact(input: InstallSkillArtifactInput): Promise<void> {
+export async function installSkillArtifact(
+  input: InstallSkillArtifactInput,
+  dependencies: InstallSkillArtifactDependencies = {},
+): Promise<void> {
+  const fileOps = dependencies.fileOps ?? DEFAULT_FILE_OPS;
+  const tarExtract = dependencies.tarExtract ?? tar.x;
   const runId = `skillmd-use-${Date.now()}-${randomUUID().slice(0, 8)}`;
   const runDir = join(input.tempRoot, runId);
   const archivePath = join(runDir, "artifact.tgz");
@@ -46,13 +74,13 @@ export async function installSkillArtifact(input: InstallSkillArtifactInput): Pr
   let movedToBackup = false;
   let installed = false;
 
-  await fs.mkdir(runDir, { recursive: true });
+  await fileOps.mkdir(runDir, { recursive: true });
 
   try {
-    await fs.writeFile(archivePath, input.archiveBytes);
-    await fs.mkdir(extractedPath, { recursive: true });
+    await fileOps.writeFile(archivePath, input.archiveBytes);
+    await fileOps.mkdir(extractedPath, { recursive: true });
 
-    await tar.x({
+    await tarExtract({
       file: archivePath,
       cwd: extractedPath,
       strict: true,
@@ -60,35 +88,35 @@ export async function installSkillArtifact(input: InstallSkillArtifactInput): Pr
       preserveOwner: false,
     });
 
-    await assertExtractedSkillShape(extractedPath);
-    await fs.writeFile(
+    await assertExtractedSkillShape(extractedPath, fileOps);
+    await fileOps.writeFile(
       join(extractedPath, ".skillmd-install.json"),
       `${JSON.stringify(input.metadata, null, 2)}\n`,
       "utf8",
     );
 
-    await fs.mkdir(dirname(input.targetPath), { recursive: true });
+    await fileOps.mkdir(dirname(input.targetPath), { recursive: true });
 
-    if (await exists(input.targetPath)) {
-      await fs.rm(backupPath, { recursive: true, force: true });
-      await fs.rename(input.targetPath, backupPath);
+    if (await exists(input.targetPath, fileOps)) {
+      await fileOps.rm(backupPath, { recursive: true, force: true });
+      await fileOps.rename(input.targetPath, backupPath);
       movedToBackup = true;
     }
 
-    await fs.rename(extractedPath, input.targetPath);
+    await fileOps.rename(extractedPath, input.targetPath);
     installed = true;
 
     if (movedToBackup) {
-      await fs.rm(backupPath, { recursive: true, force: true });
+      await fileOps.rm(backupPath, { recursive: true, force: true });
       movedToBackup = false;
     }
   } catch (error) {
     if (movedToBackup && !installed) {
       try {
-        if (await exists(input.targetPath)) {
-          await fs.rm(input.targetPath, { recursive: true, force: true });
+        if (await exists(input.targetPath, fileOps)) {
+          await fileOps.rm(input.targetPath, { recursive: true, force: true });
         }
-        await fs.rename(backupPath, input.targetPath);
+        await fileOps.rename(backupPath, input.targetPath);
         movedToBackup = false;
       } catch (restoreError) {
         const originalMessage = error instanceof Error ? error.message : "unknown";
@@ -103,9 +131,9 @@ export async function installSkillArtifact(input: InstallSkillArtifactInput): Pr
 
     throw error;
   } finally {
-    await fs.rm(runDir, { recursive: true, force: true });
+    await fileOps.rm(runDir, { recursive: true, force: true });
     if (movedToBackup) {
-      await fs.rm(backupPath, { recursive: true, force: true });
+      await fileOps.rm(backupPath, { recursive: true, force: true });
     }
   }
 }

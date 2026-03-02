@@ -67,6 +67,10 @@ test("verifyDownloadedArtifact validates descriptor against bytes", async () => 
       "application/vnd.skillmarkdown.skill.v1+tar",
     );
   }, /size mismatch/i);
+
+  assert.throws(() => {
+    verifyDownloadedArtifact({ ...descriptor }, bytes, "application/octet-stream");
+  }, /content-type mismatch/i);
 });
 
 test("installSkillArtifact replaces existing target atomically and writes metadata", async () => {
@@ -157,6 +161,137 @@ test("installSkillArtifact fails when SKILL.md is missing from archive root", as
         },
       }),
       /SKILL\.md/i,
+    );
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("installSkillArtifact restores previous target if install swap fails", async () => {
+  const root = makeTempDirectory(TEST_PREFIX);
+
+  try {
+    const archiveBytes = await createArchiveBytes({
+      "SKILL.md": "---\nname: restored\n---\n",
+    });
+    const targetPath = path.join(
+      root,
+      ".agent",
+      "skills",
+      "registry.example.com",
+      "owner",
+      "restore-skill",
+    );
+    const tempRoot = path.join(root, ".agent", ".tmp");
+
+    fs.mkdirSync(targetPath, { recursive: true });
+    fs.writeFileSync(path.join(targetPath, "old.txt"), "old", "utf8");
+
+    const fileOps = {
+      access: fsp.access,
+      stat: fsp.stat,
+      mkdir: fsp.mkdir,
+      writeFile: fsp.writeFile,
+      rm: fsp.rm,
+      rename: async (from, to) => {
+        if (from.endsWith("/extracted") && to === targetPath) {
+          throw new Error("simulated swap failure");
+        }
+        return fsp.rename(from, to);
+      },
+    };
+
+    await assert.rejects(
+      installSkillArtifact(
+        {
+          targetPath,
+          tempRoot,
+          archiveBytes,
+          metadata: {
+            skillId: "@owner/restore-skill",
+            ownerLogin: "owner",
+            skill: "restore-skill",
+            version: "1.0.0",
+            digest: "sha256:test",
+            sizeBytes: archiveBytes.length,
+            mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+            registryBaseUrl: "https://registry.example.com",
+            downloadedFrom: "https://storage.example.com/object",
+            installedAt: "2026-03-02T12:00:00.000Z",
+            sourceCommand: "skillmd use @owner/restore-skill --version 1.0.0",
+          },
+        },
+        { fileOps },
+      ),
+      /simulated swap failure/i,
+    );
+
+    assert.equal(fs.existsSync(path.join(targetPath, "old.txt")), true);
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("installSkillArtifact surfaces restore failure details", async () => {
+  const root = makeTempDirectory(TEST_PREFIX);
+
+  try {
+    const archiveBytes = await createArchiveBytes({
+      "SKILL.md": "---\nname: broken-restore\n---\n",
+    });
+    const targetPath = path.join(
+      root,
+      ".agent",
+      "skills",
+      "registry.example.com",
+      "owner",
+      "broken-restore-skill",
+    );
+    const tempRoot = path.join(root, ".agent", ".tmp");
+
+    fs.mkdirSync(targetPath, { recursive: true });
+    fs.writeFileSync(path.join(targetPath, "old.txt"), "old", "utf8");
+
+    const fileOps = {
+      access: fsp.access,
+      stat: fsp.stat,
+      mkdir: fsp.mkdir,
+      writeFile: fsp.writeFile,
+      rm: fsp.rm,
+      rename: async (from, to) => {
+        if (from.endsWith("/extracted") && to === targetPath) {
+          throw new Error("simulated swap failure");
+        }
+        if (from.includes("-backup") && to === targetPath) {
+          throw new Error("simulated restore failure");
+        }
+        return fsp.rename(from, to);
+      },
+    };
+
+    await assert.rejects(
+      installSkillArtifact(
+        {
+          targetPath,
+          tempRoot,
+          archiveBytes,
+          metadata: {
+            skillId: "@owner/broken-restore-skill",
+            ownerLogin: "owner",
+            skill: "broken-restore-skill",
+            version: "1.0.0",
+            digest: "sha256:test",
+            sizeBytes: archiveBytes.length,
+            mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+            registryBaseUrl: "https://registry.example.com",
+            downloadedFrom: "https://storage.example.com/object",
+            installedAt: "2026-03-02T12:00:00.000Z",
+            sourceCommand: "skillmd use @owner/broken-restore-skill --version 1.0.0",
+          },
+        },
+        { fileOps },
+      ),
+      /restore failed/i,
     );
   } finally {
     cleanupDirectory(root);

@@ -169,3 +169,67 @@ test("maps use API errors", async () => {
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /skill not found/);
 });
+
+test("uses explicit --version without calling resolve endpoint", async () => {
+  let resolveCalled = false;
+  const { result } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill", "--version", "1.2.3"],
+      baseOptions({
+        resolveVersion: async () => {
+          resolveCalled = true;
+          throw new Error("should not be called");
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(resolveCalled, false);
+});
+
+test("passes --channel beta to resolve and records sourceCommand", async () => {
+  let resolvedChannel;
+  let installInput;
+  const { result } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill", "--channel", "beta"],
+      baseOptions({
+        resolveVersion: async (_baseUrl, _owner, _skill, channel) => {
+          resolvedChannel = channel;
+          return {
+            owner: "@stefdevscore",
+            ownerLogin: "stefdevscore",
+            skill: "test-skill",
+            channel: "beta",
+            version: "1.2.3-beta.1",
+          };
+        },
+        getArtifactDescriptor: async () => ({
+          owner: "@stefdevscore",
+          ownerLogin: "stefdevscore",
+          skill: "test-skill",
+          version: "1.2.3-beta.1",
+          digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+          sizeBytes: 5,
+          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+          yanked: false,
+          yankedAt: null,
+          yankedReason: null,
+          downloadUrl: "https://storage.example.com/object",
+          downloadExpiresAt: "2026-03-02T12:40:00.000Z",
+        }),
+        installArtifact: async (input) => {
+          installInput = input;
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(resolvedChannel, "beta");
+  assert.equal(
+    installInput.metadata.sourceCommand,
+    "skillmd use @stefdevscore/test-skill --channel beta",
+  );
+});
