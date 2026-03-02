@@ -110,7 +110,7 @@ Although not implemented in v0, all CLI decisions must preserve this direction.
 Contract:
 
 - command surface:
-  - `skillmd publish [path] --version <semver> [--channel <latest|beta>] [--dry-run] [--json]`
+  - `skillmd publish [path] --version <semver> [--channel <latest|beta>] [--visibility <public|private>] [--dry-run] [--json]`
 - owner is derived from authenticated GitHub identity (`@githubusername`), not passed as a CLI flag.
 - publish API owner identity is derived server-side from auth claims (not client-supplied request fields).
 - strict local validation is mandatory before packaging/publish.
@@ -121,6 +121,9 @@ Contract:
 - default channel selection:
   - prerelease semver => `beta`
   - stable semver => `latest`
+- default visibility selection:
+  - omitted visibility => `public`
+  - explicit `--visibility private` => owner-only reads/search/install
 - authenticated write model:
   - publish requires local login session.
   - CLI exchanges Firebase refresh token for ID token at publish time.
@@ -134,22 +137,25 @@ This keeps the publish surface simple while preserving integrity guarantees requ
 
 ---
 
-## D-008: Search Command Is Public Discovery-Only (Single-Term v1)
+## D-008: Search Command Supports Public and Owner-Private Discovery (Single-Term v1)
 
-`skillmd search` is introduced for public remote discovery.
+`skillmd search` is introduced for remote discovery.
 
 Contract:
 
 - command surface:
-  - `skillmd search [query] [--limit <1-50>] [--cursor <token>] [--json]`
+  - `skillmd search [query] [--limit <1-50>] [--cursor <token>] [--scope <public|private>] [--json]`
 - `query` is optional:
   - omitted query => browse latest published skills
   - provided query => single search token in v1
+- scope behavior:
+  - default `--scope public`
+  - `--scope private` requires login and returns owner-only private skills
 - cursor-based pagination is supported through opaque `nextCursor` values.
 - output modes:
   - human-readable summary output by default
   - raw API payload via `--json`
-- this command only queries public registry metadata; it does not install or mutate local skill state.
+- this command is read-only and does not mutate local skill state.
 
 Rationale:
 Search is the lowest-risk step toward install/use flows and web listing while keeping implementation and API semantics stable.

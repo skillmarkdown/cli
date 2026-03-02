@@ -2,6 +2,8 @@ import { type SearchFlags } from "./types";
 
 const MIN_SEARCH_LIMIT = 1;
 const MAX_SEARCH_LIMIT = 50;
+const SEARCH_SCOPES = ["public", "private"] as const;
+type SearchScope = (typeof SEARCH_SCOPES)[number];
 
 function parseValueArg(
   args: string[],
@@ -31,8 +33,10 @@ function isKnownFlagToken(value: string): boolean {
   return (
     value === "--json" ||
     value === "--limit" ||
+    value === "--scope" ||
     value === "--cursor" ||
     value.startsWith("--limit=") ||
+    value.startsWith("--scope=") ||
     value.startsWith("--cursor=")
   );
 }
@@ -50,10 +54,15 @@ function parseLimit(value: string): number | null {
   return parsed;
 }
 
+function parseScope(value: string): SearchScope | null {
+  return SEARCH_SCOPES.includes(value as SearchScope) ? (value as SearchScope) : null;
+}
+
 export function parseSearchFlags(args: string[]): SearchFlags {
   let query: string | undefined;
   let limit: number | undefined;
   let cursor: string | undefined;
+  let scope: SearchScope = "public";
   let json = false;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -67,12 +76,12 @@ export function parseSearchFlags(args: string[]): SearchFlags {
     if (arg === "--limit") {
       const parsedValue = parseValueArg(args, index);
       if (!parsedValue.value) {
-        return { json: false, valid: false };
+        return { scope: "public", json: false, valid: false };
       }
 
       const parsedLimit = parseLimit(parsedValue.value);
       if (parsedLimit === null) {
-        return { json: false, valid: false };
+        return { scope: "public", json: false, valid: false };
       }
 
       limit = parsedLimit;
@@ -83,7 +92,7 @@ export function parseSearchFlags(args: string[]): SearchFlags {
     if (arg.startsWith("--limit=")) {
       const parsedLimit = parseLimit(arg.slice("--limit=".length));
       if (parsedLimit === null) {
-        return { json: false, valid: false };
+        return { scope: "public", json: false, valid: false };
       }
 
       limit = parsedLimit;
@@ -96,7 +105,7 @@ export function parseSearchFlags(args: string[]): SearchFlags {
         rejectKnownFlagValues: true,
       });
       if (!parsedValue.value) {
-        return { json: false, valid: false };
+        return { scope: "public", json: false, valid: false };
       }
 
       cursor = parsedValue.value;
@@ -107,17 +116,40 @@ export function parseSearchFlags(args: string[]): SearchFlags {
     if (arg.startsWith("--cursor=")) {
       cursor = arg.slice("--cursor=".length);
       if (!cursor) {
-        return { json: false, valid: false };
+        return { scope: "public", json: false, valid: false };
       }
       continue;
     }
 
+    if (arg === "--scope") {
+      const parsedValue = parseValueArg(args, index);
+      if (!parsedValue.value) {
+        return { scope: "public", json: false, valid: false };
+      }
+      const parsedScope = parseScope(parsedValue.value);
+      if (!parsedScope) {
+        return { scope: "public", json: false, valid: false };
+      }
+      scope = parsedScope;
+      index = parsedValue.nextIndex;
+      continue;
+    }
+
+    if (arg.startsWith("--scope=")) {
+      const parsedScope = parseScope(arg.slice("--scope=".length));
+      if (!parsedScope) {
+        return { scope: "public", json: false, valid: false };
+      }
+      scope = parsedScope;
+      continue;
+    }
+
     if (arg.startsWith("-")) {
-      return { json: false, valid: false };
+      return { scope: "public", json: false, valid: false };
     }
 
     if (query !== undefined) {
-      return { json: false, valid: false };
+      return { scope: "public", json: false, valid: false };
     }
 
     query = arg;
@@ -127,6 +159,7 @@ export function parseSearchFlags(args: string[]): SearchFlags {
     query,
     limit,
     cursor,
+    scope,
     json,
     valid: true,
   };

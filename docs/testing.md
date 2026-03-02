@@ -313,6 +313,7 @@ tmpdir="$(mktemp -d)"
 mkdir "$tmpdir/publish-skill"
 (cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" init --template verbose --no-validate)
 (cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" publish --version 1.0.0 --dry-run)
+(cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" publish --version 1.0.1 --visibility private --dry-run)
 ```
 
 Expected:
@@ -321,6 +322,7 @@ Expected:
 - CLI prints a dry-run summary with:
   - `@owner/skill@version`
   - channel (`latest` for stable semver)
+  - visibility (`public` by default, `private` when explicitly set)
   - digest (`sha256:...`)
   - artifact size bytes
 
@@ -360,6 +362,7 @@ REPO_DIR="$(pwd)"
 export SKILLMD_FIREBASE_PROJECT_ID="skillmarkdown-development"
 export SKILLMD_REGISTRY_BASE_URL="https://registryapi-sm46rm3rja-uc.a.run.app"
 node "$REPO_DIR/dist/cli.js" search --limit 5
+node "$REPO_DIR/dist/cli.js" search --scope private --limit 5
 ```
 
 Expected:
@@ -369,6 +372,7 @@ Expected:
   - header row contains `#`, `SKILL`, `LATEST`, `UPDATED`, `DESCRIPTION`
 - row columns remain aligned
 - next page hint prints when cursor exists
+- private scope requires login and only returns caller-owned private skills
 
 Search pagination:
 

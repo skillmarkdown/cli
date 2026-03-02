@@ -53,6 +53,7 @@ function baseOptions(overrides = {}) {
       },
     }),
     access: async () => {},
+    resolveReadIdToken: async () => null,
     ...overrides,
   };
 }
@@ -79,6 +80,114 @@ test("treats no args and --all as all mode", async () => {
   assert.equal(first.result, 0);
   assert.equal(second.result, 0);
   assert.equal(discoverCalls.length, 2);
+});
+
+test("does not resolve read token before updates begin", async () => {
+  const { result } = await captureConsole(() =>
+    runUpdateCommand(
+      [],
+      baseOptions({
+        discoverInstalledSkills: async () => [],
+        resolveReadIdToken: async () => {
+          throw new Error("should not be called");
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+});
+
+test("reuses resolved read token across multi-skill update batch", async () => {
+  let tokenResolutionCount = 0;
+
+  const { result } = await captureConsole(() =>
+    runUpdateCommand(
+      ["--all"],
+      baseOptions({
+        discoverInstalledSkills: async () => [
+          makeTarget("@owner/skill-a"),
+          makeTarget("@owner/skill-b"),
+        ],
+        resolveReadIdToken: async () => {
+          tokenResolutionCount += 1;
+          return "id_token_123";
+        },
+        installFromRegistry: async (input) => {
+          await input.resolveReadIdToken?.();
+          return {
+            result: {
+              skillId: `@${input.ownerSlug}/${input.skillSlug}`,
+              ownerLogin: input.ownerSlug,
+              skill: input.skillSlug,
+              version: "1.2.3",
+              digest: "sha256:test",
+              sizeBytes: 5,
+              mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+              installedPath:
+                `/workspace/project/.agent/skills/registry.skillmarkdown.com/` +
+                `${input.ownerSlug}/${input.skillSlug}`,
+              registryBaseUrl: "https://registry.example.com",
+              installedAt: "2026-03-02T12:34:56.000Z",
+              source: "registry",
+            },
+            metadata: {
+              skillId: `@${input.ownerSlug}/${input.skillSlug}`,
+            },
+          };
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(tokenResolutionCount, 1);
+});
+
+test("retries token resolution in later skills when first resolution returns null", async () => {
+  let tokenResolutionCount = 0;
+
+  const { result } = await captureConsole(() =>
+    runUpdateCommand(
+      ["--all"],
+      baseOptions({
+        discoverInstalledSkills: async () => [
+          makeTarget("@owner/skill-a"),
+          makeTarget("@owner/skill-b"),
+        ],
+        resolveReadIdToken: async () => {
+          tokenResolutionCount += 1;
+          return tokenResolutionCount === 1 ? null : "id_token_123";
+        },
+        installFromRegistry: async (input) => {
+          await input.resolveReadIdToken?.();
+          return {
+            result: {
+              skillId: `@${input.ownerSlug}/${input.skillSlug}`,
+              ownerLogin: input.ownerSlug,
+              skill: input.skillSlug,
+              version: "1.2.3",
+              digest: "sha256:test",
+              sizeBytes: 5,
+              mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+              installedPath:
+                `/workspace/project/.agent/skills/registry.skillmarkdown.com/` +
+                `${input.ownerSlug}/${input.skillSlug}`,
+              registryBaseUrl: "https://registry.example.com",
+              installedAt: "2026-03-02T12:34:56.000Z",
+              source: "registry",
+            },
+            metadata: {
+              skillId: `@${input.ownerSlug}/${input.skillSlug}`,
+            },
+          };
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(tokenResolutionCount, 2);
 });
 
 test("updates explicit skill ids and returns json summary", async () => {

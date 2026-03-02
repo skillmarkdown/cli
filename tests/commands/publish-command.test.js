@@ -202,3 +202,24 @@ test("maps version conflict errors", async () => {
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /version conflict/i);
 });
+
+test("forwards --visibility to prepare payload", async () => {
+  let capturedVisibility;
+  const options = baseOptions({
+    preparePublish: async (_baseUrl, _idToken, payload) => {
+      capturedVisibility = payload.visibility;
+      return {
+        status: "idempotent",
+        publishToken: "pit-token",
+        expiresAt: "2026-03-02T00:00:00Z",
+      };
+    },
+  });
+
+  const { result } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0", "--visibility", "private"], options),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(capturedVisibility, "private");
+});

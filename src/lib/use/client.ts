@@ -10,6 +10,7 @@ import {
 
 interface UseClientOptions {
   timeoutMs?: number;
+  idToken?: string;
 }
 
 interface ApiErrorPayload {
@@ -94,8 +95,16 @@ export async function resolveSkillVersion(
 ): Promise<ResolveSkillVersionResponse> {
   const url = new URL(`${baseUrl}/v1/skills/${ownerSlug}/${skillSlug}/resolve`);
   url.searchParams.set("channel", channel);
-
-  const response = await fetchWithTimeout(url, { method: "GET" }, { timeoutMs: options.timeoutMs });
+  const headers: HeadersInit | undefined = options.idToken
+    ? {
+        Authorization: `Bearer ${options.idToken}`,
+      }
+    : undefined;
+  const response = await fetchWithTimeout(
+    url,
+    { method: "GET", headers },
+    { timeoutMs: options.timeoutMs },
+  );
   const parsed = await parseJsonOrThrow<ResolveSkillVersionResponse | ApiErrorPayload>(
     response,
     "Resolve API",
@@ -120,7 +129,16 @@ export async function getArtifactDescriptor(
   const url = new URL(
     `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/versions/${request.version}/artifact`,
   );
-  const response = await fetchWithTimeout(url, { method: "GET" }, { timeoutMs: options.timeoutMs });
+  const headers: HeadersInit | undefined = options.idToken
+    ? {
+        Authorization: `Bearer ${options.idToken}`,
+      }
+    : undefined;
+  const response = await fetchWithTimeout(
+    url,
+    { method: "GET", headers },
+    { timeoutMs: options.timeoutMs },
+  );
   const parsed = await parseJsonOrThrow<ArtifactDescriptorResponse | ApiErrorPayload>(
     response,
     "Artifact descriptor API",

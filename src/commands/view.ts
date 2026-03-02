@@ -7,6 +7,7 @@ import { getViewEnvConfig, type ViewEnvConfig } from "../lib/view/config";
 import { isViewApiError } from "../lib/view/errors";
 import { parseViewFlags } from "../lib/view/flags";
 import { type ViewResponse } from "../lib/view/types";
+import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 
 interface ViewCommandOptions {
   env?: NodeJS.ProcessEnv;
@@ -15,8 +16,15 @@ interface ViewCommandOptions {
   getSkillView?: (
     baseUrl: string,
     request: { ownerSlug: string; skillSlug: string },
-    options?: { timeoutMs?: number },
+    options?: { timeoutMs?: number; idToken?: string },
   ) => Promise<ViewResponse>;
+  resolveReadIdToken?: () => Promise<string | null>;
+}
+
+function shouldRetryWithReadToken(error: unknown): boolean {
+  return (
+    isViewApiError(error) && (error.status === 401 || error.status === 403 || error.status === 404)
+  );
 }
 
 function printJson(payload: Record<string, unknown>): void {
@@ -108,14 +116,32 @@ export async function runViewCommand(
     );
     const parsedSkillId = parseSkillId(resolvedSkillId);
     const getSkillViewFn = options.getSkillView ?? getSkillView;
-    const response = await getSkillViewFn(
-      config.registryBaseUrl,
-      {
-        ownerSlug: parsedSkillId.ownerSlug,
-        skillSlug: parsedSkillId.skillSlug,
-      },
-      { timeoutMs: config.requestTimeoutMs },
-    );
+    const resolveReadIdTokenFn =
+      options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }));
+    const request = {
+      ownerSlug: parsedSkillId.ownerSlug,
+      skillSlug: parsedSkillId.skillSlug,
+    };
+    let response: ViewResponse;
+    try {
+      response = await getSkillViewFn(config.registryBaseUrl, request, {
+        timeoutMs: config.requestTimeoutMs,
+      });
+    } catch (error) {
+      if (!shouldRetryWithReadToken(error)) {
+        throw error;
+      }
+
+      const idToken = await resolveReadIdTokenFn();
+      if (!idToken) {
+        throw error;
+      }
+
+      response = await getSkillViewFn(config.registryBaseUrl, request, {
+        timeoutMs: config.requestTimeoutMs,
+        idToken,
+      });
+    }
 
     if (parsed.json) {
       printJson(response as unknown as Record<string, unknown>);

@@ -14,10 +14,11 @@ const { UseApiError } = requireDist("lib/use/errors.js");
 
 test("resolveSkillVersion returns parsed payload", async () => {
   const payload = await withMockedFetch(
-    async (input) => {
+    async (input, init) => {
       const url = new URL(String(input));
       assert.equal(url.pathname, "/v1/skills/stefdevscore/test-skill/resolve");
       assert.equal(url.searchParams.get("channel"), "latest");
+      assert.equal(init?.headers, undefined);
 
       return mockJsonResponse(200, {
         owner: "@stefdevscore",
@@ -32,6 +33,30 @@ test("resolveSkillVersion returns parsed payload", async () => {
   );
 
   assert.equal(payload.version, "1.2.3");
+});
+
+test("resolveSkillVersion attaches bearer token when provided", async () => {
+  await withMockedFetch(
+    async (_input, init) => {
+      assert.match(String(init?.headers?.Authorization), /^Bearer /);
+      return mockJsonResponse(200, {
+        owner: "@stefdevscore",
+        ownerLogin: "stefdevscore",
+        skill: "test-skill",
+        channel: "latest",
+        version: "1.2.3",
+      });
+    },
+    async () => {
+      await resolveSkillVersion(
+        "https://registry.example.com",
+        "stefdevscore",
+        "test-skill",
+        "latest",
+        { idToken: "token_123" },
+      );
+    },
+  );
 });
 
 test("resolveSkillVersion rejects malformed success payloads", async () => {

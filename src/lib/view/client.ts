@@ -4,6 +4,7 @@ import { type ViewResponse } from "./types";
 
 interface ViewClientOptions {
   timeoutMs?: number;
+  idToken?: string;
 }
 
 interface ApiErrorPayload {
@@ -58,7 +59,16 @@ export async function getSkillView(
   options: ViewClientOptions = {},
 ): Promise<ViewResponse> {
   const url = new URL(`${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}`);
-  const response = await fetchWithTimeout(url, { method: "GET" }, { timeoutMs: options.timeoutMs });
+  const headers: HeadersInit | undefined = options.idToken
+    ? {
+        Authorization: `Bearer ${options.idToken}`,
+      }
+    : undefined;
+  const response = await fetchWithTimeout(
+    url,
+    { method: "GET", headers },
+    { timeoutMs: options.timeoutMs },
+  );
   const parsed = await parseJsonOrThrow<ViewResponse | ApiErrorPayload>(response);
 
   if (!response.ok) {

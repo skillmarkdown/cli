@@ -4,6 +4,7 @@ import { type HistoryRequest, type HistoryResponse } from "./types";
 
 interface HistoryClientOptions {
   timeoutMs?: number;
+  idToken?: string;
 }
 
 interface ApiErrorPayload {
@@ -64,7 +65,17 @@ export async function listSkillVersionHistory(
     url.searchParams.set("cursor", request.cursor);
   }
 
-  const response = await fetchWithTimeout(url, { method: "GET" }, { timeoutMs: options.timeoutMs });
+  const headers: HeadersInit | undefined = options.idToken
+    ? {
+        Authorization: `Bearer ${options.idToken}`,
+      }
+    : undefined;
+
+  const response = await fetchWithTimeout(
+    url,
+    { method: "GET", headers },
+    { timeoutMs: options.timeoutMs },
+  );
   const parsed = await parseJsonOrThrow<HistoryResponse | ApiErrorPayload>(response);
 
   if (!response.ok) {

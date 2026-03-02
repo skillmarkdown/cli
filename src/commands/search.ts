@@ -12,6 +12,7 @@ import { SEARCH_USAGE } from "../lib/shared/cli-text";
 import { failWithUsage } from "../lib/shared/command-output";
 import { renderTable } from "../lib/shared/table";
 import { type SearchSkillsResponse } from "../lib/search/types";
+import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 
 interface IndexedSearchResult {
   index: number;
@@ -29,11 +30,12 @@ interface SearchCommandOptions {
   getConfig?: (env: NodeJS.ProcessEnv) => SearchEnvConfig;
   searchSkills?: (
     baseUrl: string,
-    request: { query?: string; limit?: number; cursor?: string },
-    options?: { timeoutMs?: number },
+    request: { query?: string; limit?: number; cursor?: string; scope?: "public" | "private" },
+    options?: { timeoutMs?: number; idToken?: string },
   ) => Promise<SearchSkillsResponse>;
   readSelectionCache?: () => SearchSelectionCache | null;
   writeSelectionCache?: (cache: SearchSelectionCache) => void;
+  resolveReadIdToken?: () => Promise<string | null>;
 }
 
 function printJson(payload: Record<string, unknown>): void {
@@ -57,6 +59,7 @@ function formatUpdatedAtForTable(value: string): string {
 function printHumanResults(
   query: string | undefined,
   limit: number | undefined,
+  scope: "public" | "private",
   startIndex: number,
   payload: SearchSkillsResponse,
 ) {
@@ -127,6 +130,9 @@ function printHumanResults(
     if (limit) {
       parts.push("--limit", String(limit));
     }
+    if (scope === "private") {
+      parts.push("--scope", "private");
+    }
     parts.push("--cursor", payload.nextCursor);
     console.log(`Next page: ${parts.join(" ")}`);
   }
@@ -136,6 +142,7 @@ function resolvePageStartIndex(params: {
   registryBaseUrl: string;
   query: string | null;
   limit: number;
+  scope: "public" | "private";
   cursor?: string;
   cache: SearchSelectionCache | null;
 }): number {
@@ -146,6 +153,7 @@ function resolvePageStartIndex(params: {
   const key = buildSearchContinuationKey({
     registryBaseUrl: params.registryBaseUrl,
     query: params.query,
+    scope: params.scope,
     limit: params.limit,
     cursor: params.cursor,
   });
@@ -162,6 +170,7 @@ function buildUpdatedContinuations(params: {
   existing: SearchSelectionCache | null;
   registryBaseUrl: string;
   query: string | null;
+  scope: "public" | "private";
   limit: number;
   nextCursor: string | null;
   nextIndex: number;
@@ -177,6 +186,7 @@ function buildUpdatedContinuations(params: {
   const key = buildSearchContinuationKey({
     registryBaseUrl: params.registryBaseUrl,
     query: params.query,
+    scope: params.scope,
     limit: params.limit,
     cursor: params.nextCursor,
   });
@@ -210,6 +220,16 @@ export async function runSearchCommand(
     const searchSkillsFn = options.searchSkills ?? searchSkills;
     const readSelectionCacheFn = options.readSelectionCache ?? readSearchSelectionCache;
     const writeSelectionCacheFn = options.writeSelectionCache ?? writeSearchSelectionCache;
+    const resolveReadIdTokenFn = options.resolveReadIdToken;
+    const idToken =
+      parsed.scope === "private"
+        ? await (resolveReadIdTokenFn ?? (() => defaultResolveReadIdToken({ env })))()
+        : null;
+
+    if (parsed.scope === "private" && !idToken) {
+      console.error("skillmd search: private scope requires login. Run 'skillmd login' first.");
+      return 1;
+    }
     const existingCache = readSelectionCacheFn();
     const response = await searchSkillsFn(
       config.registryBaseUrl,
@@ -217,13 +237,15 @@ export async function runSearchCommand(
         query: parsed.query,
         limit: parsed.limit,
         cursor: parsed.cursor,
+        scope: parsed.scope,
       },
-      { timeoutMs: config.requestTimeoutMs },
+      { timeoutMs: config.requestTimeoutMs, idToken: idToken ?? undefined },
     );
 
     const pageStartIndex = resolvePageStartIndex({
       registryBaseUrl: config.registryBaseUrl,
       query: response.query,
+      scope: parsed.scope,
       limit: response.limit,
       cursor: parsed.cursor,
       cache: existingCache,
@@ -233,6 +255,7 @@ export async function runSearchCommand(
       existing: existingCache,
       registryBaseUrl: config.registryBaseUrl,
       query: response.query,
+      scope: parsed.scope,
       limit: response.limit,
       nextCursor: response.nextCursor,
       nextIndex: pageStartIndex + response.results.length,
@@ -256,7 +279,7 @@ export async function runSearchCommand(
       return 0;
     }
 
-    printHumanResults(parsed.query, parsed.limit, pageStartIndex, response);
+    printHumanResults(parsed.query, parsed.limit, parsed.scope, pageStartIndex, response);
     return 0;
   } catch (error) {
     if (isSearchApiError(error)) {

@@ -21,6 +21,7 @@ import {
 import { failWithUsage } from "../lib/shared/command-output";
 import { UPDATE_USAGE } from "../lib/shared/cli-text";
 import { renderTable } from "../lib/shared/table";
+import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 
 interface UpdateCommandOptions {
   cwd?: string;
@@ -31,6 +32,7 @@ interface UpdateCommandOptions {
   readInstalledSkillMetadata?: typeof defaultReadInstalledSkillMetadata;
   installFromRegistry?: typeof defaultInstallFromRegistry;
   access?: typeof fs.access;
+  resolveReadIdToken?: () => Promise<string | null>;
 }
 
 function printJson(payload: UpdateJsonResult): void {
@@ -168,6 +170,30 @@ export async function runUpdateCommand(
     options.readInstalledSkillMetadata ?? defaultReadInstalledSkillMetadata;
   const installFromRegistryFn = options.installFromRegistry ?? defaultInstallFromRegistry;
   const access = options.access ?? fs.access.bind(fs);
+  const resolveReadIdTokenFn =
+    options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }));
+  let cachedReadIdToken: string | null = null;
+  let readTokenPromise: Promise<string | null> | null = null;
+  const resolveReadIdTokenCached = (): Promise<string | null> => {
+    if (cachedReadIdToken) {
+      return Promise.resolve(cachedReadIdToken);
+    }
+
+    if (!readTokenPromise) {
+      readTokenPromise = resolveReadIdTokenFn()
+        .then((token) => {
+          if (token) {
+            cachedReadIdToken = token;
+          }
+          return token;
+        })
+        .finally(() => {
+          readTokenPromise = null;
+        });
+    }
+
+    return readTokenPromise;
+  };
 
   try {
     const config = getConfigFn(env);
@@ -256,6 +282,7 @@ export async function runUpdateCommand(
           {
             registryBaseUrl: config.registryBaseUrl,
             requestTimeoutMs: config.requestTimeoutMs,
+            resolveReadIdToken: resolveReadIdTokenCached,
             cwd,
             ownerSlug: target.ownerSlug,
             skillSlug: target.skillSlug,

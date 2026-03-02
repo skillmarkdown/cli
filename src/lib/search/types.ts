@@ -1,7 +1,10 @@
+export type SearchScope = "public" | "private";
+
 export interface SearchFlags {
   query?: string;
   limit?: number;
   cursor?: string;
+  scope: SearchScope;
   json: boolean;
   valid: boolean;
 }
@@ -29,6 +32,7 @@ export interface SearchSkillsRequest {
   query?: string;
   limit?: number;
   cursor?: string;
+  scope?: SearchScope;
 }
 
 export interface SearchSkillsResponse {

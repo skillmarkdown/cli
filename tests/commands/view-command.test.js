@@ -31,6 +31,7 @@ function baseOptions(overrides = {}) {
       },
       updatedAt: "2026-03-02T09:00:00.000Z",
     }),
+    resolveReadIdToken: async () => null,
     ...overrides,
   };
 }
@@ -51,6 +52,59 @@ test("prints human output for skill view", async () => {
   assert.match(logs.join("\n"), /latest: 1.0.0/);
   assert.match(logs.join("\n"), /beta: 1.1.0-beta.1/);
   assert.match(logs.join("\n"), /Next: skillmd history @stefdevscore\/test-skill --limit 20/);
+});
+
+test("does not resolve read token when first view request succeeds", async () => {
+  const { result } = await captureConsole(() =>
+    runViewCommand(
+      ["@stefdevscore/test-skill"],
+      baseOptions({
+        resolveReadIdToken: async () => {
+          throw new Error("should not be called");
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+});
+
+test("retries with read token when first view request returns not found", async () => {
+  let callCount = 0;
+  let tokenResolutionCount = 0;
+  const { result } = await captureConsole(() =>
+    runViewCommand(
+      ["@stefdevscore/test-skill"],
+      baseOptions({
+        resolveReadIdToken: async () => {
+          tokenResolutionCount += 1;
+          return "id_token_123";
+        },
+        getSkillView: async (_baseUrl, _request, options) => {
+          callCount += 1;
+          if (!options?.idToken) {
+            throw new ViewApiError(404, "invalid_request", "skill not found");
+          }
+
+          return {
+            owner: "@stefdevscore",
+            ownerLogin: "stefdevscore",
+            skill: "test-skill",
+            description: "private skill",
+            visibility: "private",
+            channels: {
+              latest: "1.0.0",
+            },
+            updatedAt: "2026-03-02T09:00:00.000Z",
+          };
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(callCount, 2);
+  assert.equal(tokenResolutionCount, 1);
 });
 
 test("resolves numeric index from cached search results", async () => {

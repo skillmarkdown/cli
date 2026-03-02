@@ -12,6 +12,7 @@ test("parses query, limit, cursor, and json flag", () => {
     query: "agent",
     limit: 10,
     cursor: "abc123",
+    scope: "public",
     json: true,
     valid: true,
   });
@@ -24,6 +25,7 @@ test("parses --cursor value when it starts with hyphen", () => {
     query: "agent",
     limit: undefined,
     cursor: "-abc123",
+    scope: "public",
     json: false,
     valid: true,
   });
@@ -36,6 +38,7 @@ test("parses --cursor equals form when value starts with double hyphen", () => {
     query: "agent",
     limit: undefined,
     cursor: "--json",
+    scope: "public",
     json: true,
     valid: true,
   });
@@ -48,6 +51,20 @@ test("parses browse mode with no args", () => {
     query: undefined,
     limit: undefined,
     cursor: undefined,
+    scope: "public",
+    json: false,
+    valid: true,
+  });
+});
+
+test("parses private scope", () => {
+  const parsed = parseSearchFlags(["agent", "--scope", "private"]);
+
+  assert.deepEqual(parsed, {
+    query: "agent",
+    limit: undefined,
+    cursor: undefined,
+    scope: "private",
     json: false,
     valid: true,
   });

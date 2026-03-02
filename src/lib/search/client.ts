@@ -4,6 +4,7 @@ import { type SearchSkillsRequest, type SearchSkillsResponse } from "./types";
 
 interface SearchClientOptions {
   timeoutMs?: number;
+  idToken?: string;
 }
 
 interface ApiErrorPayload {
@@ -63,8 +64,24 @@ export async function searchSkills(
   if (request.cursor) {
     url.searchParams.set("cursor", request.cursor);
   }
+  if (request.scope) {
+    url.searchParams.set("scope", request.scope);
+  }
 
-  const response = await fetchWithTimeout(url, { method: "GET" }, { timeoutMs: options.timeoutMs });
+  const headers: HeadersInit | undefined = options.idToken
+    ? {
+        Authorization: `Bearer ${options.idToken}`,
+      }
+    : undefined;
+
+  const response = await fetchWithTimeout(
+    url,
+    {
+      method: "GET",
+      headers,
+    },
+    { timeoutMs: options.timeoutMs },
+  );
   const parsed = await parseJsonOrThrow<SearchSkillsResponse | ApiErrorPayload>(response);
 
   if (!response.ok) {

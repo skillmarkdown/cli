@@ -9,12 +9,14 @@ const { SearchApiError } = requireDist("lib/search/errors.js");
 
 test("searchSkills returns parsed response payload", async () => {
   const payload = await withMockedFetch(
-    async (input) => {
+    async (input, init) => {
       const url = new URL(String(input));
       assert.equal(url.pathname, "/v1/skills/search");
       assert.equal(url.searchParams.get("q"), "agent");
       assert.equal(url.searchParams.get("limit"), "10");
       assert.equal(url.searchParams.get("cursor"), "next");
+      assert.equal(url.searchParams.get("scope"), null);
+      assert.equal(init?.headers, undefined);
 
       return mockJsonResponse(200, {
         query: "agent",
@@ -34,6 +36,35 @@ test("searchSkills returns parsed response payload", async () => {
   assert.equal(payload.query, "agent");
   assert.equal(payload.limit, 10);
   assert.deepEqual(payload.results, []);
+});
+
+test("searchSkills sends private scope and bearer token when provided", async () => {
+  await withMockedFetch(
+    async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/skills/search");
+      assert.equal(url.searchParams.get("scope"), "private");
+      assert.match(String(init?.headers?.Authorization), /^Bearer /);
+      return mockJsonResponse(200, {
+        query: "agent",
+        limit: 5,
+        results: [],
+        nextCursor: null,
+      });
+    },
+    async () => {
+      const payload = await searchSkills(
+        "https://registry.example.com",
+        {
+          query: "agent",
+          limit: 5,
+          scope: "private",
+        },
+        { idToken: "token_123" },
+      );
+      assert.equal(payload.limit, 5);
+    },
+  );
 });
 
 test("searchSkills maps nested API errors", async () => {

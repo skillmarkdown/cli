@@ -48,6 +48,7 @@ function baseOptions(overrides = {}) {
       contentType: "application/vnd.skillmarkdown.skill.v1+tar",
     }),
     installArtifact: async () => {},
+    resolveReadIdToken: async () => null,
     ...overrides,
   };
 }
@@ -95,6 +96,58 @@ test("installs with default latest selector and prints human output", async () =
     strategy: "latest_fallback_beta",
     value: null,
   });
+});
+
+test("does not resolve read token when install succeeds without auth retry", async () => {
+  const { result } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill"],
+      baseOptions({
+        resolveReadIdToken: async () => {
+          throw new Error("should not be called");
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+});
+
+test("retries resolve with read token when first attempt returns not found", async () => {
+  const resolveCalls = [];
+  let tokenResolutionCount = 0;
+  const { result } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill"],
+      baseOptions({
+        resolveReadIdToken: async () => {
+          tokenResolutionCount += 1;
+          return "id_token_123";
+        },
+        resolveVersion: async (_baseUrl, _owner, _skill, channel, options) => {
+          resolveCalls.push({ channel, idToken: options?.idToken ?? null });
+          if (!options?.idToken) {
+            throw new UseApiError(404, "invalid_request", "skill not found");
+          }
+
+          return {
+            owner: "@stefdevscore",
+            ownerLogin: "stefdevscore",
+            skill: "test-skill",
+            channel: "latest",
+            version: "1.2.3",
+          };
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.deepEqual(resolveCalls, [
+    { channel: "latest", idToken: null },
+    { channel: "latest", idToken: "id_token_123" },
+  ]);
+  assert.equal(tokenResolutionCount, 1);
 });
 
 test("falls back to beta when latest channel is not set by default", async () => {

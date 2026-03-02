@@ -20,6 +20,8 @@ import {
 export interface InstallWorkflowInput {
   registryBaseUrl: string;
   requestTimeoutMs: number;
+  idToken?: string;
+  resolveReadIdToken?: () => Promise<string | null>;
   cwd: string;
   ownerSlug: string;
   skillSlug: string;
@@ -39,12 +41,12 @@ export interface UseWorkflowDependencies {
     ownerSlug: string,
     skillSlug: string,
     channel: PublishChannel,
-    options?: { timeoutMs?: number },
+    options?: { timeoutMs?: number; idToken?: string },
   ) => Promise<ResolveSkillVersionResponse>;
   getArtifactDescriptor?: (
     baseUrl: string,
     request: { ownerSlug: string; skillSlug: string; version: string },
-    options?: { timeoutMs?: number },
+    options?: { timeoutMs?: number; idToken?: string },
   ) => Promise<ArtifactDescriptorResponse>;
   downloadArtifact?: (
     downloadUrl: string,
@@ -68,6 +70,22 @@ function shouldFallbackToBeta(error: unknown): boolean {
   }
 
   return /channel not set/i.test(error.message);
+}
+
+function shouldRetryWithReadToken(error: unknown): boolean {
+  if (!isUseApiError(error)) {
+    return false;
+  }
+
+  if (error.status === 401 || error.status === 403) {
+    return true;
+  }
+
+  if (error.status === 404 && error.code === "invalid_request") {
+    return /not found/i.test(error.message);
+  }
+
+  return false;
 }
 
 function sanitizeDownloadedFrom(value: string): string {
@@ -109,6 +127,31 @@ export async function installFromRegistry(
   const downloadArtifactFn = dependencies.downloadArtifact ?? defaultDownloadArtifact;
   const installArtifactFn = dependencies.installArtifact ?? defaultInstallSkillArtifact;
   const now = input.now ?? (() => new Date());
+  let idToken = input.idToken;
+
+  async function callWithOptionalReadTokenRetry<T>(
+    request: (token?: string) => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await request(idToken);
+    } catch (error) {
+      if (!input.resolveReadIdToken || !shouldRetryWithReadToken(error)) {
+        throw error;
+      }
+
+      if (idToken) {
+        throw error;
+      }
+
+      const resolvedIdToken = await input.resolveReadIdToken();
+      if (!resolvedIdToken) {
+        throw error;
+      }
+
+      idToken = resolvedIdToken;
+      return request(idToken);
+    }
+  }
 
   let selectedVersion: string;
   let resolvedChannel: PublishChannel | undefined;
@@ -116,23 +159,22 @@ export async function installFromRegistry(
   if (input.selector.strategy === "version") {
     selectedVersion = input.selector.version;
   } else if (input.selector.strategy === "channel") {
-    const resolved = await resolveVersionFn(
-      input.registryBaseUrl,
-      input.ownerSlug,
-      input.skillSlug,
-      input.selector.channel,
-      { timeoutMs: input.requestTimeoutMs },
+    const requestedChannel = input.selector.channel;
+    const resolved = await callWithOptionalReadTokenRetry((token) =>
+      resolveVersionFn(input.registryBaseUrl, input.ownerSlug, input.skillSlug, requestedChannel, {
+        timeoutMs: input.requestTimeoutMs,
+        idToken: token,
+      }),
     );
     selectedVersion = resolved.version;
     resolvedChannel = resolved.channel;
   } else {
     try {
-      const resolved = await resolveVersionFn(
-        input.registryBaseUrl,
-        input.ownerSlug,
-        input.skillSlug,
-        "latest",
-        { timeoutMs: input.requestTimeoutMs },
+      const resolved = await callWithOptionalReadTokenRetry((token) =>
+        resolveVersionFn(input.registryBaseUrl, input.ownerSlug, input.skillSlug, "latest", {
+          timeoutMs: input.requestTimeoutMs,
+          idToken: token,
+        }),
       );
       selectedVersion = resolved.version;
       resolvedChannel = resolved.channel;
@@ -141,26 +183,27 @@ export async function installFromRegistry(
         throw error;
       }
 
-      const resolved = await resolveVersionFn(
-        input.registryBaseUrl,
-        input.ownerSlug,
-        input.skillSlug,
-        "beta",
-        { timeoutMs: input.requestTimeoutMs },
+      const resolved = await callWithOptionalReadTokenRetry((token) =>
+        resolveVersionFn(input.registryBaseUrl, input.ownerSlug, input.skillSlug, "beta", {
+          timeoutMs: input.requestTimeoutMs,
+          idToken: token,
+        }),
       );
       selectedVersion = resolved.version;
       resolvedChannel = resolved.channel;
     }
   }
 
-  const descriptor = await getArtifactDescriptorFn(
-    input.registryBaseUrl,
-    {
-      ownerSlug: input.ownerSlug,
-      skillSlug: input.skillSlug,
-      version: selectedVersion,
-    },
-    { timeoutMs: input.requestTimeoutMs },
+  const descriptor = await callWithOptionalReadTokenRetry((token) =>
+    getArtifactDescriptorFn(
+      input.registryBaseUrl,
+      {
+        ownerSlug: input.ownerSlug,
+        skillSlug: input.skillSlug,
+        version: selectedVersion,
+      },
+      { timeoutMs: input.requestTimeoutMs, idToken: token },
+    ),
   );
 
   if (descriptor.yanked && !input.allowYanked) {

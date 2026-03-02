@@ -93,10 +93,12 @@ export function buildSearchContinuationKey(params: {
   query: string | null;
   limit: number;
   cursor: string;
+  scope?: "public" | "private";
 }): string {
   return JSON.stringify([
     normalizeRegistryBaseUrl(params.registryBaseUrl),
     params.query ?? null,
+    params.scope ?? "public",
     params.limit,
     params.cursor,
   ]);

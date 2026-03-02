@@ -38,6 +38,7 @@ function baseOptions(overrides = {}) {
       ],
       nextCursor: "next_cursor",
     }),
+    resolveReadIdToken: async () => null,
     ...overrides,
   };
 }
@@ -65,6 +66,56 @@ test("prints human output for history results", async () => {
   assert.match(logs[3], /sha256:abc/);
   assert.match(logs[4], /^└/u);
   assert.match(logs[5], /Next page:/);
+});
+
+test("does not resolve read token when first history request succeeds", async () => {
+  const { result } = await captureConsole(() =>
+    runHistoryCommand(
+      ["@stefdevscore/test-skill"],
+      baseOptions({
+        resolveReadIdToken: async () => {
+          throw new Error("should not be called");
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+});
+
+test("retries history request with read token after not found", async () => {
+  let callCount = 0;
+  let tokenResolutionCount = 0;
+  const { result } = await captureConsole(() =>
+    runHistoryCommand(
+      ["@stefdevscore/test-skill"],
+      baseOptions({
+        resolveReadIdToken: async () => {
+          tokenResolutionCount += 1;
+          return "id_token_123";
+        },
+        listHistory: async (_baseUrl, _request, options) => {
+          callCount += 1;
+          if (!options?.idToken) {
+            throw new HistoryApiError(404, "invalid_request", "skill not found");
+          }
+
+          return {
+            owner: "@stefdevscore",
+            ownerLogin: "stefdevscore",
+            skill: "test-skill",
+            limit: 20,
+            results: [],
+            nextCursor: null,
+          };
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(callCount, 2);
+  assert.equal(tokenResolutionCount, 1);
 });
 
 test("prints yanked metadata and truncates digest in human output", async () => {

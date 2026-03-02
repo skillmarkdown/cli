@@ -332,6 +332,22 @@ test("spawned CLI: view fails with usage when skill-id is missing", () => {
   }
 });
 
+test("spawned CLI: search --scope private requires login", () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+
+  try {
+    const result = runCli(["search", "agent", "--scope", "private"], root, {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
+    });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /private scope requires login/i);
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
 test("spawned CLI: search prints columnar human output", async () => {
   const root = makeTempDirectory(CLI_TEST_PREFIX);
   const mockRegistry = await startMockRegistry((request, response) => {

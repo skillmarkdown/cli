@@ -9,6 +9,7 @@ import {
   installFromRegistry as defaultInstallFromRegistry,
   type UseWorkflowDependencies,
 } from "../lib/use/workflow";
+import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 
 interface UseCommandOptions {
   cwd?: string;
@@ -20,6 +21,7 @@ interface UseCommandOptions {
   getArtifactDescriptor?: UseWorkflowDependencies["getArtifactDescriptor"];
   downloadArtifact?: UseWorkflowDependencies["downloadArtifact"];
   installArtifact?: UseWorkflowDependencies["installArtifact"];
+  resolveReadIdToken?: () => Promise<string | null>;
 }
 
 function printJson(payload: Record<string, unknown>): void {
@@ -50,6 +52,8 @@ export async function runUseCommand(
     const getConfigFn = options.getConfig ?? getUseEnvConfig;
     const installFromRegistryFn = options.installFromRegistry ?? defaultInstallFromRegistry;
     const config = getConfigFn(env);
+    const resolveReadIdTokenFn =
+      options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }));
     const selector: InstallSelector = parsed.version
       ? { strategy: "version", version: parsed.version }
       : parsed.channel
@@ -60,6 +64,7 @@ export async function runUseCommand(
       {
         registryBaseUrl: config.registryBaseUrl,
         requestTimeoutMs: config.requestTimeoutMs,
+        resolveReadIdToken: resolveReadIdTokenFn,
         cwd,
         ownerSlug: parsedSkillId.ownerSlug,
         skillSlug: parsedSkillId.skillSlug,

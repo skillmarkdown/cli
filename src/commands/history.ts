@@ -7,6 +7,7 @@ import { parseSkillId } from "../lib/registry/skill-id";
 import { HISTORY_USAGE } from "../lib/shared/cli-text";
 import { failWithUsage } from "../lib/shared/command-output";
 import { renderTable } from "../lib/shared/table";
+import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 
 interface HistoryCommandOptions {
   env?: NodeJS.ProcessEnv;
@@ -14,8 +15,16 @@ interface HistoryCommandOptions {
   listHistory?: (
     baseUrl: string,
     request: { ownerSlug: string; skillSlug: string; limit?: number; cursor?: string },
-    options?: { timeoutMs?: number },
+    options?: { timeoutMs?: number; idToken?: string },
   ) => Promise<HistoryResponse>;
+  resolveReadIdToken?: () => Promise<string | null>;
+}
+
+function shouldRetryWithReadToken(error: unknown): boolean {
+  return (
+    isHistoryApiError(error) &&
+    (error.status === 401 || error.status === 403 || error.status === 404)
+  );
 }
 
 function printJson(payload: Record<string, unknown>): void {
@@ -118,16 +127,34 @@ export async function runHistoryCommand(
     const getConfigFn = options.getConfig ?? getHistoryEnvConfig;
     const config = getConfigFn(env);
     const listHistoryFn = options.listHistory ?? listSkillVersionHistory;
-    const response = await listHistoryFn(
-      config.registryBaseUrl,
-      {
-        ownerSlug: parsedSkillId.ownerSlug,
-        skillSlug: parsedSkillId.skillSlug,
-        limit: parsed.limit,
-        cursor: parsed.cursor,
-      },
-      { timeoutMs: config.requestTimeoutMs },
-    );
+    const resolveReadIdTokenFn =
+      options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }));
+    const request = {
+      ownerSlug: parsedSkillId.ownerSlug,
+      skillSlug: parsedSkillId.skillSlug,
+      limit: parsed.limit,
+      cursor: parsed.cursor,
+    };
+    let response: HistoryResponse;
+    try {
+      response = await listHistoryFn(config.registryBaseUrl, request, {
+        timeoutMs: config.requestTimeoutMs,
+      });
+    } catch (error) {
+      if (!shouldRetryWithReadToken(error)) {
+        throw error;
+      }
+
+      const idToken = await resolveReadIdTokenFn();
+      if (!idToken) {
+        throw error;
+      }
+
+      response = await listHistoryFn(config.registryBaseUrl, request, {
+        timeoutMs: config.requestTimeoutMs,
+        idToken,
+      });
+    }
 
     if (parsed.json) {
       printJson(response as unknown as Record<string, unknown>);

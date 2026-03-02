@@ -43,6 +43,7 @@ interface PublishCommandOptions {
       skill: string;
       version: string;
       channel: PublishChannel;
+      visibility?: "public" | "private";
       digest: string;
       sizeBytes: number;
       mediaType: string;
@@ -91,6 +92,7 @@ function printDryRunResult(
     skillId: string;
     version: string;
     channel: PublishChannel;
+    visibility?: "public" | "private";
     digest: string;
     sizeBytes: number;
     registryBaseUrl: string;
@@ -106,7 +108,8 @@ function printDryRunResult(
 
   console.log(
     `Publish dry-run ready: ${payload.skillId}@${payload.version} ` +
-      `(channel: ${payload.channel}, digest: ${payload.digest}, size: ${payload.sizeBytes} bytes).`,
+      `(channel: ${payload.channel}, visibility: ${payload.visibility ?? "public"}, ` +
+      `digest: ${payload.digest}, size: ${payload.sizeBytes} bytes).`,
   );
 }
 
@@ -210,6 +213,7 @@ export async function runPublishCommand(
         skillId,
         version: parsed.version,
         channel,
+        visibility: parsed.visibility,
         digest: artifact.digest,
         sizeBytes: artifact.sizeBytes,
         registryBaseUrl: config.registryBaseUrl,
@@ -231,6 +235,7 @@ export async function runPublishCommand(
         skill,
         version: parsed.version,
         channel,
+        visibility: parsed.visibility,
         digest: artifact.digest,
         sizeBytes: artifact.sizeBytes,
         mediaType: artifact.mediaType,
