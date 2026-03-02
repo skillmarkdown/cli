@@ -153,3 +153,29 @@ Contract:
 
 Rationale:
 Search is the lowest-risk step toward install/use flows and web listing while keeping implementation and API semantics stable.
+
+---
+
+## D-009: History Command Lists Versions Per Skill (Cursor-Paginated v1)
+
+`skillmd history` is introduced for public per-skill version timeline reads.
+
+Contract:
+
+- command surface:
+  - `skillmd history <skill-id> [--limit <1-50>] [--cursor <token>] [--json]`
+- `<skill-id>` accepts `@owner/skill` and `owner/skill` input forms.
+- endpoint shape:
+  - `GET /v1/skills/{owner}/{skill}/versions`
+  - existing `GET /v1/skills/{owner}/{skill}/versions/{version}` remains unchanged.
+- pagination:
+  - default limit `20`, min `1`, max `50`
+  - opaque cursor in/out
+  - stable ordering by `publishedAt` then `version`
+- output modes:
+  - human-readable version lines by default
+  - raw API payload via `--json`
+- this command is read-only and does not mutate local or remote state.
+
+Rationale:
+Search is skill-level discovery, while history provides immutable version auditability needed before install/pinning workflows.

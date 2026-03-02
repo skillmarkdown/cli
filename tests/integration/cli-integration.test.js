@@ -104,7 +104,10 @@ test("spawned CLI: unknown command fails with usage", () => {
   try {
     const result = runCli(["unknown"], root);
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /Usage: skillmd <init\|validate\|login\|logout\|publish\|search>/);
+    assert.match(
+      result.stderr,
+      /Usage: skillmd <init\|validate\|login\|logout\|publish\|search\|history>/,
+    );
   } finally {
     cleanupDirectory(root);
   }

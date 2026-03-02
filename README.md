@@ -47,6 +47,12 @@ skillmd publish --version 1.0.0
 skillmd search agent --limit 10
 ```
 
+6. View version history for a skill:
+
+```bash
+skillmd history @owner/skill --limit 20
+```
+
 ## Commands
 
 ### `skillmd init`
@@ -118,6 +124,19 @@ Notes:
 
 - No `query` means browse latest published skills.
 - Results include `skillId` (`@owner/skill`) and channel pointers.
+
+### `skillmd history`
+
+List published versions for a single skill.
+
+```bash
+skillmd history <skill-id> [--limit <1-50>] [--cursor <token>] [--json]
+```
+
+Notes:
+
+- `<skill-id>` accepts `@owner/skill` or `owner/skill`.
+- Output includes digest, publish timestamp, artifact size/media type, and yank metadata.
 
 ## Optional Configuration
 

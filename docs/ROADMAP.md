@@ -27,7 +27,12 @@ Publish validated skills through the supported distribution flow.
 Goal:
 Discover published skills with a simple, reliable query UX.
 
-4. `skillmd install`
+4. `skillmd history` (implemented)
+
+Goal:
+Inspect a skill's immutable publish timeline with stable pagination.
+
+5. `skillmd install`
 
 Goal:
 Install skills locally from search/discovery results or explicit identifiers.
