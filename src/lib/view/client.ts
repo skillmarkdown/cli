@@ -29,9 +29,9 @@ function isViewResponse(value: unknown): value is ViewResponse {
     typeof record.ownerLogin === "string" &&
     typeof record.skill === "string" &&
     typeof record.description === "string" &&
-    typeof record.visibility === "string" &&
-    !!record.channels &&
-    typeof record.channels === "object" &&
+    typeof record.access === "string" &&
+    !!record.distTags &&
+    typeof record.distTags === "object" &&
     typeof record.updatedAt === "string"
   );
 }

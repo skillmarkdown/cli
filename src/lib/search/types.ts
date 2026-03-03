@@ -21,10 +21,7 @@ export interface SearchSkillResult {
   ownerLogin: string;
   skill: string;
   description: string;
-  channels: {
-    latest?: string;
-    beta?: string;
-  };
+  distTags: Record<string, string>;
   updatedAt: string;
 }
 

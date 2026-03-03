@@ -4,7 +4,7 @@ import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
 import { getPublishEnvConfig } from "../lib/publish/config";
 import { isPublishApiError } from "../lib/publish/errors";
-import { parsePublishFlags, isPrereleaseVersion } from "../lib/publish/flags";
+import { parsePublishFlags } from "../lib/publish/flags";
 import { buildPublishManifest } from "../lib/publish/manifest";
 import { packSkillArtifact } from "../lib/publish/pack";
 import { commitPublish, preparePublish, uploadArtifact } from "../lib/publish/client";
@@ -14,7 +14,7 @@ import {
   MAX_PUBLISH_MANIFEST_SIZE_BYTES,
   type PackedArtifact,
   type PreparePublishResponse,
-  type PublishChannel,
+  type PublishAccess,
   type PublishEnvConfig,
   type PublishManifest,
 } from "../lib/publish/types";
@@ -34,7 +34,9 @@ interface PublishCommandOptions {
     targetDir: string;
     skill: string;
     version: string;
-    channel: PublishChannel;
+    tag: string;
+    access: PublishAccess;
+    provenance: boolean;
     artifact: PackedArtifact;
   }) => PublishManifest;
   exchangeRefreshToken?: (apiKey: string, refreshToken: string) => Promise<FirebaseIdTokenSession>;
@@ -44,8 +46,14 @@ interface PublishCommandOptions {
     payload: {
       skill: string;
       version: string;
-      channel: PublishChannel;
-      visibility?: "public" | "private";
+      tag: string;
+      access: PublishAccess;
+      provenance: boolean;
+      packageMeta: {
+        name: string;
+        version: string;
+        description: string;
+      };
       agentTarget?: string;
       digest: string;
       sizeBytes: number;
@@ -94,8 +102,9 @@ function printDryRunResult(
   payload: {
     skillId: string;
     version: string;
-    channel: PublishChannel;
-    visibility?: "public" | "private";
+    tag: string;
+    access: PublishAccess;
+    provenance: boolean;
     agentTarget: string;
     digest: string;
     sizeBytes: number;
@@ -112,7 +121,7 @@ function printDryRunResult(
 
   console.log(
     `Publish dry-run ready: ${payload.skillId}@${payload.version} ` +
-      `(channel: ${payload.channel}, visibility: ${payload.visibility ?? "public"}, ` +
+      `(tag: ${payload.tag}, access: ${payload.access}, provenance: ${payload.provenance}, ` +
       `target: ${payload.agentTarget}, digest: ${payload.digest}, size: ${payload.sizeBytes} bytes).`,
   );
 }
@@ -123,9 +132,13 @@ function printPublishedResult(
   payload: {
     skillId: string;
     version: string;
-    channel: PublishChannel;
-    digest: string;
+    tag: string;
     agentTarget: string;
+    distTags?: Record<string, string>;
+    provenance?: {
+      requested: boolean;
+      recorded: boolean;
+    };
   },
 ): void {
   if (json) {
@@ -136,14 +149,14 @@ function printPublishedResult(
   if (status === "idempotent") {
     console.log(
       `Already published ${payload.skillId}@${payload.version} ` +
-        `(channel: ${payload.channel}, target: ${payload.agentTarget}, digest: ${payload.digest}).`,
+        `(tag: ${payload.tag}, target: ${payload.agentTarget}).`,
     );
     return;
   }
 
   console.log(
     `Published ${payload.skillId}@${payload.version} ` +
-      `(channel: ${payload.channel}, target: ${payload.agentTarget}, digest: ${payload.digest}).`,
+      `(tag: ${payload.tag}, target: ${payload.agentTarget}).`,
   );
 }
 
@@ -163,7 +176,9 @@ export async function runPublishCommand(
   const cwd = options.cwd ?? process.cwd();
   const env = options.env ?? process.env;
   const targetDir = parsed.pathArg ? resolve(cwd, parsed.pathArg) : cwd;
-  const channel = parsed.channel ?? (isPrereleaseVersion(parsed.version) ? "beta" : "latest");
+  const tag = parsed.tag ?? "latest";
+  const access = parsed.access ?? "public";
+  const provenance = parsed.provenance;
 
   const validateSkillFn = options.validateSkill ?? validateSkill;
   const validation = validateSkillFn(targetDir, { strict: true });
@@ -219,9 +234,16 @@ export async function runPublishCommand(
       targetDir,
       skill,
       version: parsed.version,
-      channel,
+      tag,
+      access,
+      provenance,
       artifact,
     });
+    const packageMeta = {
+      name: skill,
+      version: parsed.version,
+      description: manifest.description?.trim() || skill,
+    };
     const manifestSizeBytes = measureManifestSizeBytes(manifest);
     if (manifestSizeBytes > MAX_PUBLISH_MANIFEST_SIZE_BYTES) {
       console.error(
@@ -235,8 +257,9 @@ export async function runPublishCommand(
       printDryRunResult(parsed.json, {
         skillId,
         version: parsed.version,
-        channel,
-        visibility: parsed.visibility,
+        tag,
+        access,
+        provenance,
         agentTarget,
         digest: artifact.digest,
         sizeBytes: artifact.sizeBytes,
@@ -258,8 +281,10 @@ export async function runPublishCommand(
       {
         skill,
         version: parsed.version,
-        channel,
-        visibility: parsed.visibility,
+        tag,
+        access,
+        provenance,
+        packageMeta,
         agentTarget,
         digest: artifact.digest,
         sizeBytes: artifact.sizeBytes,
@@ -269,26 +294,17 @@ export async function runPublishCommand(
       { timeoutMs: config.requestTimeoutMs },
     );
 
-    if (prepared.status === "idempotent") {
-      printPublishedResult(parsed.json, "idempotent", {
-        skillId: prepared.skillId ?? skillId,
-        version: prepared.version ?? parsed.version,
-        digest: prepared.digest ?? artifact.digest,
-        channel: prepared.channel ?? channel,
-        agentTarget: prepared.agentTarget ?? agentTarget,
-      });
-      return 0;
+    if (prepared.status === "upload_required") {
+      const uploadArtifactFn = options.uploadArtifact ?? uploadArtifact;
+      await uploadArtifactFn(
+        prepared.uploadUrl,
+        artifact.tarGz,
+        artifact.mediaType,
+        prepared.uploadMethod,
+        prepared.uploadHeaders,
+        { timeoutMs: config.requestTimeoutMs },
+      );
     }
-
-    const uploadArtifactFn = options.uploadArtifact ?? uploadArtifact;
-    await uploadArtifactFn(
-      prepared.uploadUrl,
-      artifact.tarGz,
-      artifact.mediaType,
-      prepared.uploadMethod,
-      prepared.uploadHeaders,
-      { timeoutMs: config.requestTimeoutMs },
-    );
 
     const commitPublishFn = options.commitPublish ?? commitPublish;
     const committed = await commitPublishFn(
@@ -301,9 +317,10 @@ export async function runPublishCommand(
     printPublishedResult(parsed.json, committed.status, {
       skillId: committed.skillId,
       version: committed.version,
-      digest: committed.digest ?? artifact.digest,
-      channel: committed.channel,
+      tag: committed.tag,
       agentTarget: committed.agentTarget ?? agentTarget,
+      distTags: committed.distTags,
+      provenance: committed.provenance,
     });
     return 0;
   } catch (error) {

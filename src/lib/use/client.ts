@@ -5,7 +5,6 @@ import {
   parseJsonOrThrow,
   type ApiErrorPayload,
 } from "../shared/api-client";
-import { type PublishChannel } from "../publish/types";
 import { isAgentTarget } from "../shared/agent-target";
 import { UseApiError } from "./errors";
 import {
@@ -35,7 +34,7 @@ function isResolveResponse(value: unknown): value is ResolveSkillVersionResponse
     typeof record.owner === "string" &&
     typeof record.ownerLogin === "string" &&
     typeof record.skill === "string" &&
-    (record.channel === "latest" || record.channel === "beta") &&
+    typeof record.spec === "string" &&
     typeof record.version === "string" &&
     (record.agentTarget === undefined || isAgentTarget(record.agentTarget))
   );
@@ -76,11 +75,11 @@ export async function resolveSkillVersion(
   baseUrl: string,
   ownerSlug: string,
   skillSlug: string,
-  channel: PublishChannel,
+  spec: string,
   options: UseClientOptions = {},
 ): Promise<ResolveSkillVersionResponse> {
   const url = new URL(`${baseUrl}/v1/skills/${ownerSlug}/${skillSlug}/resolve`);
-  url.searchParams.set("channel", channel);
+  url.searchParams.set("spec", spec);
   const response = await fetchWithTimeout(
     url,
     { method: "GET", headers: authHeaders(options.idToken) },

@@ -15,10 +15,7 @@ export interface ViewResponse {
   ownerLogin: string;
   skill: string;
   description: string;
-  visibility: string;
-  channels: {
-    latest?: string;
-    beta?: string;
-  };
+  access: string;
+  distTags: Record<string, string>;
   updatedAt: string;
 }

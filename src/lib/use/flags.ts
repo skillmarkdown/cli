@@ -1,4 +1,3 @@
-import { type PublishChannel, PUBLISH_CHANNELS } from "../publish/types";
 import { normalizeAgentTarget } from "../shared/agent-target";
 import { type UseFlags } from "./types";
 
@@ -14,10 +13,6 @@ function parseValueArg(args: string[], index: number): { value?: string; nextInd
   return { value, nextIndex: index + 1 };
 }
 
-function parseChannel(value: string): PublishChannel | null {
-  return PUBLISH_CHANNELS.includes(value as PublishChannel) ? (value as PublishChannel) : null;
-}
-
 function isValidSemver(value: string): boolean {
   return SEMVER_PATTERN.test(value);
 }
@@ -25,7 +20,7 @@ function isValidSemver(value: string): boolean {
 export function parseUseFlags(args: string[]): UseFlags {
   let skillId: string | undefined;
   let version: string | undefined;
-  let channel: PublishChannel | undefined;
+  let spec: string | undefined;
   let agentTarget: UseFlags["agentTarget"];
   let allowYanked = false;
   let json = false;
@@ -64,29 +59,23 @@ export function parseUseFlags(args: string[]): UseFlags {
       continue;
     }
 
-    if (arg === "--channel") {
+    if (arg === "--spec") {
       const parsed = parseValueArg(args, index);
       if (!parsed.value) {
         return { allowYanked: false, json: false, valid: false };
       }
 
-      const parsedChannel = parseChannel(parsed.value);
-      if (!parsedChannel) {
-        return { allowYanked: false, json: false, valid: false };
-      }
-
-      channel = parsedChannel;
+      spec = parsed.value;
       index = parsed.nextIndex;
       continue;
     }
 
-    if (arg.startsWith("--channel=")) {
-      const parsedChannel = parseChannel(arg.slice("--channel=".length));
-      if (!parsedChannel) {
+    if (arg.startsWith("--spec=")) {
+      const parsedSpec = arg.slice("--spec=".length);
+      if (!parsedSpec) {
         return { allowYanked: false, json: false, valid: false };
       }
-
-      channel = parsedChannel;
+      spec = parsedSpec;
       continue;
     }
 
@@ -126,14 +115,14 @@ export function parseUseFlags(args: string[]): UseFlags {
     skillId = arg;
   }
 
-  if (!skillId || (version && channel)) {
+  if (!skillId || (version && spec)) {
     return { allowYanked: false, json: false, valid: false };
   }
 
   return {
     skillId,
     version,
-    channel,
+    spec,
     agentTarget,
     allowYanked,
     json,

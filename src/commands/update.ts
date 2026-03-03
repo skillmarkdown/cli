@@ -1,20 +1,15 @@
 import { promises as fs } from "node:fs";
 
+import { parseSkillId } from "../lib/registry/skill-id";
 import { getUseEnvConfig, type UseEnvConfig } from "../lib/use/config";
 import { isUseApiError } from "../lib/use/errors";
 import { type InstallSelector } from "../lib/use/types";
 import { installFromRegistry as defaultInstallFromRegistry } from "../lib/use/workflow";
-import { DEFAULT_AGENT_TARGET } from "../lib/shared/agent-target";
+import { DEFAULT_AGENT_TARGET, type AgentTarget } from "../lib/shared/agent-target";
 import { parseUpdateFlags } from "../lib/update/flags";
-import {
-  discoverInstalledSkillsAcrossTargets as defaultDiscoverInstalledSkillsAcrossTargets,
-  discoverInstalledSkills as defaultDiscoverInstalledSkills,
-  readInstalledSkillMetadata as defaultReadInstalledSkillMetadata,
-  toInstalledSkillTarget,
-} from "../lib/update/discovery";
 import { resolveUpdateIntent } from "../lib/update/intent";
 import {
-  type InstalledSkillTarget,
+  type SkillsLockEntry,
   type UpdateCommandEntry,
   type UpdateJsonEntry,
   type UpdateJsonResult,
@@ -24,34 +19,41 @@ import { failWithUsage } from "../lib/shared/command-output";
 import { UPDATE_USAGE } from "../lib/shared/cli-text";
 import { renderTable } from "../lib/shared/table";
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
+import {
+  listSkillsLockEntries,
+  loadSkillsLock as defaultLoadSkillsLock,
+  removeSkillsLockEntry,
+  resolveRegistryHost,
+  saveSkillsLock as defaultSaveSkillsLock,
+  upsertSkillsLockEntry,
+  type SkillsLockFile,
+} from "../lib/workspace/skills-lock";
 
 interface UpdateCommandOptions {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   now?: () => Date;
   getConfig?: (env: NodeJS.ProcessEnv) => UseEnvConfig;
-  discoverInstalledSkills?: typeof defaultDiscoverInstalledSkills;
-  discoverInstalledSkillsAcrossTargets?: typeof defaultDiscoverInstalledSkillsAcrossTargets;
-  readInstalledSkillMetadata?: typeof defaultReadInstalledSkillMetadata;
   installFromRegistry?: typeof defaultInstallFromRegistry;
+  loadSkillsLock?: typeof defaultLoadSkillsLock;
+  saveSkillsLock?: typeof defaultSaveSkillsLock;
   access?: typeof fs.access;
   resolveReadIdToken?: () => Promise<string | null>;
+}
+
+interface SelectedLockEntry {
+  key: string;
+  entry: SkillsLockEntry;
 }
 
 function printJson(payload: UpdateJsonResult): void {
   console.log(JSON.stringify(payload, null, 2));
 }
 
-function toSelector(resolution: ReturnType<typeof resolveUpdateIntent>): InstallSelector {
-  if (resolution.selector.strategy === "channel") {
-    return {
-      strategy: "channel",
-      channel: resolution.selector.value,
-    };
-  }
-
+function toSelector(spec: string): InstallSelector {
   return {
-    strategy: "latest_fallback_beta",
+    strategy: "spec",
+    spec,
   };
 }
 
@@ -161,6 +163,75 @@ function printHumanResults(entries: UpdateCommandEntry[]): void {
   );
 }
 
+function dedupeByKey(entries: SelectedLockEntry[]): SelectedLockEntry[] {
+  const byKey = new Map<string, SelectedLockEntry>();
+  for (const entry of entries) {
+    byKey.set(entry.key, entry);
+  }
+  return Array.from(byKey.values());
+}
+
+function selectAllEntries(
+  lock: SkillsLockFile,
+  registryBaseUrl: string,
+  selectedAgentTarget?: AgentTarget,
+): SelectedLockEntry[] {
+  const host = resolveRegistryHost(registryBaseUrl);
+  return listSkillsLockEntries(lock)
+    .filter(({ entry }) => {
+      try {
+        return resolveRegistryHost(entry.registryBaseUrl) === host;
+      } catch {
+        return false;
+      }
+    })
+    .filter(({ entry }) => (selectedAgentTarget ? entry.agentTarget === selectedAgentTarget : true))
+    .sort(
+      (left, right) =>
+        left.entry.skillId.localeCompare(right.entry.skillId) ||
+        left.entry.installedPath.localeCompare(right.entry.installedPath),
+    );
+}
+
+function selectBySkillIds(
+  lock: SkillsLockFile,
+  rawSkillIds: string[],
+  registryBaseUrl: string,
+  selectedAgentTarget: AgentTarget | undefined,
+): {
+  selected: SelectedLockEntry[];
+  missing: Array<{ skillId: string; agentTarget?: AgentTarget }>;
+} {
+  const host = resolveRegistryHost(registryBaseUrl);
+  const selected: SelectedLockEntry[] = [];
+  const missing: Array<{ skillId: string; agentTarget?: AgentTarget }> = [];
+  const parsedSkillIds = rawSkillIds.map((rawSkillId) => parseSkillId(rawSkillId).skillId);
+  const uniqueSkillIds = Array.from(new Set(parsedSkillIds));
+
+  for (const skillId of uniqueSkillIds) {
+    const matches = listSkillsLockEntries(lock)
+      .filter(({ entry }) => entry.skillId === skillId)
+      .filter(({ entry }) => {
+        try {
+          return resolveRegistryHost(entry.registryBaseUrl) === host;
+        } catch {
+          return false;
+        }
+      })
+      .filter(({ entry }) =>
+        selectedAgentTarget ? entry.agentTarget === selectedAgentTarget : true,
+      );
+
+    if (matches.length === 0) {
+      missing.push({ skillId, agentTarget: selectedAgentTarget });
+      continue;
+    }
+    selected.push(...matches);
+  }
+
+  return { selected: dedupeByKey(selected), missing };
+}
+
 export async function runUpdateCommand(
   args: string[],
   options: UpdateCommandOptions = {},
@@ -174,13 +245,9 @@ export async function runUpdateCommand(
   const cwd = options.cwd ?? process.cwd();
   const now = options.now ?? (() => new Date());
   const getConfigFn = options.getConfig ?? getUseEnvConfig;
-  const discoverInstalledSkillsFn =
-    options.discoverInstalledSkills ?? defaultDiscoverInstalledSkills;
-  const discoverInstalledSkillsAcrossTargetsFn =
-    options.discoverInstalledSkillsAcrossTargets ?? defaultDiscoverInstalledSkillsAcrossTargets;
-  const readInstalledSkillMetadataFn =
-    options.readInstalledSkillMetadata ?? defaultReadInstalledSkillMetadata;
   const installFromRegistryFn = options.installFromRegistry ?? defaultInstallFromRegistry;
+  const loadSkillsLockFn = options.loadSkillsLock ?? defaultLoadSkillsLock;
+  const saveSkillsLockFn = options.saveSkillsLock ?? defaultSaveSkillsLock;
   const access = options.access ?? fs.access.bind(fs);
   const resolveReadIdTokenFn =
     options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }));
@@ -209,41 +276,33 @@ export async function runUpdateCommand(
 
   try {
     const config = getConfigFn(env);
-    const selectedAgentTarget =
-      parsed.agentTarget ?? config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET;
-    const hasExplicitEnvAgentTarget =
+    const explicitEnvAgentTarget =
       typeof env.SKILLMD_AGENT_TARGET === "string" && env.SKILLMD_AGENT_TARGET.trim().length > 0;
+    const selectedAgentTarget =
+      parsed.agentTarget ??
+      (explicitEnvAgentTarget ? (config.defaultAgentTarget as AgentTarget) : undefined);
     const mode: UpdateMode = parsed.all || parsed.skillIds.length === 0 ? "all" : "ids";
-    const targets: InstalledSkillTarget[] = [];
+    let lock = await loadSkillsLockFn(cwd);
+    const entries: UpdateCommandEntry[] = [];
 
-    if (mode === "all") {
-      if (parsed.agentTarget || hasExplicitEnvAgentTarget) {
-        targets.push(
-          ...(await discoverInstalledSkillsFn(cwd, config.registryBaseUrl, selectedAgentTarget)),
-        );
-      } else {
-        targets.push(
-          ...(await discoverInstalledSkillsAcrossTargetsFn(cwd, config.registryBaseUrl)),
-        );
-      }
-    } else {
-      const seenSkillIds = new Set<string>();
-      for (const rawSkillId of parsed.skillIds) {
-        const target = toInstalledSkillTarget(
-          cwd,
-          config.registryBaseUrl,
-          rawSkillId,
-          selectedAgentTarget,
-        );
-        if (seenSkillIds.has(target.skillId)) {
-          continue;
-        }
-        seenSkillIds.add(target.skillId);
-        targets.push(target);
-      }
+    const selectedResult =
+      mode === "all"
+        ? {
+            selected: selectAllEntries(lock, config.registryBaseUrl, selectedAgentTarget),
+            missing: [],
+          }
+        : selectBySkillIds(lock, parsed.skillIds, config.registryBaseUrl, selectedAgentTarget);
+
+    for (const missing of selectedResult.missing) {
+      entries.push({
+        skillId: missing.skillId,
+        agentTarget: missing.agentTarget,
+        status: "failed",
+        reason: "skill is not installed in this project",
+      });
     }
 
-    if (targets.length === 0) {
+    if (selectedResult.selected.length === 0 && entries.length === 0) {
       const emptyResult = toJsonResult(mode, []);
       if (parsed.json) {
         printJson(emptyResult);
@@ -253,91 +312,69 @@ export async function runUpdateCommand(
       return 0;
     }
 
-    const entries: UpdateCommandEntry[] = [];
-
-    for (const target of targets) {
-      if (mode === "ids") {
-        try {
-          await access(target.installedPath);
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-            entries.push({
-              skillId: target.skillId,
-              agentTarget: target.agentTarget,
-              installedPath: target.installedPath,
-              status: "failed",
-              reason: "skill is not installed in this project",
-            });
-            continue;
-          }
-
-          const message = error instanceof Error ? error.message : "unknown filesystem error";
+    for (const selected of selectedResult.selected) {
+      const entry = selected.entry;
+      try {
+        await access(entry.installedPath);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") {
           entries.push({
-            skillId: target.skillId,
-            agentTarget: target.agentTarget,
-            installedPath: target.installedPath,
+            skillId: entry.skillId,
+            agentTarget: entry.agentTarget as AgentTarget,
+            installedPath: entry.installedPath,
+            fromVersion: entry.resolvedVersion,
             status: "failed",
-            reason: `unable to access installed skill path: ${message}`,
+            reason: "skill is not installed in this project",
           });
+          lock = removeSkillsLockEntry(lock, selected.key, now());
           continue;
         }
-      }
 
-      let metadata;
-      try {
-        metadata = await readInstalledSkillMetadataFn(target.installedPath);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "unknown metadata error";
+        const message = error instanceof Error ? error.message : "unknown filesystem error";
         entries.push({
-          skillId: target.skillId,
-          agentTarget: target.agentTarget,
-          installedPath: target.installedPath,
+          skillId: entry.skillId,
+          agentTarget: entry.agentTarget as AgentTarget,
+          installedPath: entry.installedPath,
+          fromVersion: entry.resolvedVersion,
           status: "failed",
-          reason: `invalid install metadata: ${message}`,
+          reason: `unable to access installed skill path: ${message}`,
         });
         continue;
       }
-      const fromVersion = metadata?.version;
-      const intent = resolveUpdateIntent(metadata);
-      const effectiveAgentTarget =
-        parsed.agentTarget ??
-        metadata?.agentTarget ??
-        target.agentTarget ??
-        config.defaultAgentTarget ??
-        DEFAULT_AGENT_TARGET;
 
+      const intent = resolveUpdateIntent(entry);
       if (intent.selector.strategy === "version") {
-        const pinnedVersion = intent.selector.value;
         entries.push({
-          skillId: target.skillId,
-          agentTarget: target.agentTarget,
-          installedPath: target.installedPath,
-          fromVersion: fromVersion ?? pinnedVersion,
-          toVersion: fromVersion ?? pinnedVersion,
+          skillId: entry.skillId,
+          agentTarget: entry.agentTarget as AgentTarget,
+          installedPath: entry.installedPath,
+          fromVersion: entry.resolvedVersion,
+          toVersion: entry.resolvedVersion,
           status: "skipped_pinned",
           reason: "version-pinned install",
         });
         continue;
       }
 
+      const parsedSkillId = parseSkillId(entry.skillId);
       try {
-        const { result } = await installFromRegistryFn(
+        const { result, lockEntry } = await installFromRegistryFn(
           {
             registryBaseUrl: config.registryBaseUrl,
             requestTimeoutMs: config.requestTimeoutMs,
             resolveReadIdToken: resolveReadIdTokenCached,
             cwd,
-            ownerSlug: target.ownerSlug,
-            skillSlug: target.skillSlug,
-            selector: toSelector(intent),
-            selectedAgentTarget: effectiveAgentTarget,
+            ownerSlug: parsedSkillId.ownerSlug,
+            skillSlug: parsedSkillId.skillSlug,
+            selector: toSelector(intent.selector.value),
+            selectedAgentTarget: entry.agentTarget as AgentTarget,
             defaultAgentTarget: config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET,
             allowYanked: parsed.allowYanked,
             now,
             sourceCommandFactory: ({ canonicalSkillId }) => {
               const parts = ["skillmd", "update", canonicalSkillId];
-              if (effectiveAgentTarget !== DEFAULT_AGENT_TARGET) {
-                parts.push("--agent-target", effectiveAgentTarget);
+              if (entry.agentTarget !== DEFAULT_AGENT_TARGET) {
+                parts.push("--agent-target", entry.agentTarget);
               }
               if (parsed.allowYanked) {
                 parts.push("--allow-yanked");
@@ -348,25 +385,48 @@ export async function runUpdateCommand(
           {},
         );
 
+        lock = upsertSkillsLockEntry(
+          lock,
+          {
+            skillId: lockEntry.skillId,
+            ownerLogin: lockEntry.ownerLogin,
+            skill: lockEntry.skill,
+            agentTarget: lockEntry.agentTarget,
+            selectorSpec: entry.selectorSpec,
+            resolvedVersion: lockEntry.version,
+            digest: lockEntry.digest,
+            sizeBytes: lockEntry.sizeBytes,
+            mediaType: lockEntry.mediaType,
+            installedPath: lockEntry.installedPath,
+            registryBaseUrl: lockEntry.registryBaseUrl,
+            installedAt: lockEntry.installedAt,
+            sourceCommand: lockEntry.sourceCommand,
+            downloadedFrom: lockEntry.downloadedFrom,
+          },
+          now(),
+        );
+
         entries.push({
           skillId: result.skillId,
-          agentTarget: effectiveAgentTarget,
+          agentTarget: entry.agentTarget as AgentTarget,
           installedPath: result.installedPath,
-          fromVersion,
+          fromVersion: entry.resolvedVersion,
           toVersion: result.version,
           status: "updated",
         });
       } catch (error) {
         entries.push({
-          skillId: target.skillId,
-          agentTarget: target.agentTarget,
-          installedPath: target.installedPath,
-          fromVersion,
+          skillId: entry.skillId,
+          agentTarget: entry.agentTarget as AgentTarget,
+          installedPath: entry.installedPath,
+          fromVersion: entry.resolvedVersion,
           status: "failed",
           reason: toErrorReason(error),
         });
       }
     }
+
+    await saveSkillsLockFn(cwd, lock);
 
     if (parsed.json) {
       printJson(toJsonResult(mode, entries));

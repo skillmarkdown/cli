@@ -4,13 +4,10 @@ import { dirname, join } from "node:path";
 
 import * as tar from "tar";
 
-import { type InstalledSkillMetadata } from "./types";
-
 interface InstallSkillArtifactInput {
   targetPath: string;
   tempRoot: string;
   archiveBytes: Buffer;
-  metadata: InstalledSkillMetadata;
 }
 
 interface InstallFileOps {
@@ -132,11 +129,6 @@ export async function installSkillArtifact(
     });
 
     await assertExtractedSkillShape(extractedPath, fileOps);
-    await fileOps.writeFile(
-      join(extractedPath, ".skillmd-install.json"),
-      `${JSON.stringify(input.metadata, null, 2)}\n`,
-      "utf8",
-    );
 
     await fileOps.mkdir(dirname(input.targetPath), { recursive: true });
 

@@ -77,13 +77,8 @@ export async function preparePublish(
   if ((parsed as PreparePublishResponse).status === "idempotent") {
     const idempotent = parsed as PreparePublishResponse & {
       publishToken?: unknown;
-      skillId?: unknown;
-      version?: unknown;
     };
-    const hasCurrentFields = typeof idempotent.publishToken === "string";
-    const hasLegacyFields =
-      typeof idempotent.skillId === "string" && typeof idempotent.version === "string";
-    if (!hasCurrentFields && !hasLegacyFields) {
+    if (typeof idempotent.publishToken !== "string") {
       throw new Error("Publish prepare API response was missing required fields");
     }
   }
@@ -151,7 +146,10 @@ export async function commitPublish(
   if (
     (status !== "published" && status !== "idempotent") ||
     !(parsed as CommitPublishResponse).skillId ||
-    !(parsed as CommitPublishResponse).version
+    !(parsed as CommitPublishResponse).version ||
+    typeof (parsed as CommitPublishResponse).tag !== "string" ||
+    !(parsed as CommitPublishResponse).distTags ||
+    typeof (parsed as CommitPublishResponse).distTags !== "object"
   ) {
     throw new Error("Publish commit API response was missing required fields");
   }

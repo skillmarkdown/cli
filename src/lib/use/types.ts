@@ -1,10 +1,9 @@
-import { type PublishChannel } from "../publish/types";
 import { type AgentTarget } from "../shared/agent-target";
 
 export interface UseFlags {
   skillId?: string;
   version?: string;
-  channel?: PublishChannel;
+  spec?: string;
   agentTarget?: AgentTarget;
   allowYanked: boolean;
   json: boolean;
@@ -22,7 +21,7 @@ export interface ResolveSkillVersionResponse {
   owner: string;
   ownerLogin: string;
   skill: string;
-  channel: PublishChannel;
+  spec: string;
   version: string;
   agentTarget?: AgentTarget;
 }
@@ -55,26 +54,20 @@ export interface UseDownloadResult {
   contentType?: string;
 }
 
-export type InstallIntentStrategy = "version" | "channel" | "latest_fallback_beta";
-
-export interface InstallIntent {
-  strategy: InstallIntentStrategy;
-  value: string | null;
-}
-
-export interface InstalledSkillMetadata {
+export interface InstalledSkillLockEntry {
   skillId: string;
   ownerLogin: string;
   skill: string;
+  selectorSpec: string;
   version: string;
   digest: string;
   sizeBytes: number;
   mediaType: string;
+  installedPath: string;
   registryBaseUrl: string;
   downloadedFrom: string;
   installedAt: string;
   sourceCommand: string;
-  installIntent: InstallIntent;
   agentTarget: AgentTarget;
 }
 
@@ -95,11 +88,9 @@ export interface UseCommandResult {
 
 export type InstallSelector =
   | { strategy: "version"; version: string }
-  | { strategy: "channel"; channel: PublishChannel }
-  | { strategy: "latest_fallback_beta" };
+  | { strategy: "spec"; spec: string };
 
 export interface InstallWorkflowResult {
   result: UseCommandResult;
-  metadata: InstalledSkillMetadata;
-  resolvedChannel?: PublishChannel;
+  lockEntry: InstalledSkillLockEntry;
 }
