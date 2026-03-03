@@ -28,8 +28,12 @@ Current command surface:
 - `search`
 - `view`
 - `history`
+- `install`
 - `use`
 - `update`
+- `tag`
+- `deprecate`
+- `unpublish`
 
 ## Module Boundaries
 
@@ -98,16 +102,17 @@ Read commands intentionally attempt anonymous-first in selected cases to keep pu
 
 This behavior is validated by `tests/auth/read-token-retry.test.js`.
 
-## Install (`use`) Lifecycle
+## Install Lifecycle (`install` and `use`)
 
 Primary orchestrator: `src/lib/use/workflow.ts`.
 
 1. Parse and normalize skill ID.
-2. Resolve target version:
+2. Resolve target version from selector:
 
-- explicit `--version`, or
-- explicit channel, or
-- `latest` with fallback to `beta` when latest channel is unset.
+- `use --version <semver>` installs exact version,
+- `use --spec <tag|version|range>` resolves against `/resolve?spec=...`,
+- `use` default selector is `latest`,
+- `install` reads selector `spec` from `skills.json` dependency entries.
 
 3. Request artifact descriptor from backend (includes digest, size, media type, signed URL).
 4. Download artifact bytes.
@@ -121,10 +126,15 @@ Primary orchestrator: `src/lib/use/workflow.ts`.
 
 - extract to temp run dir,
 - enforce extracted payload shape (`SKILL.md` at archive root, regular file, not symlink),
-- write `.skillmd-install.json`,
 - backup old target (if present),
 - swap new target into place,
 - restore old target on swap failure (best effort).
+
+7. Persist workspace install state to `skills-lock.json`:
+
+- `use` upserts a single lock entry for installed skill/target/registry host,
+- `install` upserts all manifest-declared dependencies,
+- `update` consumes lock entries only.
 
 Install destination in v1:
 
@@ -141,14 +151,13 @@ Primary orchestrator: `src/commands/update.ts`.
 
 Modes:
 
-- `update` or `update --all`: scan current workspace host root.
-- `update <ids...>`: update only explicit installed IDs.
+- `update` or `update --all`: process all matching entries from `skills-lock.json`.
+- `update <ids...>`: update only explicit IDs present in lockfile.
 
 Selector behavior:
 
-- if install intent is `version`, skip (pinned).
-- if install intent is `channel`, stay on same channel.
-- otherwise default to latest-with-beta-fallback behavior.
+- if lock `selectorSpec` is exact semver, skip (pinned),
+- otherwise resolve using stored selector spec (`latest`, tag, or semver range).
 
 Batch behavior:
 
@@ -221,4 +230,4 @@ Timeout default:
 
 - Large command orchestrators (`search`, `update`) combine parsing/orchestration/rendering responsibilities.
 - Shared read retry behavior must remain consistent with backend private/public semantics.
-- Metadata compatibility logic (`installIntent` + legacy inference) should remain deterministic to avoid update drift.
+- Workspace contract evolution (`skills.json` intent vs `skills-lock.json` resolved state) must remain deterministic.

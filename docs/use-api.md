@@ -1,6 +1,6 @@
 # Use API Contract (v1)
 
-This document defines the HTTP contracts consumed by `skillmd use`.
+This document defines the HTTP contracts consumed by `skillmd use` and `skillmd install`.
 
 ## Resolve endpoint
 

@@ -425,6 +425,37 @@ function runProfileSweep({
     skipReason: missingReadSkillReason,
   });
 
+  if (readSkill.skillId) {
+    writeFileSync(
+      join(workDir, "skills.json"),
+      `${JSON.stringify(
+        {
+          version: 1,
+          defaults: {
+            agentTarget: "skillmd",
+          },
+          dependencies: {
+            [readSkill.skillId]: {
+              spec: "latest",
+            },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+  }
+
+  runStep({
+    state,
+    name: "install-workspace",
+    args: readSkill.skillId ? ["install", "--json"] : ["install"],
+    cwd: workDir,
+    env,
+    skipReason: missingReadSkillReason,
+  });
+
   const useDefaultStep = runStep({
     state,
     name: "use-default",
