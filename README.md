@@ -2,6 +2,18 @@
 
 `@skillmarkdown/cli` helps you create, validate, publish, find, and use Agent Skills.
 
+Global auth option for API commands:
+
+```bash
+skillmd --auth-token <token> <command> ...
+```
+
+Or set:
+
+```bash
+export SKILLMD_AUTH_TOKEN=<token>
+```
+
 ## Install
 
 ```bash
@@ -50,6 +62,8 @@ skillmd history @owner/skill
 skillmd install
 skillmd use @owner/skill
 skillmd tag ls @owner/skill
+skillmd whoami
+skillmd token ls
 skillmd update --all
 ```
 
@@ -185,6 +199,24 @@ Tombstone one published version (policy-gated in registry).
 
 ```bash
 skillmd unpublish <skill-id>@<version> [--json]
+```
+
+### `skillmd whoami`
+
+Show the current authenticated registry identity.
+
+```bash
+skillmd whoami [--json]
+```
+
+### `skillmd token`
+
+Create/list/revoke automation tokens.
+
+```bash
+skillmd token ls [--json]
+skillmd token add <name> [--scope <read|publish|admin>] [--days <1-365>] [--json]
+skillmd token rm <token-id> [--json]
 ```
 
 ## License

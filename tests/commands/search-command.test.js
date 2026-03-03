@@ -77,6 +77,38 @@ test("requires login for private scope when no token exists", async () => {
   assert.match(errors.join("\n"), /requires login/i);
 });
 
+test("private scope uses SKILLMD_AUTH_TOKEN when configured", async () => {
+  let capturedIdToken = null;
+  const { result } = await captureConsole(() =>
+    runSearchCommand(
+      ["--scope", "private"],
+      baseOptions({
+        env: {
+          SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+          SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
+          SKILLMD_REGISTRY_TIMEOUT_MS: "10000",
+          SKILLMD_AUTH_TOKEN: "skmd_dev_tok_abc123abc123abc123abc123.secret",
+          SKILLMD_FIREBASE_API_KEY: "api-key",
+          SKILLMD_GITHUB_CLIENT_ID: "gh-client",
+        },
+        resolveReadIdToken: undefined,
+        searchSkills: async (_baseUrl, _request, options) => {
+          capturedIdToken = options.idToken ?? null;
+          return {
+            query: null,
+            limit: 20,
+            results: [],
+            nextCursor: null,
+          };
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(capturedIdToken, "skmd_dev_tok_abc123abc123abc123abc123.secret");
+});
+
 test("maps search API errors", async () => {
   const { result, errors } = await captureConsole(() =>
     runSearchCommand(

@@ -1,5 +1,5 @@
 export const ROOT_USAGE =
-  "Usage: skillmd <init|validate|login|logout|publish|search|view|history|install|use|update|tag|deprecate|unpublish>";
+  "Usage: skillmd [--auth-token <token>] <init|validate|login|logout|publish|search|view|history|install|use|update|tag|deprecate|unpublish|whoami|token>";
 export const INIT_USAGE = "Usage: skillmd init [--no-validate] [--template <minimal|verbose>]";
 export const INSTALL_USAGE =
   "Usage: skillmd install [--prune] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]";
@@ -25,3 +25,9 @@ export const TAG_USAGE =
 export const DEPRECATE_USAGE =
   'Usage: skillmd deprecate <skill-id>@<version|range> --message "<text>" [--json]';
 export const UNPUBLISH_USAGE = "Usage: skillmd unpublish <skill-id>@<version> [--json]";
+export const WHOAMI_USAGE = "Usage: skillmd whoami [--json]";
+export const TOKEN_USAGE =
+  "Usage: skillmd token <ls|add|rm> ... [--json]\n" +
+  "  skillmd token ls [--json]\n" +
+  "  skillmd token add <name> [--scope <read|publish|admin>] [--days <1-365>] [--json]\n" +
+  "  skillmd token rm <token-id> [--json]";

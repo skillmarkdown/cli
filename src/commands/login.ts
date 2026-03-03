@@ -21,9 +21,12 @@ import {
   verifyFirebaseRefreshToken,
   type FirebaseRefreshTokenValidationResult,
 } from "../lib/auth/firebase-auth";
+import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
 import { executeLoginFlow } from "../lib/auth/login-flow";
 import { parseLoginFlags } from "../lib/auth/login-flags";
 import { printSessionStatus } from "../lib/auth/login-status";
+import { bootstrapOwner as defaultBootstrapOwner } from "../lib/auth/bootstrap-owner";
+import { getRegistryEnvConfig } from "../lib/registry/config";
 
 interface LoginCommandOptions {
   env?: NodeJS.ProcessEnv;
@@ -46,6 +49,13 @@ interface LoginCommandOptions {
     apiKey: string,
     refreshToken: string,
   ) => Promise<FirebaseRefreshTokenValidationResult>;
+  exchangeRefreshToken?: (apiKey: string, refreshToken: string) => Promise<FirebaseIdTokenSession>;
+  bootstrapOwner?: (
+    baseUrl: string,
+    idToken: string,
+    request: { ownerLogin: string },
+    options?: { timeoutMs?: number },
+  ) => Promise<{ status: string }>;
 }
 
 function requireConfig(env: NodeJS.ProcessEnv): LoginEnvConfig {
@@ -78,7 +88,7 @@ export async function runLoginCommand(
       return printSessionStatus(readSessionFn(), config.firebaseProjectId);
     }
 
-    return await executeLoginFlow(config, reauth, {
+    const result = await executeLoginFlow(config, reauth, {
       readSession: readSessionFn,
       writeSession: writeSessionFn,
       clearSession: clearSessionFn,
@@ -89,6 +99,38 @@ export async function runLoginCommand(
       resolveGitHubUsername: options.resolveGitHubUsername ?? requestGitHubUsername,
       verifyRefreshToken: options.verifyRefreshToken ?? verifyFirebaseRefreshToken,
     });
+    if (result !== 0 || status) {
+      return result;
+    }
+
+    // Best-effort owner bootstrap after successful login to recover cleanly after dev resets.
+    const session = readSessionFn();
+    const ownerLogin = session?.githubUsername?.trim();
+    if (!session?.refreshToken || !ownerLogin) {
+      return result;
+    }
+
+    try {
+      const registryConfig = getRegistryEnvConfig(options.env ?? process.env, {
+        firebaseProjectId: config.firebaseProjectId,
+      });
+      const tokenSession = await (options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken)(
+        config.firebaseApiKey,
+        session.refreshToken,
+      );
+      await (options.bootstrapOwner ?? defaultBootstrapOwner)(
+        registryConfig.registryBaseUrl,
+        tokenSession.idToken,
+        { ownerLogin },
+        { timeoutMs: registryConfig.requestTimeoutMs },
+      );
+    } catch (bootstrapError) {
+      const message =
+        bootstrapError instanceof Error ? bootstrapError.message : "unknown bootstrap error";
+      console.warn(`skillmd login: owner bootstrap skipped (${message}).`);
+    }
+
+    return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd login: ${message}`);

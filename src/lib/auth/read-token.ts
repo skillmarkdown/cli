@@ -1,6 +1,7 @@
 import { getLoginEnvConfig } from "./config";
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "./id-token";
 import { readAuthSession, type AuthSession } from "./session";
+import { resolveConfiguredAuthToken } from "./api-token";
 
 interface ResolveReadTokenOptions {
   env?: NodeJS.ProcessEnv;
@@ -25,12 +26,18 @@ function isInvalidSessionError(error: unknown): boolean {
 export async function resolveReadIdToken(
   options: ResolveReadTokenOptions = {},
 ): Promise<string | null> {
+  const env = options.env ?? process.env;
+  const authToken = resolveConfiguredAuthToken(env);
+  if (authToken) {
+    return authToken;
+  }
+
   const session = (options.readSession ?? readAuthSession)();
   if (!session) {
     return null;
   }
 
-  const config = getLoginEnvConfig(options.env ?? process.env);
+  const config = getLoginEnvConfig(env);
 
   if (session.projectId && session.projectId !== config.firebaseProjectId) {
     return null;
