@@ -457,7 +457,7 @@ node "$REPO_DIR/dist/cli.js" update --all
 
 Expected:
 
-- command scans `.agent/skills/registry.skillmarkdown.com/*/*` in current project
+- command scans selected target root (default `.agent/skills/registry.skillmarkdown.com/*/*`)
 - output table has `SKILL`, `FROM`, `TO`, `STATUS`, `DETAIL`
 - summary line reports total/updated/skipped/failed counts
 

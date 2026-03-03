@@ -20,6 +20,7 @@ function baseOptions(overrides = {}) {
       firebaseProjectId: "skillmarkdown-development",
       registryBaseUrl: "https://registry.example.com",
       requestTimeoutMs: 10000,
+      defaultAgentTarget: "skillmd",
     }),
     resolveVersion: async () => ({
       owner: "@stefdevscore",
@@ -92,10 +93,97 @@ test("installs with default latest selector and prints human output", async () =
     ),
   );
   assert.equal(installInput.metadata.downloadedFrom, "https://storage.example.com");
+  assert.equal(installInput.metadata.agentTarget, "skillmd");
   assert.deepEqual(installInput.metadata.installIntent, {
     strategy: "latest_fallback_beta",
     value: null,
   });
+});
+
+test("uses descriptor agent target when flag is omitted", async () => {
+  let installInput;
+  const { result } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill"],
+      baseOptions({
+        getArtifactDescriptor: async () => ({
+          owner: "@stefdevscore",
+          ownerLogin: "stefdevscore",
+          skill: "test-skill",
+          version: "1.2.3",
+          digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+          sizeBytes: 5,
+          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+          yanked: false,
+          yankedAt: null,
+          yankedReason: null,
+          downloadUrl: "https://storage.example.com/object",
+          downloadExpiresAt: "2026-03-02T12:40:00.000Z",
+          agentTarget: "claude",
+        }),
+        installArtifact: async (input) => {
+          installInput = input;
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.ok(installInput.targetPath.includes("/.claude/skills/registry.skillmarkdown.com/"));
+  assert.equal(installInput.metadata.agentTarget, "claude");
+});
+
+test("explicit --agent-target overrides descriptor target", async () => {
+  let installInput;
+  const { result } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill", "--agent-target", "gemini"],
+      baseOptions({
+        getArtifactDescriptor: async () => ({
+          owner: "@stefdevscore",
+          ownerLogin: "stefdevscore",
+          skill: "test-skill",
+          version: "1.2.3",
+          digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+          sizeBytes: 5,
+          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+          yanked: false,
+          yankedAt: null,
+          yankedReason: null,
+          downloadUrl: "https://storage.example.com/object",
+          downloadExpiresAt: "2026-03-02T12:40:00.000Z",
+          agentTarget: "claude",
+        }),
+        installArtifact: async (input) => {
+          installInput = input;
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.ok(installInput.targetPath.includes("/.gemini/skills/registry.skillmarkdown.com/"));
+  assert.equal(installInput.metadata.agentTarget, "gemini");
+});
+
+test("installs custom targets under .agents namespace", async () => {
+  let installInput;
+  const { result } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill", "--agent-target", "custom:myagent"],
+      baseOptions({
+        installArtifact: async (input) => {
+          installInput = input;
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.ok(
+    installInput.targetPath.includes("/.agents/skills/myagent/registry.skillmarkdown.com/"),
+  );
+  assert.equal(installInput.metadata.agentTarget, "custom:myagent");
 });
 
 test("does not resolve read token when install succeeds without auth retry", async () => {

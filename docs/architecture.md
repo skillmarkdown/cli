@@ -128,7 +128,10 @@ Primary orchestrator: `src/lib/use/workflow.ts`.
 
 Install destination in v1:
 
-- `<cwd>/.agent/skills/registry.skillmarkdown.com/<owner>/<skill>`
+- `skillmd`: `<cwd>/.agent/skills/registry.skillmarkdown.com/<owner>/<skill>`
+- `claude`: `<cwd>/.claude/skills/registry.skillmarkdown.com/<owner>/<skill>`
+- `gemini`: `<cwd>/.gemini/skills/registry.skillmarkdown.com/<owner>/<skill>`
+- `custom:<slug>`: `<cwd>/.agents/skills/<slug>/registry.skillmarkdown.com/<owner>/<skill>`
 
 The install host is intentionally canonicalized to `registry.skillmarkdown.com` for stable local paths.
 
@@ -165,6 +168,13 @@ Registry base URL resolution:
 
 - explicit `SKILLMD_REGISTRY_BASE_URL`, else
 - project map in `src/lib/registry/config.ts`.
+
+Agent target default resolution:
+
+- explicit `--agent-target` per command, else
+- backend descriptor `agentTarget` (for `use`), else
+- `SKILLMD_AGENT_TARGET`, else
+- `skillmd`.
 
 Timeout default:
 

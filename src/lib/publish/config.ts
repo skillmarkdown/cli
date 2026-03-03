@@ -1,5 +1,6 @@
 import { getLoginEnvConfig } from "../auth/config";
 import { getRegistryEnvConfig } from "../registry/config";
+import { resolveDefaultAgentTarget } from "../shared/agent-target";
 import { type PublishEnvConfig } from "./types";
 
 export function getPublishEnvConfig(env: NodeJS.ProcessEnv = process.env): PublishEnvConfig {
@@ -11,5 +12,6 @@ export function getPublishEnvConfig(env: NodeJS.ProcessEnv = process.env): Publi
   return {
     firebaseApiKey: loginConfig.firebaseApiKey,
     ...registryConfig,
+    defaultAgentTarget: resolveDefaultAgentTarget(env.SKILLMD_AGENT_TARGET),
   };
 }

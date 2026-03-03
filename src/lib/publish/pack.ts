@@ -10,7 +10,15 @@ const GZIP_OS_BYTE_OFFSET = 9;
 const GZIP_HEADER_MIN_BYTES = 10;
 const GZIP_OS_UNKNOWN = 255;
 
-const IGNORED_DIRECTORY_NAMES = new Set([".agent", ".git", "node_modules", ".skillmd"]);
+const IGNORED_DIRECTORY_NAMES = new Set([
+  ".agent",
+  ".agents",
+  ".claude",
+  ".gemini",
+  ".git",
+  "node_modules",
+  ".skillmd",
+]);
 const IGNORED_FILE_NAMES = new Set([".DS_Store"]);
 const SENSITIVE_FILE_PATTERNS = [
   /^\.env(?:\..*)?$/iu,

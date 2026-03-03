@@ -153,6 +153,7 @@ test("installSkillArtifact replaces existing target atomically and writes metada
         downloadedFrom: "https://storage.example.com/object",
         installedAt: "2026-03-02T12:00:00.000Z",
         sourceCommand: "skillmd use @owner/test-skill --version 1.2.3",
+        agentTarget: "skillmd",
       },
     });
 
@@ -164,6 +165,7 @@ test("installSkillArtifact replaces existing target atomically and writes metada
     const metadata = JSON.parse(await fsp.readFile(metadataPath, "utf8"));
     assert.equal(metadata.skillId, "@owner/test-skill");
     assert.equal(metadata.version, "1.2.3");
+    assert.equal(metadata.agentTarget, "skillmd");
   } finally {
     cleanupDirectory(root);
   }

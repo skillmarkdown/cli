@@ -13,6 +13,7 @@ test("parses no-arg update as valid", () => {
     allowYanked: false,
     json: false,
     skillIds: [],
+    agentTarget: undefined,
     valid: true,
   });
 });
@@ -25,6 +26,7 @@ test("parses --all with flags", () => {
     allowYanked: true,
     json: true,
     skillIds: [],
+    agentTarget: undefined,
     valid: true,
   });
 });
@@ -37,11 +39,22 @@ test("parses multiple skill ids", () => {
     allowYanked: false,
     json: false,
     skillIds: ["@owner/skill-a", "owner/skill-b"],
+    agentTarget: undefined,
     valid: true,
   });
 });
 
-for (const args of [["--all", "@owner/skill"], ["--bad-flag"]]) {
+test("parses --agent-target", () => {
+  const parsed = parseUpdateFlags(["--all", "--agent-target", "claude"]);
+  assert.equal(parsed.valid, true);
+  assert.equal(parsed.agentTarget, "claude");
+});
+
+for (const args of [
+  ["--all", "@owner/skill"],
+  ["--bad-flag"],
+  ["--agent-target", "custom:UPPER"],
+]) {
   test(`rejects invalid args: ${args.join(" ")}`, () => {
     const parsed = parseUpdateFlags(args);
     assert.equal(parsed.valid, false);

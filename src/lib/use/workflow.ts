@@ -1,6 +1,7 @@
 import { type PublishChannel } from "../publish/types";
 import { callWithReadTokenRetry } from "../auth/read-token-retry";
 import { resolveInstalledSkillPath, resolveInstallTempRoot } from "./pathing";
+import { DEFAULT_AGENT_TARGET, type AgentTarget } from "../shared/agent-target";
 import {
   downloadArtifact as defaultDownloadArtifact,
   getArtifactDescriptor as defaultGetArtifactDescriptor,
@@ -27,11 +28,14 @@ export interface InstallWorkflowInput {
   ownerSlug: string;
   skillSlug: string;
   selector: InstallSelector;
+  selectedAgentTarget?: AgentTarget;
+  defaultAgentTarget?: AgentTarget;
   allowYanked: boolean;
   sourceCommandFactory: (input: {
     canonicalSkillId: string;
     selector: InstallSelector;
     resolvedChannel?: PublishChannel;
+    resolvedAgentTarget: AgentTarget;
   }) => string;
   now?: () => Date;
 }
@@ -214,17 +218,24 @@ export async function installFromRegistry(
   verifyDownloadedArtifact(descriptor, download.bytes, download.contentType);
 
   const canonicalSkillId = `@${descriptor.ownerLogin}/${descriptor.skill}`;
+  const resolvedAgentTarget =
+    input.selectedAgentTarget ??
+    descriptor.agentTarget ??
+    input.defaultAgentTarget ??
+    DEFAULT_AGENT_TARGET;
   const installedPath = resolveInstalledSkillPath(
     input.cwd,
     input.registryBaseUrl,
     descriptor.ownerLogin,
     descriptor.skill,
+    resolvedAgentTarget,
   );
   const installedAt = now().toISOString();
   const sourceCommand = input.sourceCommandFactory({
     canonicalSkillId,
     selector: input.selector,
     resolvedChannel,
+    resolvedAgentTarget,
   });
 
   const metadata: InstalledSkillMetadata = {
@@ -240,11 +251,12 @@ export async function installFromRegistry(
     installedAt,
     sourceCommand,
     installIntent: toInstallIntent(input.selector),
+    agentTarget: resolvedAgentTarget,
   };
 
   await installArtifactFn({
     targetPath: installedPath,
-    tempRoot: resolveInstallTempRoot(input.cwd),
+    tempRoot: resolveInstallTempRoot(input.cwd, resolvedAgentTarget),
     archiveBytes: download.bytes,
     metadata,
   });
@@ -262,6 +274,7 @@ export async function installFromRegistry(
       registryBaseUrl: input.registryBaseUrl,
       installedAt,
       source: "registry",
+      agentTarget: resolvedAgentTarget,
     },
     metadata,
     resolvedChannel,

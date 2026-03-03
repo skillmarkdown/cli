@@ -1,4 +1,5 @@
 import { parseSkillId } from "../lib/registry/skill-id";
+import { DEFAULT_AGENT_TARGET } from "../lib/shared/agent-target";
 import { failWithUsage } from "../lib/shared/command-output";
 import { USE_USAGE } from "../lib/shared/cli-text";
 import { getUseEnvConfig, type UseEnvConfig } from "../lib/use/config";
@@ -69,9 +70,11 @@ export async function runUseCommand(
         ownerSlug: parsedSkillId.ownerSlug,
         skillSlug: parsedSkillId.skillSlug,
         selector,
+        selectedAgentTarget: parsed.agentTarget,
+        defaultAgentTarget: config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET,
         allowYanked: parsed.allowYanked,
         now,
-        sourceCommandFactory: ({ canonicalSkillId, resolvedChannel }) => {
+        sourceCommandFactory: ({ canonicalSkillId, resolvedChannel, resolvedAgentTarget }) => {
           const parts = ["skillmd", "use", canonicalSkillId];
           if (parsed.version) {
             parts.push("--version", parsed.version);
@@ -79,6 +82,11 @@ export async function runUseCommand(
             parts.push("--channel", parsed.channel);
           } else if (resolvedChannel === "beta") {
             parts.push("--channel", "beta");
+          }
+          if (parsed.agentTarget) {
+            parts.push("--agent-target", parsed.agentTarget);
+          } else if (resolvedAgentTarget !== DEFAULT_AGENT_TARGET) {
+            parts.push("--agent-target", resolvedAgentTarget);
           }
           if (parsed.allowYanked) {
             parts.push("--allow-yanked");

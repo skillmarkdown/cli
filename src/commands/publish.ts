@@ -19,6 +19,7 @@ import {
   type PublishManifest,
 } from "../lib/publish/types";
 import { PUBLISH_USAGE } from "../lib/shared/cli-text";
+import { DEFAULT_AGENT_TARGET } from "../lib/shared/agent-target";
 import { failWithUsage, printValidationResult } from "../lib/shared/command-output";
 import { type ValidationResult, validateSkill } from "../lib/validation/validator";
 
@@ -45,6 +46,7 @@ interface PublishCommandOptions {
       version: string;
       channel: PublishChannel;
       visibility?: "public" | "private";
+      agentTarget?: string;
       digest: string;
       sizeBytes: number;
       mediaType: string;
@@ -94,6 +96,7 @@ function printDryRunResult(
     version: string;
     channel: PublishChannel;
     visibility?: "public" | "private";
+    agentTarget: string;
     digest: string;
     sizeBytes: number;
     registryBaseUrl: string;
@@ -110,14 +113,20 @@ function printDryRunResult(
   console.log(
     `Publish dry-run ready: ${payload.skillId}@${payload.version} ` +
       `(channel: ${payload.channel}, visibility: ${payload.visibility ?? "public"}, ` +
-      `digest: ${payload.digest}, size: ${payload.sizeBytes} bytes).`,
+      `target: ${payload.agentTarget}, digest: ${payload.digest}, size: ${payload.sizeBytes} bytes).`,
   );
 }
 
 function printPublishedResult(
   json: boolean,
   status: "published" | "idempotent",
-  payload: { skillId: string; version: string; channel: PublishChannel; digest: string },
+  payload: {
+    skillId: string;
+    version: string;
+    channel: PublishChannel;
+    digest: string;
+    agentTarget: string;
+  },
 ): void {
   if (json) {
     printJson({ status, ...payload });
@@ -127,14 +136,14 @@ function printPublishedResult(
   if (status === "idempotent") {
     console.log(
       `Already published ${payload.skillId}@${payload.version} ` +
-        `(channel: ${payload.channel}, digest: ${payload.digest}).`,
+        `(channel: ${payload.channel}, target: ${payload.agentTarget}, digest: ${payload.digest}).`,
     );
     return;
   }
 
   console.log(
     `Published ${payload.skillId}@${payload.version} ` +
-      `(channel: ${payload.channel}, digest: ${payload.digest}).`,
+      `(channel: ${payload.channel}, target: ${payload.agentTarget}, digest: ${payload.digest}).`,
   );
 }
 
@@ -181,6 +190,7 @@ export async function runPublishCommand(
   try {
     const getConfigFn = options.getConfig ?? getPublishEnvConfig;
     const config = getConfigFn(env);
+    const agentTarget = parsed.agentTarget ?? config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET;
 
     if (session.projectId && session.projectId !== config.firebaseProjectId) {
       console.error(
@@ -227,6 +237,7 @@ export async function runPublishCommand(
         version: parsed.version,
         channel,
         visibility: parsed.visibility,
+        agentTarget,
         digest: artifact.digest,
         sizeBytes: artifact.sizeBytes,
         registryBaseUrl: config.registryBaseUrl,
@@ -249,6 +260,7 @@ export async function runPublishCommand(
         version: parsed.version,
         channel,
         visibility: parsed.visibility,
+        agentTarget,
         digest: artifact.digest,
         sizeBytes: artifact.sizeBytes,
         mediaType: artifact.mediaType,
@@ -263,6 +275,7 @@ export async function runPublishCommand(
         version: prepared.version ?? parsed.version,
         digest: prepared.digest ?? artifact.digest,
         channel: prepared.channel ?? channel,
+        agentTarget: prepared.agentTarget ?? agentTarget,
       });
       return 0;
     }
@@ -290,6 +303,7 @@ export async function runPublishCommand(
       version: committed.version,
       digest: committed.digest ?? artifact.digest,
       channel: committed.channel,
+      agentTarget: committed.agentTarget ?? agentTarget,
     });
     return 0;
   } catch (error) {

@@ -7,14 +7,23 @@ const { captureConsole } = require("../helpers/console-test-utils.js");
 const { runUpdateCommand } = requireDist("commands/update.js");
 const { UseApiError } = requireDist("lib/use/errors.js");
 
-function makeTarget(skillId) {
+function makeTarget(skillId, agentTarget = "skillmd") {
   const normalized = skillId.replace(/^@/, "").toLowerCase();
   const [ownerSlug, skillSlug] = normalized.split("/");
+  const skillsRoot =
+    agentTarget === "claude"
+      ? ".claude/skills"
+      : agentTarget === "gemini"
+        ? ".gemini/skills"
+        : agentTarget.startsWith("custom:")
+          ? `.agents/skills/${agentTarget.slice("custom:".length)}`
+          : ".agent/skills";
   return {
     skillId: `@${ownerSlug}/${skillSlug}`,
     ownerSlug,
     skillSlug,
-    installedPath: `/workspace/project/.agent/skills/registry.skillmarkdown.com/${ownerSlug}/${skillSlug}`,
+    agentTarget,
+    installedPath: `/workspace/project/${skillsRoot}/registry.skillmarkdown.com/${ownerSlug}/${skillSlug}`,
   };
 }
 
@@ -31,8 +40,10 @@ function baseOptions(overrides = {}) {
       firebaseProjectId: "skillmarkdown-development",
       registryBaseUrl: "https://registry.example.com",
       requestTimeoutMs: 10000,
+      defaultAgentTarget: "skillmd",
     }),
     discoverInstalledSkills: async () => [],
+    discoverInstalledSkillsAcrossTargets: async () => [],
     readInstalledSkillMetadata: async () => null,
     installFromRegistry: async () => ({
       result: {
@@ -47,6 +58,7 @@ function baseOptions(overrides = {}) {
         registryBaseUrl: "https://registry.example.com",
         installedAt: "2026-03-02T12:34:56.000Z",
         source: "registry",
+        agentTarget: "skillmd",
       },
       metadata: {
         skillId: "@owner/skill",
@@ -64,22 +76,276 @@ test("fails with usage on invalid args", async () => {
 });
 
 test("treats no args and --all as all mode", async () => {
-  const discoverCalls = [];
-  const discoverInstalledSkills = async () => {
-    discoverCalls.push(true);
+  const discoverAcrossCalls = [];
+  const discoverInstalledSkills = async (_cwd, _registryBaseUrl, agentTarget) => {
+    void agentTarget;
+    return [];
+  };
+  const discoverInstalledSkillsAcrossTargets = async () => {
+    discoverAcrossCalls.push("all");
     return [];
   };
 
   const first = await captureConsole(() =>
-    runUpdateCommand([], baseOptions({ discoverInstalledSkills })),
+    runUpdateCommand(
+      [],
+      baseOptions({ discoverInstalledSkills, discoverInstalledSkillsAcrossTargets }),
+    ),
   );
   const second = await captureConsole(() =>
-    runUpdateCommand(["--all"], baseOptions({ discoverInstalledSkills })),
+    runUpdateCommand(
+      ["--all"],
+      baseOptions({ discoverInstalledSkills, discoverInstalledSkillsAcrossTargets }),
+    ),
   );
 
   assert.equal(first.result, 0);
   assert.equal(second.result, 0);
-  assert.equal(discoverCalls.length, 2);
+  assert.deepEqual(discoverAcrossCalls, ["all", "all"]);
+});
+
+test("passes --agent-target root to discovery and install workflow", async () => {
+  let discoveredTarget;
+  let installedTarget;
+  let discoveredAcrossCount = 0;
+  const { result } = await captureConsole(() =>
+    runUpdateCommand(
+      ["--all", "--agent-target", "claude"],
+      baseOptions({
+        discoverInstalledSkills: async (_cwd, _registryBaseUrl, agentTarget) => {
+          discoveredTarget = agentTarget;
+          return [makeTarget("@owner/skill-a", "claude")];
+        },
+        discoverInstalledSkillsAcrossTargets: async () => {
+          discoveredAcrossCount += 1;
+          return [];
+        },
+        installFromRegistry: async (input) => {
+          installedTarget = input.selectedAgentTarget;
+          return {
+            result: {
+              skillId: "@owner/skill-a",
+              ownerLogin: "owner",
+              skill: "skill-a",
+              version: "1.2.3",
+              digest: "sha256:test",
+              sizeBytes: 5,
+              mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+              installedPath:
+                "/workspace/project/.claude/skills/registry.skillmarkdown.com/owner/skill-a",
+              registryBaseUrl: "https://registry.example.com",
+              installedAt: "2026-03-02T12:34:56.000Z",
+              source: "registry",
+              agentTarget: "claude",
+            },
+            metadata: {
+              skillId: "@owner/skill-a",
+            },
+          };
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(discoveredTarget, "claude");
+  assert.equal(installedTarget, "claude");
+  assert.equal(discoveredAcrossCount, 0);
+});
+
+test("uses explicit env agent target for all-mode discovery when flag is absent", async () => {
+  let discoveredTarget;
+  let discoveredAcrossCount = 0;
+
+  const { result } = await captureConsole(() =>
+    runUpdateCommand(
+      ["--all"],
+      baseOptions({
+        env: {
+          SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+          SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
+          SKILLMD_REGISTRY_TIMEOUT_MS: "10000",
+          SKILLMD_AGENT_TARGET: "gemini",
+        },
+        getConfig: () => ({
+          firebaseProjectId: "skillmarkdown-development",
+          registryBaseUrl: "https://registry.example.com",
+          requestTimeoutMs: 10000,
+          defaultAgentTarget: "gemini",
+        }),
+        discoverInstalledSkills: async (_cwd, _registryBaseUrl, agentTarget) => {
+          discoveredTarget = agentTarget;
+          return [];
+        },
+        discoverInstalledSkillsAcrossTargets: async () => {
+          discoveredAcrossCount += 1;
+          return [];
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(discoveredTarget, "gemini");
+  assert.equal(discoveredAcrossCount, 0);
+});
+
+test("json output disambiguates duplicate skill installs across agent targets", async () => {
+  const duplicateTargets = [
+    makeTarget("@owner/skill", "skillmd"),
+    makeTarget("@owner/skill", "claude"),
+  ];
+
+  const { result, logs } = await captureConsole(() =>
+    runUpdateCommand(
+      ["--all", "--json"],
+      baseOptions({
+        discoverInstalledSkillsAcrossTargets: async () => duplicateTargets,
+        readInstalledSkillMetadata: async (installedPath) => ({
+          version: "1.0.0",
+          agentTarget: installedPath.includes("/.claude/") ? "claude" : "skillmd",
+          installIntent: {
+            strategy: "latest_fallback_beta",
+            value: null,
+          },
+        }),
+        installFromRegistry: async (input) => ({
+          result: {
+            skillId: "@owner/skill",
+            ownerLogin: "owner",
+            skill: "skill",
+            version: input.selectedAgentTarget === "claude" ? "1.1.1" : "1.1.0",
+            digest: "sha256:test",
+            sizeBytes: 5,
+            mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+            installedPath:
+              input.selectedAgentTarget === "claude"
+                ? "/workspace/project/.claude/skills/registry.skillmarkdown.com/owner/skill"
+                : "/workspace/project/.agent/skills/registry.skillmarkdown.com/owner/skill",
+            registryBaseUrl: "https://registry.example.com",
+            installedAt: "2026-03-02T12:34:56.000Z",
+            source: "registry",
+            agentTarget: input.selectedAgentTarget,
+          },
+          metadata: {
+            skillId: "@owner/skill",
+          },
+        }),
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  const parsed = JSON.parse(logs.join("\n"));
+  assert.equal(parsed.updated.length, 2);
+
+  const byTarget = new Map(parsed.updated.map((entry) => [entry.agentTarget, entry]));
+  assert.equal(byTarget.get("skillmd").skillId, "@owner/skill");
+  assert.equal(byTarget.get("claude").skillId, "@owner/skill");
+  assert.match(byTarget.get("skillmd").installedPath, /\/\.agent\/skills\//);
+  assert.match(byTarget.get("claude").installedPath, /\/\.claude\/skills\//);
+});
+
+test("updated entry uses result installedPath when effective target differs from discovered path", async () => {
+  const discovered = makeTarget("@owner/skill", "skillmd");
+  const installPath = "/workspace/project/.claude/skills/registry.skillmarkdown.com/owner/skill";
+
+  const { result, logs } = await captureConsole(() =>
+    runUpdateCommand(
+      ["--all", "--json"],
+      baseOptions({
+        discoverInstalledSkillsAcrossTargets: async () => [discovered],
+        readInstalledSkillMetadata: async () => ({
+          version: "1.0.0",
+          agentTarget: "claude",
+          installIntent: {
+            strategy: "latest_fallback_beta",
+            value: null,
+          },
+        }),
+        installFromRegistry: async (input) => {
+          assert.equal(input.selectedAgentTarget, "claude");
+          return {
+            result: {
+              skillId: "@owner/skill",
+              ownerLogin: "owner",
+              skill: "skill",
+              version: "1.1.0",
+              digest: "sha256:test",
+              sizeBytes: 5,
+              mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+              installedPath: installPath,
+              registryBaseUrl: "https://registry.example.com",
+              installedAt: "2026-03-02T12:34:56.000Z",
+              source: "registry",
+              agentTarget: "claude",
+            },
+            metadata: {
+              skillId: "@owner/skill",
+            },
+          };
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  const parsed = JSON.parse(logs.join("\n"));
+  assert.equal(parsed.updated.length, 1);
+  assert.equal(parsed.updated[0].agentTarget, "claude");
+  assert.equal(parsed.updated[0].installedPath, installPath);
+});
+
+test("human output includes target column for duplicate skill installs", async () => {
+  const duplicateTargets = [
+    makeTarget("@owner/skill", "skillmd"),
+    makeTarget("@owner/skill", "claude"),
+  ];
+
+  const { result, logs } = await captureConsole(() =>
+    runUpdateCommand(
+      ["--all"],
+      baseOptions({
+        discoverInstalledSkillsAcrossTargets: async () => duplicateTargets,
+        readInstalledSkillMetadata: async (installedPath) => ({
+          version: "1.0.0",
+          agentTarget: installedPath.includes("/.claude/") ? "claude" : "skillmd",
+          installIntent: {
+            strategy: "latest_fallback_beta",
+            value: null,
+          },
+        }),
+        installFromRegistry: async (input) => ({
+          result: {
+            skillId: "@owner/skill",
+            ownerLogin: "owner",
+            skill: "skill",
+            version: input.selectedAgentTarget === "claude" ? "1.1.1" : "1.1.0",
+            digest: "sha256:test",
+            sizeBytes: 5,
+            mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+            installedPath:
+              input.selectedAgentTarget === "claude"
+                ? "/workspace/project/.claude/skills/registry.skillmarkdown.com/owner/skill"
+                : "/workspace/project/.agent/skills/registry.skillmarkdown.com/owner/skill",
+            registryBaseUrl: "https://registry.example.com",
+            installedAt: "2026-03-02T12:34:56.000Z",
+            source: "registry",
+            agentTarget: input.selectedAgentTarget,
+          },
+          metadata: {
+            skillId: "@owner/skill",
+          },
+        }),
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  const output = logs.join("\n");
+  assert.match(output, /TARGET/);
+  assert.match(output, /skillmd/);
+  assert.match(output, /claude/);
 });
 
 test("does not resolve read token before updates begin", async () => {
@@ -87,7 +353,7 @@ test("does not resolve read token before updates begin", async () => {
     runUpdateCommand(
       [],
       baseOptions({
-        discoverInstalledSkills: async () => [],
+        discoverInstalledSkillsAcrossTargets: async () => [],
         resolveReadIdToken: async () => {
           throw new Error("should not be called");
         },
@@ -105,7 +371,7 @@ test("reuses resolved read token across multi-skill update batch", async () => {
     runUpdateCommand(
       ["--all"],
       baseOptions({
-        discoverInstalledSkills: async () => [
+        discoverInstalledSkillsAcrossTargets: async () => [
           makeTarget("@owner/skill-a"),
           makeTarget("@owner/skill-b"),
         ],
@@ -151,7 +417,7 @@ test("retries token resolution in later skills when first resolution returns nul
     runUpdateCommand(
       ["--all"],
       baseOptions({
-        discoverInstalledSkills: async () => [
+        discoverInstalledSkillsAcrossTargets: async () => [
           makeTarget("@owner/skill-a"),
           makeTarget("@owner/skill-b"),
         ],
@@ -283,7 +549,7 @@ test("continues after failure and exits non-zero", async () => {
     runUpdateCommand(
       ["--all", "--json"],
       baseOptions({
-        discoverInstalledSkills: async () => [
+        discoverInstalledSkillsAcrossTargets: async () => [
           makeTarget("@owner/skill-a"),
           makeTarget("@owner/skill-b"),
         ],

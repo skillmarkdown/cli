@@ -1,4 +1,5 @@
 import { type PublishChannel, PUBLISH_CHANNELS } from "../publish/types";
+import { normalizeAgentTarget } from "../shared/agent-target";
 import { type UseFlags } from "./types";
 
 const SEMVER_PATTERN =
@@ -25,6 +26,7 @@ export function parseUseFlags(args: string[]): UseFlags {
   let skillId: string | undefined;
   let version: string | undefined;
   let channel: PublishChannel | undefined;
+  let agentTarget: UseFlags["agentTarget"];
   let allowYanked = false;
   let json = false;
 
@@ -88,6 +90,31 @@ export function parseUseFlags(args: string[]): UseFlags {
       continue;
     }
 
+    if (arg === "--agent-target") {
+      const parsed = parseValueArg(args, index);
+      if (!parsed.value) {
+        return { allowYanked: false, json: false, valid: false };
+      }
+      const parsedTarget = normalizeAgentTarget(parsed.value);
+      if (!parsedTarget) {
+        return { allowYanked: false, json: false, valid: false };
+      }
+
+      agentTarget = parsedTarget;
+      index = parsed.nextIndex;
+      continue;
+    }
+
+    if (arg.startsWith("--agent-target=")) {
+      const parsedTarget = normalizeAgentTarget(arg.slice("--agent-target=".length));
+      if (!parsedTarget) {
+        return { allowYanked: false, json: false, valid: false };
+      }
+
+      agentTarget = parsedTarget;
+      continue;
+    }
+
     if (arg.startsWith("-")) {
       return { allowYanked: false, json: false, valid: false };
     }
@@ -107,6 +134,7 @@ export function parseUseFlags(args: string[]): UseFlags {
     skillId,
     version,
     channel,
+    agentTarget,
     allowYanked,
     json,
     valid: true,

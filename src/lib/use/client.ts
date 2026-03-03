@@ -6,6 +6,7 @@ import {
   type ApiErrorPayload,
 } from "../shared/api-client";
 import { type PublishChannel } from "../publish/types";
+import { isAgentTarget } from "../shared/agent-target";
 import { UseApiError } from "./errors";
 import {
   type ArtifactDescriptorRequest,
@@ -35,7 +36,8 @@ function isResolveResponse(value: unknown): value is ResolveSkillVersionResponse
     typeof record.ownerLogin === "string" &&
     typeof record.skill === "string" &&
     (record.channel === "latest" || record.channel === "beta") &&
-    typeof record.version === "string"
+    typeof record.version === "string" &&
+    (record.agentTarget === undefined || isAgentTarget(record.agentTarget))
   );
 }
 
@@ -57,7 +59,8 @@ function isArtifactDescriptorResponse(value: unknown): value is ArtifactDescript
     (typeof record.yankedAt === "string" || record.yankedAt === null) &&
     (typeof record.yankedReason === "string" || record.yankedReason === null) &&
     typeof record.downloadUrl === "string" &&
-    typeof record.downloadExpiresAt === "string"
+    typeof record.downloadExpiresAt === "string" &&
+    (record.agentTarget === undefined || isAgentTarget(record.agentTarget))
   );
 }
 

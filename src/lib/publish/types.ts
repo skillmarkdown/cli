@@ -1,3 +1,5 @@
+import { type AgentTarget } from "../shared/agent-target";
+
 export const PUBLISH_MEDIA_TYPE = "application/vnd.skillmarkdown.skill.v1+tar";
 export const MAX_PUBLISH_ARTIFACT_SIZE_BYTES = 25 * 1024 * 1024;
 export const MAX_PUBLISH_MANIFEST_SIZE_BYTES = 256 * 1024;
@@ -12,6 +14,7 @@ export interface PublishFlags {
   version?: string;
   channel?: PublishChannel;
   visibility?: PublishVisibility;
+  agentTarget?: AgentTarget;
   dryRun: boolean;
   json: boolean;
   valid: boolean;
@@ -48,6 +51,7 @@ export interface PublishEnvConfig {
   requestTimeoutMs: number;
   firebaseApiKey: string;
   firebaseProjectId: string;
+  defaultAgentTarget: AgentTarget;
 }
 
 export interface PreparePublishRequest {
@@ -55,6 +59,7 @@ export interface PreparePublishRequest {
   version: string;
   channel: PublishChannel;
   visibility?: PublishVisibility;
+  agentTarget?: AgentTarget;
   digest: string;
   sizeBytes: number;
   mediaType: string;
@@ -78,6 +83,7 @@ export interface PreparePublishIdempotentResponse {
   version?: string;
   digest?: string;
   channel?: PublishChannel;
+  agentTarget?: AgentTarget;
 }
 
 export type PreparePublishResponse =
@@ -94,4 +100,5 @@ export interface CommitPublishResponse {
   version: string;
   digest?: string;
   channel: PublishChannel;
+  agentTarget?: AgentTarget;
 }
