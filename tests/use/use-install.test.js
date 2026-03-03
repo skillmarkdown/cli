@@ -116,7 +116,7 @@ test("verifyDownloadedArtifact validates descriptor against bytes", async () => 
   }, /content-type mismatch/i);
 });
 
-test("installSkillArtifact replaces existing target atomically and writes metadata", async () => {
+test("installSkillArtifact replaces existing target atomically without writing metadata file", async () => {
   const root = makeTempDirectory(TEST_PREFIX);
 
   try {
@@ -162,10 +162,7 @@ test("installSkillArtifact replaces existing target atomically and writes metada
     assert.equal(fs.existsSync(path.join(targetPath, "old.txt")), false);
 
     const metadataPath = path.join(targetPath, ".skillmd-install.json");
-    const metadata = JSON.parse(await fsp.readFile(metadataPath, "utf8"));
-    assert.equal(metadata.skillId, "@owner/test-skill");
-    assert.equal(metadata.version, "1.2.3");
-    assert.equal(metadata.agentTarget, "skillmd");
+    await assert.rejects(() => fsp.readFile(metadataPath, "utf8"), { code: "ENOENT" });
   } finally {
     cleanupDirectory(root);
   }

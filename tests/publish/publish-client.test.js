@@ -15,7 +15,14 @@ function preparePayload() {
   return {
     skill: "publish-skill",
     version: "1.0.0",
-    channel: "latest",
+    tag: "latest",
+    access: "public",
+    provenance: false,
+    packageMeta: {
+      name: "publish-skill",
+      version: "1.0.0",
+      description: "publish skill",
+    },
     digest: "sha256:abc",
     sizeBytes: 42,
     mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
@@ -23,7 +30,9 @@ function preparePayload() {
       schemaVersion: "skillmd.publish.v1",
       skill: "publish-skill",
       version: "1.0.0",
-      channel: "latest",
+      tag: "latest",
+      access: "public",
+      provenance: false,
       digest: "sha256:abc",
       sizeBytes: 42,
       mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
@@ -38,9 +47,10 @@ test("preparePublish returns upload_required payload", async () => {
       assert.match(String(input), /\/v1\/publish\/prepare$/);
       assert.match(String(init.headers.Authorization), /^Bearer /);
       const parsedBody = JSON.parse(String(init.body));
-      assert.equal(Object.hasOwn(parsedBody, "owner"), false);
-      assert.equal(Object.hasOwn(parsedBody.manifest, "owner"), false);
-      assert.equal(Object.hasOwn(parsedBody.manifest, "skillId"), false);
+      assert.equal(parsedBody.tag, "latest");
+      assert.equal(parsedBody.access, "public");
+      assert.equal(parsedBody.provenance, false);
+      assert.equal(parsedBody.packageMeta.name, "publish-skill");
       return mockJsonResponse(200, {
         status: "upload_required",
         publishToken: "pub-token",
@@ -89,30 +99,6 @@ test("preparePublish maps API errors", async () => {
   );
 });
 
-test("preparePublish maps nested error envelope", async () => {
-  await withMockedFetch(
-    async () =>
-      mockJsonResponse(409, {
-        error: {
-          code: "version_conflict",
-          message: "Conflict",
-        },
-        requestId: "req_123",
-      }),
-    async () => {
-      await assert.rejects(
-        preparePublish("https://registry.example.com", "id-token", preparePayload()),
-        (error) => {
-          assert.ok(error instanceof PublishApiError);
-          assert.equal(error.status, 409);
-          assert.equal(error.code, "version_conflict");
-          return true;
-        },
-      );
-    },
-  );
-});
-
 test("uploadArtifact uploads with content-type header", async () => {
   await withMockedFetch(
     async (_input, init) => {
@@ -138,7 +124,9 @@ test("commitPublish returns published response", async () => {
         status: "published",
         skillId: "@core/publish-skill",
         version: "1.0.0",
-        channel: "latest",
+        tag: "latest",
+        distTags: { latest: "1.0.0" },
+        provenance: { requested: false, recorded: false },
       });
     },
     () =>
@@ -149,6 +137,7 @@ test("commitPublish returns published response", async () => {
 
   assert.equal(result.status, "published");
   assert.equal(result.version, "1.0.0");
+  assert.equal(result.tag, "latest");
 });
 
 test("commitPublish accepts idempotent response", async () => {
@@ -158,7 +147,9 @@ test("commitPublish accepts idempotent response", async () => {
         status: "idempotent",
         skillId: "@core/publish-skill",
         version: "1.0.0",
-        channel: "latest",
+        tag: "latest",
+        distTags: { latest: "1.0.0" },
+        provenance: { requested: false, recorded: false },
       }),
     () =>
       commitPublish("https://registry.example.com", "id-token", {

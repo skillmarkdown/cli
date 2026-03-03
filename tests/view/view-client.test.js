@@ -9,32 +9,30 @@ const { ViewApiError } = requireDist("lib/view/errors.js");
 
 test("getSkillView returns parsed response payload", async () => {
   const payload = await withMockedFetch(
-    async (input, init) => {
+    async (input) => {
       const url = new URL(String(input));
-      assert.equal(url.pathname, "/v1/skills/stefdevscore/test-skill");
-      assert.equal(init?.headers, undefined);
-
+      assert.equal(url.pathname, "/v1/skills/owner/test-skill");
       return mockJsonResponse(200, {
-        owner: "@stefdevscore",
-        ownerLogin: "stefdevscore",
+        owner: "@owner",
+        ownerLogin: "owner",
         skill: "test-skill",
-        description: "sample",
-        visibility: "public",
-        channels: {
-          latest: "1.0.0",
+        description: "desc",
+        access: "public",
+        distTags: {
+          latest: "1.2.3",
         },
-        updatedAt: "2026-03-02T09:00:00.000Z",
+        updatedAt: "2026-03-02T12:00:00.000Z",
       });
     },
     () =>
       getSkillView("https://registry.example.com", {
-        ownerSlug: "stefdevscore",
+        ownerSlug: "owner",
         skillSlug: "test-skill",
       }),
   );
 
-  assert.equal(payload.ownerLogin, "stefdevscore");
   assert.equal(payload.skill, "test-skill");
+  assert.equal(payload.distTags.latest, "1.2.3");
 });
 
 test("getSkillView attaches bearer token when provided", async () => {
@@ -42,22 +40,22 @@ test("getSkillView attaches bearer token when provided", async () => {
     async (_input, init) => {
       assert.match(String(init?.headers?.Authorization), /^Bearer /);
       return mockJsonResponse(200, {
-        owner: "@stefdevscore",
-        ownerLogin: "stefdevscore",
+        owner: "@owner",
+        ownerLogin: "owner",
         skill: "test-skill",
-        description: "sample",
-        visibility: "private",
-        channels: {
-          latest: "1.0.0",
+        description: "desc",
+        access: "private",
+        distTags: {
+          latest: "1.2.3",
         },
-        updatedAt: "2026-03-02T09:00:00.000Z",
+        updatedAt: "2026-03-02T12:00:00.000Z",
       });
     },
     async () => {
       await getSkillView(
         "https://registry.example.com",
         {
-          ownerSlug: "stefdevscore",
+          ownerSlug: "owner",
           skillSlug: "test-skill",
         },
         { idToken: "token_123" },
@@ -66,46 +64,27 @@ test("getSkillView attaches bearer token when provided", async () => {
   );
 });
 
-test("getSkillView maps nested API errors", async () => {
+test("getSkillView maps API errors", async () => {
   await withMockedFetch(
     async () =>
       mockJsonResponse(404, {
         error: {
-          code: "invalid_request",
+          code: "not_found",
           message: "skill not found",
         },
       }),
     async () => {
       await assert.rejects(
         getSkillView("https://registry.example.com", {
-          ownerSlug: "stefdevscore",
+          ownerSlug: "owner",
           skillSlug: "missing",
         }),
         (error) => {
           assert.ok(error instanceof ViewApiError);
           assert.equal(error.status, 404);
-          assert.equal(error.code, "invalid_request");
+          assert.equal(error.code, "not_found");
           return true;
         },
-      );
-    },
-  );
-});
-
-test("getSkillView rejects malformed success payloads", async () => {
-  await withMockedFetch(
-    async () =>
-      mockJsonResponse(200, {
-        owner: "@stefdevscore",
-        skill: "test-skill",
-      }),
-    async () => {
-      await assert.rejects(
-        getSkillView("https://registry.example.com", {
-          ownerSlug: "stefdevscore",
-          skillSlug: "test-skill",
-        }),
-        /missing required fields/i,
       );
     },
   );

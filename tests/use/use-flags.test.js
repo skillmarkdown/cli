@@ -11,7 +11,7 @@ test("parses skill id with default selector behavior", () => {
   assert.deepEqual(parsed, {
     skillId: "@stefdevscore/test-skill",
     version: undefined,
-    channel: undefined,
+    spec: undefined,
     agentTarget: undefined,
     allowYanked: false,
     json: false,
@@ -25,7 +25,7 @@ test("parses version selector with allow-yanked and json flags", () => {
   assert.deepEqual(parsed, {
     skillId: "owner/skill",
     version: "1.2.3",
-    channel: undefined,
+    spec: undefined,
     agentTarget: undefined,
     allowYanked: true,
     json: true,
@@ -33,13 +33,13 @@ test("parses version selector with allow-yanked and json flags", () => {
   });
 });
 
-test("parses channel selector in equals form", () => {
-  const parsed = parseUseFlags(["owner/skill", "--channel=beta"]);
+test("parses spec selector in equals form", () => {
+  const parsed = parseUseFlags(["owner/skill", "--spec=beta"]);
 
   assert.deepEqual(parsed, {
     skillId: "owner/skill",
     version: undefined,
-    channel: "beta",
+    spec: "beta",
     agentTarget: undefined,
     allowYanked: false,
     json: false,
@@ -57,10 +57,9 @@ for (const args of [
   [],
   ["owner/skill", "--version"],
   ["owner/skill", "--version", "x"],
-  ["owner/skill", "--channel"],
-  ["owner/skill", "--channel", "rc"],
+  ["owner/skill", "--spec"],
   ["owner/skill", "--agent-target", "custom:UPPER"],
-  ["owner/skill", "--version", "1.2.3", "--channel", "latest"],
+  ["owner/skill", "--version", "1.2.3", "--spec", "latest"],
   ["owner/skill", "--unknown"],
 ]) {
   test(`rejects invalid args: ${args.join(" ") || "<none>"}`, () => {

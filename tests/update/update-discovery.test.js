@@ -3,8 +3,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { makeTempDirectory, cleanupDirectory } = require("../helpers/fs-test-utils.js");
 const { requireDist } = require("../helpers/dist-imports.js");
+const { makeTempDirectory, cleanupDirectory } = require("../helpers/fs-test-utils.js");
 
 const {
   discoverInstalledSkills,
@@ -15,193 +15,178 @@ const {
 
 const TEST_PREFIX = "skillmd-update-discovery-";
 
-test("discoverInstalledSkills finds valid directories and sorts deterministically", async () => {
+function writeLockfile(root, entries) {
+  fs.writeFileSync(
+    path.join(root, "skills-lock.json"),
+    JSON.stringify(
+      {
+        lockfileVersion: 1,
+        generatedAt: "2026-03-02T00:00:00.000Z",
+        entries,
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+}
+
+test("discoverInstalledSkills reads entries from lockfile for a target", async () => {
   const root = makeTempDirectory(TEST_PREFIX);
 
   try {
-    const hostRoot = path.join(root, ".agent", "skills", "registry.skillmarkdown.com");
-    fs.mkdirSync(path.join(hostRoot, "owner-b", "skill-z"), { recursive: true });
-    fs.mkdirSync(path.join(hostRoot, "owner-a", "skill-a"), { recursive: true });
-    fs.mkdirSync(path.join(hostRoot, "-badowner", "bad-skill"), { recursive: true });
+    writeLockfile(root, {
+      a: {
+        skillId: "@owner-a/skill-a",
+        ownerLogin: "owner-a",
+        skill: "skill-a",
+        selectorSpec: "latest",
+        resolvedVersion: "1.0.0",
+        digest: "sha256:a",
+        sizeBytes: 1,
+        mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+        installedPath: "/tmp/a",
+        registryBaseUrl: "https://registry.example.com",
+        installedAt: "2026-03-02T00:00:00.000Z",
+        sourceCommand: "skillmd use @owner-a/skill-a",
+        downloadedFrom: "https://storage.example.com",
+        agentTarget: "skillmd",
+      },
+      b: {
+        skillId: "@owner-b/skill-b",
+        ownerLogin: "owner-b",
+        skill: "skill-b",
+        selectorSpec: "latest",
+        resolvedVersion: "1.0.0",
+        digest: "sha256:b",
+        sizeBytes: 1,
+        mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+        installedPath: "/tmp/b",
+        registryBaseUrl: "https://registry.example.com",
+        installedAt: "2026-03-02T00:00:00.000Z",
+        sourceCommand: "skillmd use @owner-b/skill-b",
+        downloadedFrom: "https://storage.example.com",
+        agentTarget: "claude",
+      },
+    });
 
-    const otherHostRoot = path.join(root, ".agent", "skills", "other.host.example");
-    fs.mkdirSync(path.join(otherHostRoot, "owner-x", "skill-x"), { recursive: true });
-
-    const discovered = await discoverInstalledSkills(root, "https://registry.example.com");
-
-    assert.deepEqual(
-      discovered.map((entry) => entry.skillId),
-      ["@owner-a/skill-a", "@owner-b/skill-z"],
-    );
-  } finally {
-    cleanupDirectory(root);
-  }
-});
-
-test("discoverInstalledSkills scans provider-specific host roots", async () => {
-  const root = makeTempDirectory(TEST_PREFIX);
-
-  try {
-    const hostRoot = path.join(root, ".claude", "skills", "registry.skillmarkdown.com");
-    fs.mkdirSync(path.join(hostRoot, "owner-a", "skill-a"), { recursive: true });
-
-    const discovered = await discoverInstalledSkills(
+    const skillmdEntries = await discoverInstalledSkills(
       root,
       "https://registry.example.com",
-      "claude",
+      "skillmd",
     );
-    assert.equal(discovered.length, 1);
-    assert.equal(discovered[0].agentTarget, "claude");
-    assert.ok(discovered[0].installedPath.includes("/.claude/skills/registry.skillmarkdown.com/"));
+    assert.deepEqual(
+      skillmdEntries.map((entry) => entry.skillId),
+      ["@owner-a/skill-a"],
+    );
+    assert.equal(skillmdEntries[0].agentTarget, "skillmd");
   } finally {
     cleanupDirectory(root);
   }
 });
 
-test("discoverInstalledSkillsAcrossTargets aggregates builtin and custom target roots", async () => {
+test("discoverInstalledSkillsAcrossTargets returns all matching registry entries", async () => {
   const root = makeTempDirectory(TEST_PREFIX);
 
   try {
-    fs.mkdirSync(
-      path.join(root, ".agent", "skills", "registry.skillmarkdown.com", "owner-a", "skill-a"),
-      {
-        recursive: true,
+    writeLockfile(root, {
+      a: {
+        skillId: "@owner-a/skill-a",
+        ownerLogin: "owner-a",
+        skill: "skill-a",
+        selectorSpec: "latest",
+        resolvedVersion: "1.0.0",
+        digest: "sha256:a",
+        sizeBytes: 1,
+        mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+        installedPath: "/tmp/a",
+        registryBaseUrl: "https://registry.example.com",
+        installedAt: "2026-03-02T00:00:00.000Z",
+        sourceCommand: "skillmd use @owner-a/skill-a",
+        downloadedFrom: "https://storage.example.com",
+        agentTarget: "skillmd",
       },
-    );
-    fs.mkdirSync(
-      path.join(root, ".claude", "skills", "registry.skillmarkdown.com", "owner-b", "skill-b"),
-      {
-        recursive: true,
+      b: {
+        skillId: "@owner-c/skill-c",
+        ownerLogin: "owner-c",
+        skill: "skill-c",
+        selectorSpec: "latest",
+        resolvedVersion: "1.0.0",
+        digest: "sha256:c",
+        sizeBytes: 1,
+        mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+        installedPath: "/tmp/c",
+        registryBaseUrl: "https://another.example.com",
+        installedAt: "2026-03-02T00:00:00.000Z",
+        sourceCommand: "skillmd use @owner-c/skill-c",
+        downloadedFrom: "https://storage.example.com",
+        agentTarget: "gemini",
       },
-    );
-    fs.mkdirSync(
-      path.join(
-        root,
-        ".agents",
-        "skills",
-        "myagent",
-        "registry.skillmarkdown.com",
-        "owner-c",
-        "skill-c",
-      ),
-      { recursive: true },
-    );
-    fs.mkdirSync(
-      path.join(
-        root,
-        ".agents",
-        "skills",
-        "INVALID",
-        "registry.skillmarkdown.com",
-        "owner-d",
-        "skill-d",
-      ),
-      { recursive: true },
-    );
+    });
 
     const discovered = await discoverInstalledSkillsAcrossTargets(
       root,
       "https://registry.example.com",
     );
-
     assert.deepEqual(
       discovered.map((entry) => `${entry.skillId}:${entry.agentTarget}`),
-      ["@owner-a/skill-a:skillmd", "@owner-b/skill-b:claude", "@owner-c/skill-c:custom:myagent"],
+      ["@owner-a/skill-a:skillmd"],
     );
   } finally {
     cleanupDirectory(root);
   }
 });
 
-test("discoverInstalledSkills returns empty list when root is missing", async () => {
-  const root = makeTempDirectory(TEST_PREFIX);
-
-  try {
-    const discovered = await discoverInstalledSkills(root, "https://registry.example.com");
-    assert.deepEqual(discovered, []);
-  } finally {
-    cleanupDirectory(root);
-  }
-});
-
-test("readInstalledSkillMetadata returns parsed metadata when file exists", async () => {
+test("readInstalledSkillMetadata resolves entry by installed path via workspace lockfile", async () => {
   const root = makeTempDirectory(TEST_PREFIX);
 
   try {
     const installedPath = path.join(
       root,
-      ".agent",
-      "skills",
-      "registry.skillmarkdown.com",
-      "owner",
-      "skill",
+      ".agent/skills/registry.skillmarkdown.com/owner-a/skill-a",
     );
     fs.mkdirSync(installedPath, { recursive: true });
-    fs.writeFileSync(
-      path.join(installedPath, ".skillmd-install.json"),
-      JSON.stringify(
-        {
-          skillId: "@owner/skill",
-          version: "1.2.3",
-          sourceCommand: "skillmd use @owner/skill",
-          installIntent: {
-            strategy: "latest_fallback_beta",
-            value: null,
-          },
-          agentTarget: "custom:myagent",
-        },
-        null,
-        2,
-      ),
-      "utf8",
-    );
+
+    writeLockfile(root, {
+      a: {
+        skillId: "@owner-a/skill-a",
+        ownerLogin: "owner-a",
+        skill: "skill-a",
+        selectorSpec: "latest",
+        resolvedVersion: "1.0.0",
+        digest: "sha256:a",
+        sizeBytes: 1,
+        mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+        installedPath,
+        registryBaseUrl: "https://registry.example.com",
+        installedAt: "2026-03-02T00:00:00.000Z",
+        sourceCommand: "skillmd use @owner-a/skill-a",
+        downloadedFrom: "https://storage.example.com",
+        agentTarget: "skillmd",
+      },
+    });
 
     const metadata = await readInstalledSkillMetadata(installedPath);
-    assert.equal(metadata.skillId, "@owner/skill");
-    assert.equal(metadata.version, "1.2.3");
-    assert.equal(metadata.installIntent.strategy, "latest_fallback_beta");
-    assert.equal(metadata.agentTarget, "custom:myagent");
+    assert.ok(metadata, "expected metadata from lockfile");
+    assert.equal(metadata.skillId, "@owner-a/skill-a");
+    assert.equal(metadata.installedPath, installedPath);
   } finally {
     cleanupDirectory(root);
   }
 });
 
-test("readInstalledSkillMetadata throws on invalid JSON metadata", async () => {
-  const root = makeTempDirectory(TEST_PREFIX);
-
-  try {
-    const installedPath = path.join(
-      root,
-      ".agent",
-      "skills",
-      "registry.skillmarkdown.com",
-      "owner",
-      "skill",
-    );
-    fs.mkdirSync(installedPath, { recursive: true });
-    fs.writeFileSync(path.join(installedPath, ".skillmd-install.json"), "{not-json", "utf8");
-
-    await assert.rejects(
-      readInstalledSkillMetadata(installedPath),
-      /install metadata contains invalid JSON/i,
-    );
-  } finally {
-    cleanupDirectory(root);
-  }
-});
-
-test("toInstalledSkillTarget normalizes owner and skill slugs", () => {
+test("toInstalledSkillTarget computes canonical install path for target", () => {
   const target = toInstalledSkillTarget(
-    "/workspace/project",
+    "/workspace",
     "https://registry.example.com",
-    "@Owner-Name/Skill-Name",
+    "@owner-a/skill-a",
+    "claude",
   );
 
-  assert.equal(target.skillId, "@owner-name/skill-name");
-  assert.ok(
-    target.installedPath.endsWith(
-      "/.agent/skills/registry.skillmarkdown.com/owner-name/skill-name",
-    ),
+  assert.equal(target.skillId, "@owner-a/skill-a");
+  assert.equal(target.agentTarget, "claude");
+  assert.equal(
+    target.installedPath,
+    "/workspace/.claude/skills/registry.skillmarkdown.com/owner-a/skill-a",
   );
-  assert.equal(target.agentTarget, "skillmd");
 });

@@ -5,30 +5,22 @@ const { requireDist } = require("../helpers/dist-imports.js");
 
 const { resolveUpdateIntent } = requireDist("lib/update/intent.js");
 
-test("resolveUpdateIntent prefers installIntent metadata when present", () => {
+test("resolveUpdateIntent returns version selector for exact semver", () => {
   const resolved = resolveUpdateIntent({
-    installIntent: {
-      strategy: "channel",
-      value: "beta",
-    },
+    skillId: "@owner/skill",
+    ownerLogin: "owner",
+    skill: "skill",
+    selectorSpec: "1.2.3",
+    resolvedVersion: "1.2.3",
+    digest: "sha256:test",
+    sizeBytes: 5,
+    mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+    installedPath: "/tmp/skill",
+    registryBaseUrl: "https://registry.example.com",
+    installedAt: "2026-03-02T00:00:00.000Z",
     sourceCommand: "skillmd use @owner/skill --version 1.2.3",
-  });
-
-  assert.deepEqual(resolved, {
-    selector: {
-      strategy: "channel",
-      value: "beta",
-    },
-    installIntent: {
-      strategy: "channel",
-      value: "beta",
-    },
-  });
-});
-
-test("resolveUpdateIntent infers version selector from legacy sourceCommand", () => {
-  const resolved = resolveUpdateIntent({
-    sourceCommand: "skillmd use @owner/skill --version 1.2.3",
+    downloadedFrom: "https://storage.example.com",
+    agentTarget: "skillmd",
   });
 
   assert.deepEqual(resolved, {
@@ -36,41 +28,43 @@ test("resolveUpdateIntent infers version selector from legacy sourceCommand", ()
       strategy: "version",
       value: "1.2.3",
     },
-    installIntent: {
-      strategy: "version",
-      value: "1.2.3",
-    },
   });
 });
 
-test("resolveUpdateIntent infers channel selector from legacy sourceCommand", () => {
-  const resolved = resolveUpdateIntent({
-    sourceCommand: "skillmd use @owner/skill --channel beta",
-  });
-
-  assert.deepEqual(resolved, {
-    selector: {
-      strategy: "channel",
-      value: "beta",
+test("resolveUpdateIntent returns spec selector for tags/ranges", () => {
+  assert.deepEqual(
+    resolveUpdateIntent({
+      skillId: "@owner/skill",
+      ownerLogin: "owner",
+      skill: "skill",
+      selectorSpec: "^1.2.0",
+      resolvedVersion: "1.2.3",
+      digest: "sha256:test",
+      sizeBytes: 5,
+      mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+      installedPath: "/tmp/skill",
+      registryBaseUrl: "https://registry.example.com",
+      installedAt: "2026-03-02T00:00:00.000Z",
+      sourceCommand: "skillmd use @owner/skill --spec ^1.2.0",
+      downloadedFrom: "https://storage.example.com",
+      agentTarget: "skillmd",
+    }),
+    {
+      selector: {
+        strategy: "spec",
+        value: "^1.2.0",
+      },
     },
-    installIntent: {
-      strategy: "channel",
-      value: "beta",
-    },
-  });
+  );
 });
 
-test("resolveUpdateIntent defaults to latest_fallback_beta when metadata is missing", () => {
+test("resolveUpdateIntent defaults to latest when metadata is missing", () => {
   const resolved = resolveUpdateIntent(null);
 
   assert.deepEqual(resolved, {
     selector: {
-      strategy: "latest_fallback_beta",
-      value: null,
-    },
-    installIntent: {
-      strategy: "latest_fallback_beta",
-      value: null,
+      strategy: "spec",
+      value: "latest",
     },
   });
 });

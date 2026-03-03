@@ -35,14 +35,18 @@ test("buildPublishManifest returns stable schema fields", () => {
       targetDir: dir,
       skill: "manifest-skill",
       version: "1.0.0",
-      channel: "latest",
+      tag: "latest",
+      access: "public",
+      provenance: false,
       artifact: artifactFixture(),
     });
 
     assert.equal(manifest.schemaVersion, "skillmd.publish.v1");
     assert.equal(manifest.skill, "manifest-skill");
     assert.equal(manifest.version, "1.0.0");
-    assert.equal(manifest.channel, "latest");
+    assert.equal(manifest.tag, "latest");
+    assert.equal(manifest.access, "public");
+    assert.equal(manifest.provenance, false);
     assert.equal(manifest.description, "Example description");
     assert.deepEqual(manifest.files, [{ path: "SKILL.md", sizeBytes: 55, sha256: "aaa" }]);
   } finally {
@@ -65,7 +69,9 @@ test("buildPublishManifest reads description from BOM-prefixed frontmatter", () 
       targetDir: dir,
       skill: "manifest-skill",
       version: "1.0.0",
-      channel: "latest",
+      tag: "latest",
+      access: "public",
+      provenance: false,
       artifact: artifactFixture(),
     });
 
@@ -90,7 +96,9 @@ test("buildPublishManifest reads description from BOM-prefixed CRLF frontmatter"
       targetDir: dir,
       skill: "manifest-skill",
       version: "1.0.0",
-      channel: "latest",
+      tag: "latest",
+      access: "public",
+      provenance: false,
       artifact: artifactFixture(),
     });
 
