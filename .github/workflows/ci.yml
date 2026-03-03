@@ -14,7 +14,39 @@ jobs:
         node-version: [18, 20]
     steps:
       - name: Checkout
+        id: checkout
+        continue-on-error: true
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Checkout fallback (retry git fetch)
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="${GITHUB_REF}"
+          sha="${GITHUB_SHA}"
+          remote_url="https://github.com/${GITHUB_REPOSITORY}.git"
+
+          find "${GITHUB_WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          git init "${GITHUB_WORKSPACE}"
+          cd "${GITHUB_WORKSPACE}"
+          git remote add origin "${remote_url}"
+
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            echo "Fallback fetch attempt ${attempt} for ${ref}"
+            if git -c protocol.version=2 fetch --no-tags --prune --depth=1 origin "${ref}"; then
+              break
+            fi
+            if [[ "${attempt}" -eq 10 ]]; then
+              echo "Fallback checkout failed after ${attempt} attempts."
+              exit 1
+            fi
+            sleep $((attempt * 3))
+          done
+
+          git checkout --force --detach "${sha}" || git checkout --force FETCH_HEAD
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -33,7 +65,39 @@ jobs:
     needs: quality
     steps:
       - name: Checkout
+        id: checkout
+        continue-on-error: true
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Checkout fallback (retry git fetch)
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="${GITHUB_REF}"
+          sha="${GITHUB_SHA}"
+          remote_url="https://github.com/${GITHUB_REPOSITORY}.git"
+
+          find "${GITHUB_WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          git init "${GITHUB_WORKSPACE}"
+          cd "${GITHUB_WORKSPACE}"
+          git remote add origin "${remote_url}"
+
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            echo "Fallback fetch attempt ${attempt} for ${ref}"
+            if git -c protocol.version=2 fetch --no-tags --prune --depth=1 origin "${ref}"; then
+              break
+            fi
+            if [[ "${attempt}" -eq 10 ]]; then
+              echo "Fallback checkout failed after ${attempt} attempts."
+              exit 1
+            fi
+            sleep $((attempt * 3))
+          done
+
+          git checkout --force --detach "${sha}" || git checkout --force FETCH_HEAD
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -56,7 +120,39 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Checkout
+        id: checkout
+        continue-on-error: true
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Checkout fallback (retry git fetch)
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="${GITHUB_REF}"
+          sha="${GITHUB_SHA}"
+          remote_url="https://github.com/${GITHUB_REPOSITORY}.git"
+
+          find "${GITHUB_WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          git init "${GITHUB_WORKSPACE}"
+          cd "${GITHUB_WORKSPACE}"
+          git remote add origin "${remote_url}"
+
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            echo "Fallback fetch attempt ${attempt} for ${ref}"
+            if git -c protocol.version=2 fetch --no-tags --prune --depth=1 origin "${ref}"; then
+              break
+            fi
+            if [[ "${attempt}" -eq 10 ]]; then
+              echo "Fallback checkout failed after ${attempt} attempts."
+              exit 1
+            fi
+            sleep $((attempt * 3))
+          done
+
+          git checkout --force --detach "${sha}" || git checkout --force FETCH_HEAD
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -84,7 +180,39 @@ jobs:
     needs: determinism-matrix
     steps:
       - name: Checkout
+        id: checkout
+        continue-on-error: true
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Checkout fallback (retry git fetch)
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="${GITHUB_REF}"
+          sha="${GITHUB_SHA}"
+          remote_url="https://github.com/${GITHUB_REPOSITORY}.git"
+
+          find "${GITHUB_WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          git init "${GITHUB_WORKSPACE}"
+          cd "${GITHUB_WORKSPACE}"
+          git remote add origin "${remote_url}"
+
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            echo "Fallback fetch attempt ${attempt} for ${ref}"
+            if git -c protocol.version=2 fetch --no-tags --prune --depth=1 origin "${ref}"; then
+              break
+            fi
+            if [[ "${attempt}" -eq 10 ]]; then
+              echo "Fallback checkout failed after ${attempt} attempts."
+              exit 1
+            fi
+            sleep $((attempt * 3))
+          done
+
+          git checkout --force --detach "${sha}" || git checkout --force FETCH_HEAD
 
       - name: Download determinism reports
         uses: actions/download-artifact@v4
