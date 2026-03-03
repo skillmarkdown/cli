@@ -5,3 +5,5 @@ dist/
 npm-debug.log*
 test-skill/
 determinism-report.json
+.e2e*
+.sweep*

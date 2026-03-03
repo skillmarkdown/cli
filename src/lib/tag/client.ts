@@ -1,0 +1,228 @@
+import { fetchWithTimeout } from "../shared/http";
+import {
+  authHeaders,
+  extractApiErrorFields,
+  parseJsonOrThrow,
+  type ApiErrorPayload,
+} from "../shared/api-client";
+import { isViewApiError } from "../view/errors";
+import { getSkillView } from "../view/client";
+import { TagApiError } from "./errors";
+import {
+  type DeleteDistTagRequest,
+  type DistTagDeleteResponse,
+  type DistTagsListResponse,
+  type DistTagUpdateResponse,
+  type SetDistTagRequest,
+} from "./types";
+
+interface TagClientOptions {
+  timeoutMs?: number;
+  idToken?: string;
+}
+
+function toTagApiError(status: number, payload: ApiErrorPayload): TagApiError {
+  const parsed = extractApiErrorFields(status, payload, `tag API request failed (${status})`);
+  return new TagApiError(status, parsed.code, parsed.message, parsed.details);
+}
+
+function shouldFallbackToSkillView(status: number, payload: ApiErrorPayload): boolean {
+  const parsed = extractApiErrorFields(status, payload, `tag API request failed (${status})`);
+  return (
+    status === 404 &&
+    parsed.code === "invalid_request" &&
+    typeof parsed.message === "string" &&
+    /route not found/i.test(parsed.message)
+  );
+}
+
+function normalizeStringMap(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  const normalized: Record<string, string> = {};
+  for (const [key, candidate] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof candidate === "string") {
+      normalized[key] = candidate;
+    }
+  }
+  return normalized;
+}
+
+function isDistTagsListResponse(value: unknown): value is DistTagsListResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.owner === "string" &&
+    typeof record.ownerLogin === "string" &&
+    typeof record.skill === "string" &&
+    !!record.distTags &&
+    typeof record.distTags === "object" &&
+    typeof record.updatedAt === "string"
+  );
+}
+
+function isDistTagUpdateResponse(value: unknown): value is DistTagUpdateResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return (
+    record.status === "updated" &&
+    typeof record.tag === "string" &&
+    typeof record.version === "string" &&
+    !!record.distTags &&
+    typeof record.distTags === "object"
+  );
+}
+
+function isDistTagDeleteResponse(value: unknown): value is DistTagDeleteResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return (
+    record.status === "deleted" &&
+    typeof record.tag === "string" &&
+    !!record.distTags &&
+    typeof record.distTags === "object"
+  );
+}
+
+export async function listDistTags(
+  baseUrl: string,
+  request: { ownerSlug: string; skillSlug: string },
+  options: TagClientOptions = {},
+): Promise<DistTagsListResponse> {
+  const url = new URL(`${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/dist-tags`);
+  const response = await fetchWithTimeout(
+    url,
+    { method: "GET", headers: authHeaders(options.idToken) },
+    { timeoutMs: options.timeoutMs },
+  );
+  const parsed = await parseJsonOrThrow<DistTagsListResponse | ApiErrorPayload>(
+    response,
+    "Tag API",
+  );
+
+  if (!response.ok) {
+    if (shouldFallbackToSkillView(response.status, parsed as ApiErrorPayload)) {
+      try {
+        const view = await getSkillView(baseUrl, request, {
+          timeoutMs: options.timeoutMs,
+          idToken: options.idToken,
+        });
+        return {
+          owner: view.owner,
+          ownerLogin: view.ownerLogin,
+          skill: view.skill,
+          distTags: normalizeStringMap(view.distTags),
+          updatedAt: view.updatedAt,
+        };
+      } catch (error) {
+        if (isViewApiError(error)) {
+          throw new TagApiError(error.status, error.code, error.message, error.details);
+        }
+
+        throw error;
+      }
+    }
+
+    throw toTagApiError(response.status, parsed as ApiErrorPayload);
+  }
+
+  if (!isDistTagsListResponse(parsed)) {
+    throw new Error("Tag API response was missing required fields");
+  }
+
+  return {
+    ...parsed,
+    distTags: normalizeStringMap(parsed.distTags),
+  };
+}
+
+export async function setDistTag(
+  baseUrl: string,
+  idToken: string,
+  request: SetDistTagRequest,
+  options: TagClientOptions = {},
+): Promise<DistTagUpdateResponse> {
+  const url = new URL(
+    `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/dist-tags/${request.tag}`,
+  );
+  const response = await fetchWithTimeout(
+    url,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        version: request.version,
+      }),
+    },
+    { timeoutMs: options.timeoutMs },
+  );
+  const parsed = await parseJsonOrThrow<DistTagUpdateResponse | ApiErrorPayload>(
+    response,
+    "Tag API",
+  );
+
+  if (!response.ok) {
+    throw toTagApiError(response.status, parsed as ApiErrorPayload);
+  }
+
+  if (!isDistTagUpdateResponse(parsed)) {
+    throw new Error("Tag API response was missing required fields");
+  }
+
+  return {
+    ...parsed,
+    distTags: normalizeStringMap(parsed.distTags),
+  };
+}
+
+export async function removeDistTag(
+  baseUrl: string,
+  idToken: string,
+  request: DeleteDistTagRequest,
+  options: TagClientOptions = {},
+): Promise<DistTagDeleteResponse> {
+  const url = new URL(
+    `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/dist-tags/${request.tag}`,
+  );
+  const response = await fetchWithTimeout(
+    url,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+      },
+    },
+    { timeoutMs: options.timeoutMs },
+  );
+  const parsed = await parseJsonOrThrow<DistTagDeleteResponse | ApiErrorPayload>(
+    response,
+    "Tag API",
+  );
+
+  if (!response.ok) {
+    throw toTagApiError(response.status, parsed as ApiErrorPayload);
+  }
+
+  if (!isDistTagDeleteResponse(parsed)) {
+    throw new Error("Tag API response was missing required fields");
+  }
+
+  return {
+    ...parsed,
+    distTags: normalizeStringMap(parsed.distTags),
+  };
+}
