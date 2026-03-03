@@ -45,17 +45,28 @@ function assertDryRunPayload(payload, runName) {
 }
 
 function buildIsolatedEnv(homeDir) {
-  return {
+  const env = {
     ...process.env,
     HOME: homeDir,
     USERPROFILE: homeDir,
   };
+
+  if (!env.SKILLMD_REGISTRY_BASE_URL || !env.SKILLMD_REGISTRY_BASE_URL.trim()) {
+    env.SKILLMD_REGISTRY_BASE_URL = "https://registry.skillmarkdown.test";
+  }
+
+  return env;
 }
 
 function main() {
   const tmpRoot = mkdtempSync(join(tmpdir(), "skillmd-determinism-"));
   const homeDir = join(tmpRoot, "home");
   const skillDir = join(tmpRoot, "determinism-skill");
+  const env = buildIsolatedEnv(homeDir);
+  const configuredProjectId =
+    typeof env.SKILLMD_FIREBASE_PROJECT_ID === "string" && env.SKILLMD_FIREBASE_PROJECT_ID.trim()
+      ? env.SKILLMD_FIREBASE_PROJECT_ID.trim()
+      : "skillmarkdown";
 
   mkdirSync(join(homeDir, ".skillmd"), { recursive: true });
   mkdirSync(skillDir, { recursive: true });
@@ -68,7 +79,7 @@ function main() {
         uid: "determinism-user",
         githubUsername: "determinism-user",
         refreshToken: "dry-run-token",
-        projectId: "skillmarkdown",
+        projectId: configuredProjectId,
       },
       null,
       2,
@@ -76,19 +87,23 @@ function main() {
     "utf8",
   );
 
-  const env = buildIsolatedEnv(homeDir);
-
   try {
     runCli(["init", "--template", "verbose", "--no-validate"], { cwd: skillDir, env });
     runCli(["validate", "--strict"], { cwd: skillDir, env });
 
     const run1 = parsePublishJson(
-      runCli(["publish", skillDir, "--version", "1.0.0", "--dry-run", "--json"], { env }),
+      runCli(["publish", skillDir, "--version", "1.0.0", "--dry-run", "--json"], {
+        cwd: skillDir,
+        env,
+      }),
     );
     assertDryRunPayload(run1, "run1");
 
     const run2 = parsePublishJson(
-      runCli(["publish", skillDir, "--version", "1.0.0", "--dry-run", "--json"], { env }),
+      runCli(["publish", skillDir, "--version", "1.0.0", "--dry-run", "--json"], {
+        cwd: skillDir,
+        env,
+      }),
     );
     assertDryRunPayload(run2, "run2");
 
@@ -96,7 +111,10 @@ function main() {
     writeFileSync(join(skillDir, ".agent", "local.txt"), "ignored local cache\n", "utf8");
 
     const run3 = parsePublishJson(
-      runCli(["publish", skillDir, "--version", "1.0.0", "--dry-run", "--json"], { env }),
+      runCli(["publish", skillDir, "--version", "1.0.0", "--dry-run", "--json"], {
+        cwd: skillDir,
+        env,
+      }),
     );
     assertDryRunPayload(run3, "run3");
 
@@ -106,7 +124,10 @@ function main() {
     );
 
     const run4 = parsePublishJson(
-      runCli(["publish", skillDir, "--version", "1.0.0", "--dry-run", "--json"], { env }),
+      runCli(["publish", skillDir, "--version", "1.0.0", "--dry-run", "--json"], {
+        cwd: skillDir,
+        env,
+      }),
     );
     assertDryRunPayload(run4, "run4");
 
