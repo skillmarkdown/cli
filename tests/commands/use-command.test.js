@@ -37,9 +37,9 @@ function baseOptions(overrides = {}) {
       digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
       sizeBytes: 5,
       mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-      yanked: false,
-      yankedAt: null,
-      yankedReason: null,
+      deprecated: false,
+      deprecatedAt: null,
+      deprecatedMessage: null,
       downloadUrl: "https://storage.example.com/object",
       downloadExpiresAt: "2026-03-02T12:40:00.000Z",
     }),
@@ -112,9 +112,9 @@ test("uses descriptor agent target when flag is omitted", async () => {
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
           sizeBytes: 5,
           mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-          yanked: false,
-          yankedAt: null,
-          yankedReason: null,
+          deprecated: false,
+          deprecatedAt: null,
+          deprecatedMessage: null,
           downloadUrl: "https://storage.example.com/object",
           downloadExpiresAt: "2026-03-02T12:40:00.000Z",
           agentTarget: "claude",
@@ -144,9 +144,9 @@ test("explicit --agent-target overrides descriptor target", async () => {
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
           sizeBytes: 5,
           mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-          yanked: false,
-          yankedAt: null,
-          yankedReason: null,
+          deprecated: false,
+          deprecatedAt: null,
+          deprecatedMessage: null,
           downloadUrl: "https://storage.example.com/object",
           downloadExpiresAt: "2026-03-02T12:40:00.000Z",
           agentTarget: "claude",
@@ -249,7 +249,7 @@ test("prints json output with --json", async () => {
   assert.equal(parsed.version, "1.2.3");
 });
 
-test("blocks yanked versions by default", async () => {
+test("warns when selected version is deprecated and still installs", async () => {
   const { result, errors } = await captureConsole(() =>
     runUseCommand(
       ["@stefdevscore/test-skill", "--version", "1.2.3"],
@@ -262,36 +262,9 @@ test("blocks yanked versions by default", async () => {
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
           sizeBytes: 5,
           mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-          yanked: true,
-          yankedAt: "2026-03-02T10:00:00.000Z",
-          yankedReason: "security issue",
-          downloadUrl: "https://storage.example.com/object",
-          downloadExpiresAt: "2026-03-02T12:40:00.000Z",
-        }),
-      }),
-    ),
-  );
-
-  assert.equal(result, 1);
-  assert.match(errors.join("\n"), /yanked/i);
-});
-
-test("allows yanked versions with --allow-yanked", async () => {
-  const { result } = await captureConsole(() =>
-    runUseCommand(
-      ["@stefdevscore/test-skill", "--version", "1.2.3", "--allow-yanked"],
-      baseOptions({
-        getArtifactDescriptor: async () => ({
-          owner: "@stefdevscore",
-          ownerLogin: "stefdevscore",
-          skill: "test-skill",
-          version: "1.2.3",
-          digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
-          sizeBytes: 5,
-          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-          yanked: true,
-          yankedAt: "2026-03-02T10:00:00.000Z",
-          yankedReason: "security issue",
+          deprecated: true,
+          deprecatedAt: "2026-03-02T10:00:00.000Z",
+          deprecatedMessage: "security issue",
           downloadUrl: "https://storage.example.com/object",
           downloadExpiresAt: "2026-03-02T12:40:00.000Z",
         }),
@@ -300,6 +273,7 @@ test("allows yanked versions with --allow-yanked", async () => {
   );
 
   assert.equal(result, 0);
+  assert.match(errors.join("\n"), /deprecated version 1.2.3/i);
 });
 
 test("maps use API errors", async () => {

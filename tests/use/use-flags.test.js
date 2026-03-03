@@ -13,21 +13,19 @@ test("parses skill id with default selector behavior", () => {
     version: undefined,
     spec: undefined,
     agentTarget: undefined,
-    allowYanked: false,
     json: false,
     valid: true,
   });
 });
 
-test("parses version selector with allow-yanked and json flags", () => {
-  const parsed = parseUseFlags(["owner/skill", "--version", "1.2.3", "--allow-yanked", "--json"]);
+test("parses version selector with json flag", () => {
+  const parsed = parseUseFlags(["owner/skill", "--version", "1.2.3", "--json"]);
 
   assert.deepEqual(parsed, {
     skillId: "owner/skill",
     version: "1.2.3",
     spec: undefined,
     agentTarget: undefined,
-    allowYanked: true,
     json: true,
     valid: true,
   });
@@ -41,7 +39,6 @@ test("parses spec selector in equals form", () => {
     version: undefined,
     spec: "beta",
     agentTarget: undefined,
-    allowYanked: false,
     json: false,
     valid: true,
   });

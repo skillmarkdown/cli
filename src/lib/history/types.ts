@@ -18,9 +18,9 @@ export interface HistoryVersionResult {
   sizeBytes: number;
   mediaType: string;
   publishedAt: string;
-  yanked: boolean;
-  yankedAt: string | null;
-  yankedReason: string | null;
+  deprecated: boolean;
+  deprecatedAt: string | null;
+  deprecatedMessage: string | null;
 }
 
 export interface HistoryRequest {

@@ -22,7 +22,6 @@ export function parseUseFlags(args: string[]): UseFlags {
   let version: string | undefined;
   let spec: string | undefined;
   let agentTarget: UseFlags["agentTarget"];
-  let allowYanked = false;
   let json = false;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -33,15 +32,10 @@ export function parseUseFlags(args: string[]): UseFlags {
       continue;
     }
 
-    if (arg === "--allow-yanked") {
-      allowYanked = true;
-      continue;
-    }
-
     if (arg === "--version") {
       const parsed = parseValueArg(args, index);
       if (!parsed.value || !isValidSemver(parsed.value)) {
-        return { allowYanked: false, json: false, valid: false };
+        return { json: false, valid: false };
       }
 
       version = parsed.value;
@@ -52,7 +46,7 @@ export function parseUseFlags(args: string[]): UseFlags {
     if (arg.startsWith("--version=")) {
       const parsedVersion = arg.slice("--version=".length);
       if (!isValidSemver(parsedVersion)) {
-        return { allowYanked: false, json: false, valid: false };
+        return { json: false, valid: false };
       }
 
       version = parsedVersion;
@@ -62,7 +56,7 @@ export function parseUseFlags(args: string[]): UseFlags {
     if (arg === "--spec") {
       const parsed = parseValueArg(args, index);
       if (!parsed.value) {
-        return { allowYanked: false, json: false, valid: false };
+        return { json: false, valid: false };
       }
 
       spec = parsed.value;
@@ -73,7 +67,7 @@ export function parseUseFlags(args: string[]): UseFlags {
     if (arg.startsWith("--spec=")) {
       const parsedSpec = arg.slice("--spec=".length);
       if (!parsedSpec) {
-        return { allowYanked: false, json: false, valid: false };
+        return { json: false, valid: false };
       }
       spec = parsedSpec;
       continue;
@@ -82,11 +76,11 @@ export function parseUseFlags(args: string[]): UseFlags {
     if (arg === "--agent-target") {
       const parsed = parseValueArg(args, index);
       if (!parsed.value) {
-        return { allowYanked: false, json: false, valid: false };
+        return { json: false, valid: false };
       }
       const parsedTarget = normalizeAgentTarget(parsed.value);
       if (!parsedTarget) {
-        return { allowYanked: false, json: false, valid: false };
+        return { json: false, valid: false };
       }
 
       agentTarget = parsedTarget;
@@ -97,7 +91,7 @@ export function parseUseFlags(args: string[]): UseFlags {
     if (arg.startsWith("--agent-target=")) {
       const parsedTarget = normalizeAgentTarget(arg.slice("--agent-target=".length));
       if (!parsedTarget) {
-        return { allowYanked: false, json: false, valid: false };
+        return { json: false, valid: false };
       }
 
       agentTarget = parsedTarget;
@@ -105,18 +99,18 @@ export function parseUseFlags(args: string[]): UseFlags {
     }
 
     if (arg.startsWith("-")) {
-      return { allowYanked: false, json: false, valid: false };
+      return { json: false, valid: false };
     }
 
     if (skillId) {
-      return { allowYanked: false, json: false, valid: false };
+      return { json: false, valid: false };
     }
 
     skillId = arg;
   }
 
   if (!skillId || (version && spec)) {
-    return { allowYanked: false, json: false, valid: false };
+    return { json: false, valid: false };
   }
 
   return {
@@ -124,7 +118,6 @@ export function parseUseFlags(args: string[]): UseFlags {
     version,
     spec,
     agentTarget,
-    allowYanked,
     json,
     valid: true,
   };

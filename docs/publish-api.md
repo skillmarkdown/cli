@@ -26,7 +26,15 @@ Request body:
 {
   "skill": "my-skill",
   "version": "1.0.0",
-  "channel": "latest",
+  "tag": "latest",
+  "access": "public",
+  "provenance": false,
+  "packageMeta": {
+    "name": "my-skill",
+    "version": "1.0.0",
+    "description": "Example skill"
+  },
+  "agentTarget": "skillmd",
   "digest": "sha256:...",
   "sizeBytes": 12345,
   "mediaType": "application/vnd.skillmarkdown.skill.v1+tar",
@@ -34,7 +42,6 @@ Request body:
     "schemaVersion": "skillmd.publish.v1",
     "skill": "my-skill",
     "version": "1.0.0",
-    "channel": "latest",
     "digest": "sha256:...",
     "sizeBytes": 12345,
     "mediaType": "application/vnd.skillmarkdown.skill.v1+tar",
@@ -60,12 +67,12 @@ Success responses:
 ```json
 {
   "status": "upload_required",
-  "publishToken": "pub_xxx",
+  "publishToken": "pit_xxx",
   "uploadUrl": "https://...",
-  "uploadMethod": "PUT",
   "uploadHeaders": {
-    "x-goog-meta-skill": "@core/my-skill"
-  }
+    "content-type": "application/vnd.skillmarkdown.skill.v1+tar"
+  },
+  "expiresAt": "2026-03-01T12:00:00Z"
 }
 ```
 
@@ -102,7 +109,7 @@ Request body:
 
 ```json
 {
-  "publishToken": "pub_xxx"
+  "publishToken": "pit_xxx"
 }
 ```
 
@@ -113,7 +120,15 @@ Success response:
   "status": "published",
   "skillId": "@core/my-skill",
   "version": "1.0.0",
-  "channel": "latest"
+  "tag": "latest",
+  "distTags": {
+    "latest": "1.0.0"
+  },
+  "agentTarget": "skillmd",
+  "provenance": {
+    "requested": false,
+    "recorded": false
+  }
 }
 ```
 
@@ -121,4 +136,4 @@ Success response:
 
 - `GET /v1/skills/{owner}/{skill}`
 - `GET /v1/skills/{owner}/{skill}/versions/{version}`
-- `GET /v1/skills/{owner}/{skill}/resolve?channel=latest|beta`
+- `GET /v1/skills/{owner}/{skill}/resolve?spec=<tag|version|range>`

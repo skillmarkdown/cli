@@ -87,9 +87,9 @@ test("getArtifactDescriptor returns parsed payload", async () => {
         digest: "sha256:abc",
         sizeBytes: 3,
         mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-        yanked: false,
-        yankedAt: null,
-        yankedReason: null,
+        deprecated: false,
+        deprecatedAt: null,
+        deprecatedMessage: null,
         downloadUrl: "https://storage.example.com/object",
         downloadExpiresAt: "2026-03-02T12:00:00.000Z",
       });

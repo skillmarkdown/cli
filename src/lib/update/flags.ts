@@ -4,7 +4,6 @@ import { normalizeAgentTarget } from "../shared/agent-target";
 export function parseUpdateFlags(args: string[]): UpdateFlags {
   const skillIds: string[] = [];
   let all = false;
-  let allowYanked = false;
   let json = false;
   let agentTarget: UpdateFlags["agentTarget"];
 
@@ -12,11 +11,6 @@ export function parseUpdateFlags(args: string[]): UpdateFlags {
     const arg = args[index];
     if (arg === "--all") {
       all = true;
-      continue;
-    }
-
-    if (arg === "--allow-yanked") {
-      allowYanked = true;
       continue;
     }
 
@@ -30,7 +24,6 @@ export function parseUpdateFlags(args: string[]): UpdateFlags {
       if (!value || value.startsWith("-")) {
         return {
           all: false,
-          allowYanked: false,
           json: false,
           skillIds: [],
           valid: false,
@@ -40,7 +33,6 @@ export function parseUpdateFlags(args: string[]): UpdateFlags {
       if (!parsedTarget) {
         return {
           all: false,
-          allowYanked: false,
           json: false,
           skillIds: [],
           valid: false,
@@ -56,7 +48,6 @@ export function parseUpdateFlags(args: string[]): UpdateFlags {
       if (!parsedTarget) {
         return {
           all: false,
-          allowYanked: false,
           json: false,
           skillIds: [],
           valid: false,
@@ -69,7 +60,6 @@ export function parseUpdateFlags(args: string[]): UpdateFlags {
     if (arg.startsWith("-")) {
       return {
         all: false,
-        allowYanked: false,
         json: false,
         skillIds: [],
         valid: false,
@@ -82,7 +72,6 @@ export function parseUpdateFlags(args: string[]): UpdateFlags {
   if (all && skillIds.length > 0) {
     return {
       all: false,
-      allowYanked: false,
       json: false,
       skillIds: [],
       valid: false,
@@ -91,7 +80,6 @@ export function parseUpdateFlags(args: string[]): UpdateFlags {
 
   return {
     all,
-    allowYanked,
     json,
     skillIds,
     agentTarget,

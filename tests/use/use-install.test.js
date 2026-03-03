@@ -86,9 +86,9 @@ test("verifyDownloadedArtifact validates descriptor against bytes", async () => 
     digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
     sizeBytes: 5,
     mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-    yanked: false,
-    yankedAt: null,
-    yankedReason: null,
+    deprecated: false,
+    deprecatedAt: null,
+    deprecatedMessage: null,
     downloadUrl: "https://storage.example.com/o",
     downloadExpiresAt: "2026-03-02T12:00:00.000Z",
   };

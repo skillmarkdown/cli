@@ -26,9 +26,9 @@ Success response:
       "sizeBytes": 12345,
       "mediaType": "application/vnd.skillmarkdown.skill.v1+tar",
       "publishedAt": "2026-03-01T12:00:00Z",
-      "yanked": false,
-      "yankedAt": null,
-      "yankedReason": null
+      "deprecated": false,
+      "deprecatedAt": null,
+      "deprecatedMessage": null
     }
   ],
   "nextCursor": "opaque_or_null"

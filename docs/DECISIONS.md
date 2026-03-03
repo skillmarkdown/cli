@@ -111,7 +111,7 @@ Although not implemented in v0, all CLI decisions must preserve this direction.
 Contract:
 
 - command surface:
-  - `skillmd publish [path] --version <semver> [--channel <latest|beta>] [--visibility <public|private>] [--dry-run] [--json]`
+  - `skillmd publish [path] --version <semver> [--tag <dist-tag>] [--access <public|private>] [--provenance] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--dry-run] [--json]`
 - owner is derived from authenticated GitHub identity (`@githubusername`), not passed as a CLI flag.
 - publish API owner identity is derived server-side from auth claims (not client-supplied request fields).
 - strict local validation is mandatory before packaging/publish.
@@ -119,12 +119,11 @@ Contract:
 - version immutability:
   - same `owner/skill@version` + same digest => idempotent success.
   - same `owner/skill@version` + different digest => conflict failure.
-- default channel selection:
-  - prerelease semver => `beta`
-  - stable semver => `latest`
-- default visibility selection:
-  - omitted visibility => `public`
-  - explicit `--visibility private` => owner-only reads/search/install
+- default tag selection:
+  - omitted tag => `latest`
+- default access selection:
+  - omitted access => `public`
+  - explicit `--access private` => owner-only reads/search/install
 - authenticated write model:
   - publish requires local login session.
   - CLI exchanges Firebase refresh token for ID token at publish time.
@@ -196,11 +195,11 @@ Search is skill-level discovery, while history provides immutable version audita
 Contract:
 
 - command surface:
-  - `skillmd use <skill-id> [--version <semver> | --channel <latest|beta>] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--allow-yanked] [--json]`
+  - `skillmd use <skill-id> [--version <semver> | --spec <tag|version|range>] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]`
 - `<skill-id>` accepts `@owner/skill` and `owner/skill` input forms.
 - selection behavior:
-  - default selector is `latest` channel
-  - `--version` and `--channel` are mutually exclusive
+  - default selector is `latest` spec
+  - `--version` and `--spec` are mutually exclusive
 - install target:
   - provider-aware project-local path rooted at current working directory:
     - `skillmd`: `.agent/skills/<registry-host>/<owner>/<skill>`
@@ -211,13 +210,13 @@ Contract:
   - verify expected media type
   - verify downloaded bytes length equals declared `sizeBytes`
   - verify downloaded digest equals declared `sha256` digest
-- yanked handling:
-  - yanked versions are blocked by default
-  - explicit `--allow-yanked` is required to install yanked versions
+- lifecycle handling:
+  - deprecated versions install successfully with warning output
+  - unpublished versions are blocked by backend read semantics (`404`)
 - replacement strategy:
   - existing target directory is replaced atomically via temp extraction + rename swap
 - provenance:
-  - write `.skillmd-install.json` in installed skill directory with source/version metadata
+  - write canonical install provenance to workspace `skills-lock.json`
 - output modes:
   - human-readable install summary by default
   - raw JSON result via `--json`
@@ -234,24 +233,20 @@ This creates a safe bridge from discovery (`search`, `history`) to practical loc
 Contract:
 
 - command surface:
-  - `skillmd update [skill-id ...] [--all] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--allow-yanked] [--json]`
+  - `skillmd update [skill-id ...] [--all] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]`
 - targeting behavior:
   - no args and `--all` are equivalent
-  - `--all` scans selected agent-target install root:
-    - default: `.agent/skills/registry.skillmarkdown.com/*/*`
-    - `--agent-target claude`: `.claude/skills/registry.skillmarkdown.com/*/*`
-    - `--agent-target gemini`: `.gemini/skills/registry.skillmarkdown.com/*/*`
-    - `--agent-target custom:<slug>`: `.agents/skills/<slug>/registry.skillmarkdown.com/*/*`
+  - selection is lockfile-first from workspace `skills-lock.json`
   - explicit `skill-id` arguments update only that subset
 - selection behavior:
   - version-pinned installs are skipped (non-fatal)
-  - channel/latest installs use persisted install intent metadata
-  - legacy installs without `installIntent` infer strategy from `sourceCommand` and otherwise default to `latest` with `beta` fallback
+  - spec-based installs use persisted `selectorSpec`
+  - deprecated selected versions produce warning output and still update
 - execution behavior:
   - batch continues across per-skill failures
   - command exits non-zero if any per-skill failures occurred
 - metadata behavior:
-  - installs write deterministic `installIntent` metadata for future update decisions
+  - updates rewrite deterministic lock entries for future runs
 
 Rationale:
 This preserves automation-friendly behavior while adding a safe, deterministic refresh path for project-local installed skills.

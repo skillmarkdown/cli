@@ -54,9 +54,9 @@ function isArtifactDescriptorResponse(value: unknown): value is ArtifactDescript
     typeof record.digest === "string" &&
     typeof record.sizeBytes === "number" &&
     typeof record.mediaType === "string" &&
-    typeof record.yanked === "boolean" &&
-    (typeof record.yankedAt === "string" || record.yankedAt === null) &&
-    (typeof record.yankedReason === "string" || record.yankedReason === null) &&
+    typeof record.deprecated === "boolean" &&
+    (typeof record.deprecatedAt === "string" || record.deprecatedAt === null) &&
+    (typeof record.deprecatedMessage === "string" || record.deprecatedMessage === null) &&
     typeof record.downloadUrl === "string" &&
     typeof record.downloadExpiresAt === "string" &&
     (record.agentTarget === undefined || isAgentTarget(record.agentTarget))
