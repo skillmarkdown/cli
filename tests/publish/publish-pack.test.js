@@ -38,6 +38,11 @@ function makeSkillFixture() {
   fs.writeFileSync(path.join(dir, ".agent", "ignored.txt"), "ignored", "utf8");
 
   fs.writeFileSync(path.join(dir, ".DS_Store"), "ignored", "utf8");
+  fs.writeFileSync(path.join(dir, ".env"), "TOKEN=secret", "utf8");
+  fs.writeFileSync(path.join(dir, ".env.production"), "TOKEN=secret-prod", "utf8");
+  fs.writeFileSync(path.join(dir, ".npmrc"), "//registry.npmjs.org/:_authToken=secret", "utf8");
+  fs.writeFileSync(path.join(dir, "deploy-key.pem"), "private-key", "utf8");
+  fs.writeFileSync(path.join(dir, "id_rsa"), "private-key", "utf8");
 
   return { root, dir };
 }
@@ -101,6 +106,11 @@ test("packSkillArtifact digest is unchanged when ignored content changes", () =>
     fs.writeFileSync(path.join(dir, ".git", "ignored.txt"), "changed .git", "utf8");
     fs.writeFileSync(path.join(dir, "node_modules", "ignored.txt"), "changed node_modules", "utf8");
     fs.writeFileSync(path.join(dir, ".DS_Store"), "changed ds_store", "utf8");
+    fs.writeFileSync(path.join(dir, ".env"), "TOKEN=changed", "utf8");
+    fs.writeFileSync(path.join(dir, ".env.production"), "TOKEN=changed-prod", "utf8");
+    fs.writeFileSync(path.join(dir, ".npmrc"), "//registry.npmjs.org/:_authToken=changed", "utf8");
+    fs.writeFileSync(path.join(dir, "deploy-key.pem"), "changed private-key", "utf8");
+    fs.writeFileSync(path.join(dir, "id_rsa"), "changed private-key", "utf8");
     const after = packSkillArtifact(dir);
 
     assert.equal(before.digest, after.digest);

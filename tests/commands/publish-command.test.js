@@ -6,6 +6,7 @@ const { captureConsole } = require("../helpers/console-test-utils.js");
 
 const { PublishApiError } = requireDist("lib/publish/errors.js");
 const { runPublishCommand } = requireDist("commands/publish.js");
+const { MAX_PUBLISH_MANIFEST_SIZE_BYTES } = requireDist("lib/publish/types.js");
 
 function validArgs() {
   return ["--version", "1.0.0", "--dry-run"];
@@ -222,4 +223,20 @@ test("forwards --visibility to prepare payload", async () => {
 
   assert.equal(result, 0);
   assert.equal(capturedVisibility, "private");
+});
+
+test("fails when manifest exceeds configured max size", async () => {
+  const options = baseOptions({
+    buildManifest: () => ({
+      ...validManifest(),
+      description: "x".repeat(MAX_PUBLISH_MANIFEST_SIZE_BYTES + 1),
+    }),
+  });
+
+  const { result, errors } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0", "--dry-run"], options),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /manifest exceeds max size/i);
 });

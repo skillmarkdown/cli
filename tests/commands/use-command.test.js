@@ -161,7 +161,9 @@ test("falls back to beta when latest channel is not set by default", async () =>
         resolveVersion: async (_baseUrl, _owner, _skill, channel) => {
           resolveCalls.push(channel);
           if (channel === "latest") {
-            throw new UseApiError(404, "invalid_request", "channel not set for skill");
+            throw new UseApiError(404, "invalid_request", "no stable channel configured", {
+              reason: "channel_not_set",
+            });
           }
 
           return {

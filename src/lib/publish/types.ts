@@ -1,5 +1,6 @@
 export const PUBLISH_MEDIA_TYPE = "application/vnd.skillmarkdown.skill.v1+tar";
 export const MAX_PUBLISH_ARTIFACT_SIZE_BYTES = 25 * 1024 * 1024;
+export const MAX_PUBLISH_MANIFEST_SIZE_BYTES = 256 * 1024;
 
 export const PUBLISH_CHANNELS = ["latest", "beta"] as const;
 export type PublishChannel = (typeof PUBLISH_CHANNELS)[number];

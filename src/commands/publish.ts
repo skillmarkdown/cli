@@ -11,6 +11,7 @@ import { commitPublish, preparePublish, uploadArtifact } from "../lib/publish/cl
 import {
   type CommitPublishResponse,
   MAX_PUBLISH_ARTIFACT_SIZE_BYTES,
+  MAX_PUBLISH_MANIFEST_SIZE_BYTES,
   type PackedArtifact,
   type PreparePublishResponse,
   type PublishChannel,
@@ -137,6 +138,10 @@ function printPublishedResult(
   );
 }
 
+function measureManifestSizeBytes(manifest: PublishManifest): number {
+  return Buffer.byteLength(JSON.stringify(manifest), "utf8");
+}
+
 export async function runPublishCommand(
   args: string[],
   options: PublishCommandOptions = {},
@@ -207,6 +212,14 @@ export async function runPublishCommand(
       channel,
       artifact,
     });
+    const manifestSizeBytes = measureManifestSizeBytes(manifest);
+    if (manifestSizeBytes > MAX_PUBLISH_MANIFEST_SIZE_BYTES) {
+      console.error(
+        `skillmd publish: manifest exceeds max size (${manifestSizeBytes} bytes > ` +
+          `${MAX_PUBLISH_MANIFEST_SIZE_BYTES} bytes).`,
+      );
+      return 1;
+    }
 
     if (parsed.dryRun) {
       printDryRunResult(parsed.json, {

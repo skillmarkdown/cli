@@ -70,7 +70,11 @@ function shouldFallbackToBeta(error: unknown): boolean {
     return false;
   }
 
-  return /channel not set/i.test(error.message);
+  if (!error.details || typeof error.details !== "object") {
+    return false;
+  }
+
+  return (error.details as { reason?: unknown }).reason === "channel_not_set";
 }
 
 function shouldRetryWithReadToken(error: unknown): boolean {

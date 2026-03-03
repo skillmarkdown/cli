@@ -12,6 +12,12 @@ const GZIP_OS_UNKNOWN = 255;
 
 const IGNORED_DIRECTORY_NAMES = new Set([".agent", ".git", "node_modules", ".skillmd"]);
 const IGNORED_FILE_NAMES = new Set([".DS_Store"]);
+const SENSITIVE_FILE_PATTERNS = [
+  /^\.env(?:\..*)?$/iu,
+  /^\.npmrc$/iu,
+  /^id_(?:rsa|dsa|ecdsa|ed25519)(?:\.pub)?$/iu,
+  /\.(?:pem|key|p12|pfx)$/iu,
+];
 
 function sha256Hex(value: Buffer): string {
   return createHash("sha256").update(value).digest("hex");
@@ -35,7 +41,11 @@ function shouldSkipDirectory(name: string): boolean {
 }
 
 function shouldSkipFile(name: string): boolean {
-  return IGNORED_FILE_NAMES.has(name);
+  if (IGNORED_FILE_NAMES.has(name)) {
+    return true;
+  }
+
+  return SENSITIVE_FILE_PATTERNS.some((pattern) => pattern.test(name));
 }
 
 function collectFiles(targetDir: string, cursorDir: string, files: string[]): void {
