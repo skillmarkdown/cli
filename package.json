@@ -46,6 +46,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.3.2",
+    "@types/semver": "^7.7.1",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
     "eslint": "^10.0.2",
@@ -66,6 +67,7 @@
     ]
   },
   "dependencies": {
+    "semver": "^7.7.4",
     "tar": "^7.5.9",
     "yaml": "^2.8.2"
   }

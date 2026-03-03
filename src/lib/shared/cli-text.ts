@@ -1,5 +1,5 @@
 export const ROOT_USAGE =
-  "Usage: skillmd <init|validate|login|logout|publish|search|view|history|use|update>";
+  "Usage: skillmd <init|validate|login|logout|publish|search|view|history|use|update|tag>";
 export const INIT_USAGE = "Usage: skillmd init [--no-validate] [--template <minimal|verbose>]";
 export const VALIDATE_USAGE = "Usage: skillmd validate [path] [--strict] [--parity]";
 export const LOGIN_USAGE = "Usage: skillmd login [--status|--reauth]";
@@ -15,3 +15,8 @@ export const USE_USAGE =
   "Usage: skillmd use <skill-id> [--version <semver> | --spec <tag|version|range>] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--allow-yanked] [--json]";
 export const UPDATE_USAGE =
   "Usage: skillmd update [skill-id ...] [--all] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--allow-yanked] [--json]";
+export const TAG_USAGE =
+  "Usage: skillmd tag <ls|add|rm> ... [--json]\n" +
+  "  skillmd tag ls <skill-id> [--json]\n" +
+  "  skillmd tag add <skill-id>@<version> <tag> [--json]\n" +
+  "  skillmd tag rm <skill-id> <tag> [--json]";

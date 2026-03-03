@@ -48,6 +48,7 @@ skillmd search agent
 skillmd view @owner/skill
 skillmd history @owner/skill
 skillmd use @owner/skill
+skillmd tag ls @owner/skill
 skillmd update --all
 ```
 
@@ -96,7 +97,7 @@ skillmd logout
 Publish a skill version.
 
 ```bash
-skillmd publish [path] --version <semver> [--channel <latest|beta>] [--visibility <public|private>] [--dry-run] [--json]
+skillmd publish [path] --version <semver> [--tag <dist-tag>] [--access <public|private>] [--provenance] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--dry-run] [--json]
 ```
 
 ### `skillmd search`
@@ -134,7 +135,7 @@ skillmd history <skill-id> [--limit <1-50>] [--cursor <token>] [--json]
 Install a skill into the current project.
 
 ```bash
-skillmd use <skill-id> [--version <semver> | --channel <latest|beta>] [--allow-yanked] [--json]
+skillmd use <skill-id> [--version <semver> | --spec <tag|version|range>] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--allow-yanked] [--json]
 ```
 
 ### `skillmd update`
@@ -142,10 +143,20 @@ skillmd use <skill-id> [--version <semver> | --channel <latest|beta>] [--allow-y
 Update installed skills in the current project.
 
 ```bash
-skillmd update [skill-id ...] [--all] [--allow-yanked] [--json]
+skillmd update [skill-id ...] [--all] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--allow-yanked] [--json]
 ```
 
 - `skillmd update` and `skillmd update --all` do the same thing
+
+### `skillmd tag`
+
+List and manage dist-tags for your published skills.
+
+```bash
+skillmd tag ls <skill-id> [--json]
+skillmd tag add <skill-id>@<version> <tag> [--json]
+skillmd tag rm <skill-id> <tag> [--json]
+```
 
 ## License
 

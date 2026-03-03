@@ -232,6 +232,208 @@ test("spawned CLI: search prints dist-tag latest and caches selection for numeri
   }
 });
 
+test("spawned CLI: tag ls/add/rm manages dist-tags via strict v1 endpoints", async () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  const distTags = {
+    latest: "1.2.2",
+  };
+
+  const mockRegistry = await startMockRegistry((request, response) => {
+    const url = new URL(request.url, "http://127.0.0.1");
+    if (request.method === "GET" && url.pathname === "/v1/skills/core/tag-skill/dist-tags") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@core",
+          ownerLogin: "core",
+          skill: "tag-skill",
+          distTags,
+          updatedAt: "2026-03-03T12:00:00.000Z",
+        }),
+      );
+      return;
+    }
+
+    if (request.method === "PUT" && url.pathname === "/v1/skills/core/tag-skill/dist-tags/beta") {
+      const chunks = [];
+      request.on("data", (chunk) => chunks.push(chunk));
+      request.on("end", () => {
+        const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+        if (parsed.version !== "1.2.3") {
+          response.writeHead(400, { "content-type": "application/json" });
+          response.end(
+            JSON.stringify({ error: { code: "invalid_request", message: "bad version" } }),
+          );
+          return;
+        }
+        distTags.beta = "1.2.3";
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(
+          JSON.stringify({
+            status: "updated",
+            tag: "beta",
+            version: "1.2.3",
+            distTags,
+          }),
+        );
+      });
+      return;
+    }
+
+    if (
+      request.method === "DELETE" &&
+      url.pathname === "/v1/skills/core/tag-skill/dist-tags/beta"
+    ) {
+      delete distTags.beta;
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          status: "deleted",
+          tag: "beta",
+          distTags,
+        }),
+      );
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: { code: "not_found", message: "not found" } }));
+  });
+
+  try {
+    writeAuthSession(root, {
+      githubUsername: "core",
+      projectId: "skillmarkdown-development",
+    });
+
+    const secureTokenMockPath = path.join(root, "mock-secure-token.cjs");
+    fs.writeFileSync(
+      secureTokenMockPath,
+      [
+        "const originalFetch = global.fetch;",
+        "global.fetch = async (input, init) => {",
+        "  const url = String(input);",
+        "  if (url.startsWith('https://securetoken.googleapis.com/v1/token')) {",
+        "    return new Response(JSON.stringify({",
+        "      id_token: 'mock-id-token',",
+        "      user_id: 'uid-1',",
+        "      expires_in: '3600'",
+        "    }), {",
+        "      status: 200,",
+        "      headers: { 'content-type': 'application/json' }",
+        "    });",
+        "  }",
+        "  return originalFetch(input, init);",
+        "};",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const commonEnv = {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_FIREBASE_API_KEY: "api-key",
+      SKILLMD_GITHUB_CLIENT_ID: "github-client-id",
+      SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require ${secureTokenMockPath}`.trim(),
+    };
+
+    const listResult = await runCliAsync(
+      ["tag", "ls", "@core/tag-skill", "--json"],
+      root,
+      commonEnv,
+    );
+    assert.equal(listResult.status, 0);
+    const listed = JSON.parse(listResult.stdout);
+    assert.equal(listed.distTags.latest, "1.2.2");
+
+    const addResult = await runCliAsync(
+      ["tag", "add", "@core/tag-skill@1.2.3", "beta", "--json"],
+      root,
+      commonEnv,
+    );
+    assert.equal(addResult.status, 0);
+    const added = JSON.parse(addResult.stdout);
+    assert.equal(added.status, "updated");
+    assert.equal(added.distTags.beta, "1.2.3");
+
+    const removeResult = await runCliAsync(
+      ["tag", "rm", "@core/tag-skill", "beta", "--json"],
+      root,
+      commonEnv,
+    );
+    assert.equal(removeResult.status, 0);
+    const removed = JSON.parse(removeResult.stdout);
+    assert.equal(removed.status, "deleted");
+    assert.equal(removed.distTags.beta, undefined);
+  } finally {
+    await mockRegistry.close();
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: tag ls falls back to skill view when dist-tags route is unavailable", async () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+
+  const mockRegistry = await startMockRegistry((request, response) => {
+    const url = new URL(request.url, "http://127.0.0.1");
+    if (request.method === "GET" && url.pathname === "/v1/skills/core/fallback-skill/dist-tags") {
+      response.writeHead(404, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          error: {
+            code: "invalid_request",
+            message: "route not found",
+          },
+        }),
+      );
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/skills/core/fallback-skill") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@core",
+          ownerLogin: "core",
+          skill: "fallback-skill",
+          description: "fallback",
+          access: "public",
+          distTags: {
+            latest: "3.0.0",
+          },
+          updatedAt: "2026-03-03T12:00:00.000Z",
+        }),
+      );
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: { code: "not_found", message: "not found" } }));
+  });
+
+  try {
+    const env = {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_FIREBASE_API_KEY: "api-key",
+      SKILLMD_GITHUB_CLIENT_ID: "github-client-id",
+      SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
+    };
+
+    const listResult = await runCliAsync(
+      ["tag", "ls", "@core/fallback-skill", "--json"],
+      root,
+      env,
+    );
+    assert.equal(listResult.status, 0);
+    const listed = JSON.parse(listResult.stdout);
+    assert.equal(listed.skill, "fallback-skill");
+    assert.equal(listed.distTags.latest, "3.0.0");
+  } finally {
+    await mockRegistry.close();
+    cleanupDirectory(root);
+  }
+});
+
 test("spawned CLI: update --all uses skills-lock.json and rewrites resolved version", async () => {
   const root = makeTempDirectory(CLI_TEST_PREFIX);
   const installedPath = path.join(
