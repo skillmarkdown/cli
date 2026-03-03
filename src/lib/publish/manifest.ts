@@ -12,13 +12,17 @@ interface BuildPublishManifestOptions {
   artifact: PackedArtifact;
 }
 
+function stripUtf8Bom(content: string): string {
+  return content.replace(/^\uFEFF/, "");
+}
+
 function readSkillDescription(targetDir: string): string | undefined {
   const skillPath = join(targetDir, "SKILL.md");
   if (!existsSync(skillPath)) {
     return undefined;
   }
 
-  const content = readFileSync(skillPath, "utf8");
+  const content = stripUtf8Bom(readFileSync(skillPath, "utf8"));
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
   if (!match || typeof match[1] !== "string") {
     return undefined;

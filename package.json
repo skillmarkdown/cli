@@ -14,7 +14,7 @@
   ],
   "main": "dist/cli.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/ensure-cli-executable.mjs",
     "ci:check": "npm run format:check && npm run lint && npm test",
     "clean": "rm -rf dist",
     "lint": "eslint .",
