@@ -6,7 +6,11 @@ import { join, posix, relative } from "node:path";
 import { PUBLISH_MEDIA_TYPE, type PackedArtifact, type PackedFileEntry } from "./types";
 
 const BLOCK_SIZE = 512;
-const IGNORED_DIRECTORY_NAMES = new Set([".git", "node_modules", ".skillmd"]);
+const GZIP_OS_BYTE_OFFSET = 9;
+const GZIP_HEADER_MIN_BYTES = 10;
+const GZIP_OS_UNKNOWN = 255;
+
+const IGNORED_DIRECTORY_NAMES = new Set([".agent", ".git", "node_modules", ".skillmd"]);
 const IGNORED_FILE_NAMES = new Set([".DS_Store"]);
 
 function sha256Hex(value: Buffer): string {
@@ -70,6 +74,18 @@ function comparePathLexicographically(left: string, right: string): number {
   }
 
   return 0;
+}
+
+function normalizeGzipHeader(gzipBuffer: Buffer): void {
+  if (gzipBuffer.length < GZIP_HEADER_MIN_BYTES) {
+    return;
+  }
+
+  if (gzipBuffer[0] !== 0x1f || gzipBuffer[1] !== 0x8b) {
+    return;
+  }
+
+  gzipBuffer[GZIP_OS_BYTE_OFFSET] = GZIP_OS_UNKNOWN;
 }
 
 function writeOctal(value: number, width: number): Buffer {
@@ -175,6 +191,7 @@ export function packSkillArtifact(targetDir: string): PackedArtifact {
 
   const { tar, entries } = buildCanonicalTar(targetDir, files);
   const tarGz = gzipSync(tar, { level: 9, mtime: 0 } as { level: number; mtime: number });
+  normalizeGzipHeader(tarGz);
 
   return {
     mediaType: PUBLISH_MEDIA_TYPE,

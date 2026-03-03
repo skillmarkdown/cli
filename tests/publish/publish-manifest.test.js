@@ -49,3 +49,53 @@ test("buildPublishManifest returns stable schema fields", () => {
     cleanupDirectory(root);
   }
 });
+
+test("buildPublishManifest reads description from BOM-prefixed frontmatter", () => {
+  const root = makeTempDirectory(MANIFEST_TEST_PREFIX);
+  const dir = path.join(root, "manifest-skill");
+  fs.mkdirSync(dir);
+  fs.writeFileSync(
+    path.join(dir, "SKILL.md"),
+    `\uFEFF---\nname: manifest-skill\ndescription: Description with BOM\n---\n\nBody\n`,
+    "utf8",
+  );
+
+  try {
+    const manifest = buildPublishManifest({
+      targetDir: dir,
+      skill: "manifest-skill",
+      version: "1.0.0",
+      channel: "latest",
+      artifact: artifactFixture(),
+    });
+
+    assert.equal(manifest.description, "Description with BOM");
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("buildPublishManifest reads description from BOM-prefixed CRLF frontmatter", () => {
+  const root = makeTempDirectory(MANIFEST_TEST_PREFIX);
+  const dir = path.join(root, "manifest-skill");
+  fs.mkdirSync(dir);
+  fs.writeFileSync(
+    path.join(dir, "SKILL.md"),
+    `\uFEFF---\r\nname: manifest-skill\r\ndescription: Description with BOM and CRLF\r\n---\r\n\r\nBody\r\n`,
+    "utf8",
+  );
+
+  try {
+    const manifest = buildPublishManifest({
+      targetDir: dir,
+      skill: "manifest-skill",
+      version: "1.0.0",
+      channel: "latest",
+      artifact: artifactFixture(),
+    });
+
+    assert.equal(manifest.description, "Description with BOM and CRLF");
+  } finally {
+    cleanupDirectory(root);
+  }
+});
