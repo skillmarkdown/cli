@@ -554,3 +554,112 @@ test("spawned CLI: update --all uses skills-lock.json and rewrites resolved vers
     cleanupDirectory(root);
   }
 });
+
+test("spawned CLI: install reads skills.json and writes skills-lock.json", async () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  const archive = await createSkillArchive(root, "skill-a-1.2.3", "skill-a");
+  let baseUrl = "";
+
+  const mockRegistry = await startMockRegistry((request, response) => {
+    const url = new URL(request.url, "http://127.0.0.1");
+    if (
+      request.method === "GET" &&
+      url.pathname === "/v1/skills/owner/skill-a/resolve" &&
+      url.searchParams.get("spec") === "latest"
+    ) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@owner",
+          ownerLogin: "owner",
+          skill: "skill-a",
+          spec: "latest",
+          version: "1.2.3",
+        }),
+      );
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      url.pathname === "/v1/skills/owner/skill-a/versions/1.2.3/artifact"
+    ) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@owner",
+          ownerLogin: "owner",
+          skill: "skill-a",
+          version: "1.2.3",
+          digest: archive.digest,
+          sizeBytes: archive.sizeBytes,
+          mediaType: archive.mediaType,
+          deprecated: false,
+          deprecatedAt: null,
+          deprecatedMessage: null,
+          downloadUrl: `${baseUrl}/download/skill-a/1.2.3`,
+          downloadExpiresAt: "2026-03-02T13:00:00.000Z",
+        }),
+      );
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/download/skill-a/1.2.3") {
+      response.writeHead(200, { "content-type": archive.mediaType });
+      response.end(archive.bytes);
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: { code: "not_found", message: "not found" } }));
+  });
+  baseUrl = mockRegistry.baseUrl;
+
+  fs.writeFileSync(
+    path.join(root, "skills.json"),
+    JSON.stringify(
+      {
+        version: 1,
+        defaults: {
+          agentTarget: "skillmd",
+        },
+        dependencies: {
+          "@owner/skill-a": {
+            spec: "latest",
+          },
+        },
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+
+  try {
+    const result = await runCliAsync(["install", "--json"], root, {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_REGISTRY_BASE_URL: baseUrl,
+    });
+
+    assert.equal(result.status, 0);
+    const payload = JSON.parse(result.stdout);
+    assert.equal(payload.total, 1);
+    assert.equal(payload.installed.length, 1);
+    assert.equal(payload.failed.length, 0);
+
+    const lock = JSON.parse(fs.readFileSync(path.join(root, "skills-lock.json"), "utf8"));
+    assert.equal(lock.lockfileVersion, 1);
+    assert.equal(Object.keys(lock.entries).length, 1);
+    const [entry] = Object.values(lock.entries);
+    assert.equal(entry.skillId, "@owner/skill-a");
+    assert.equal(entry.selectorSpec, "latest");
+    assert.equal(entry.resolvedVersion, "1.2.3");
+    assert.equal(entry.sourceCommand, "skillmd install");
+
+    const installedSkillPath = path.join(entry.installedPath, "SKILL.md");
+    assert.equal(fs.existsSync(installedSkillPath), true);
+  } finally {
+    await mockRegistry.close();
+    cleanupDirectory(root);
+  }
+});

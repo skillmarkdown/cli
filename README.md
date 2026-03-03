@@ -47,6 +47,7 @@ skillmd publish --version 1.0.0
 skillmd search agent
 skillmd view @owner/skill
 skillmd history @owner/skill
+skillmd install
 skillmd use @owner/skill
 skillmd tag ls @owner/skill
 skillmd update --all
@@ -137,6 +138,18 @@ Install a skill into the current project.
 ```bash
 skillmd use <skill-id> [--version <semver> | --spec <tag|version|range>] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]
 ```
+
+### `skillmd install`
+
+Install workspace-declared dependencies from `skills.json`.
+
+```bash
+skillmd install [--prune] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]
+```
+
+- Reads dependency intent from `skills.json` in current directory.
+- Writes resolved installs to `skills-lock.json`.
+- Use `--prune` to remove undeclared entries from lock/install state.
 
 ### `skillmd update`
 

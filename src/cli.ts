@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { runInitCommand } from "./commands/init";
+import { runInstallCommand } from "./commands/install";
 import { runHistoryCommand } from "./commands/history";
 import { runLoginCommand } from "./commands/login";
 import { runLogoutCommand } from "./commands/logout";
@@ -19,6 +20,7 @@ type CommandHandler = (args: string[]) => number | Promise<number>;
 
 const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   init: runInitCommand,
+  install: runInstallCommand,
   history: runHistoryCommand,
   validate: runValidateCommand,
   login: runLoginCommand,

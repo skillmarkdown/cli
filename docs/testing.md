@@ -522,3 +522,35 @@ Exit code contract:
 - `0`: no failures (auth-blocked steps allowed only with `--allow-auth-blocked`).
 - `2`: one or more hard command failures.
 - `3`: blocked auth steps encountered without `--allow-auth-blocked`.
+
+## 15) Workspace install smoke (`install`)
+
+Install dependencies from `skills.json` and confirm lockfile writes:
+
+```bash
+REPO_DIR="$(pwd)"
+tmpdir="$(mktemp -d)"
+cd "$tmpdir"
+
+cat > skills.json <<'EOF'
+{
+  "version": 1,
+  "defaults": {
+    "agentTarget": "skillmd"
+  },
+  "dependencies": {
+    "@owner/skill-a": {
+      "spec": "latest"
+    }
+  }
+}
+EOF
+
+node "$REPO_DIR/dist/cli.js" install --json
+```
+
+Expected:
+
+- command resolves/install dependencies declared in `skills.json`
+- `skills-lock.json` is created or updated
+- JSON output contains `total`, `installed[]`, `skipped[]`, `failed[]` (and `pruned[]` when `--prune` is used)

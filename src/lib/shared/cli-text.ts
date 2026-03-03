@@ -1,6 +1,8 @@
 export const ROOT_USAGE =
-  "Usage: skillmd <init|validate|login|logout|publish|search|view|history|use|update|tag|deprecate|unpublish>";
+  "Usage: skillmd <init|validate|login|logout|publish|search|view|history|install|use|update|tag|deprecate|unpublish>";
 export const INIT_USAGE = "Usage: skillmd init [--no-validate] [--template <minimal|verbose>]";
+export const INSTALL_USAGE =
+  "Usage: skillmd install [--prune] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]";
 export const VALIDATE_USAGE = "Usage: skillmd validate [path] [--strict] [--parity]";
 export const LOGIN_USAGE = "Usage: skillmd login [--status|--reauth]";
 export const LOGOUT_USAGE = "Usage: skillmd logout";
