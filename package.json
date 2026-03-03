@@ -25,6 +25,9 @@
     "prepublishOnly": "npm run clean && npm run build",
     "smoke:link": "bash ./scripts/smoke-link.sh",
     "smoke:pack": "bash ./scripts/smoke-pack.sh",
+    "sweep:commands:dev": "npm run build && node scripts/command-sweep.mjs --env dev --write --allow-auth-blocked",
+    "sweep:commands:prod": "npm run build && node scripts/command-sweep.mjs --env prod --allow-auth-blocked",
+    "sweep:commands:both": "npm run build && node scripts/command-sweep.mjs --env both --allow-auth-blocked",
     "test": "npm run build && node --test"
   },
   "engines": {
