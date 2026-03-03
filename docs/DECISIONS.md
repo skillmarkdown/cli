@@ -54,6 +54,7 @@ Contract:
 - `skillmd logout` removes the local session.
 - local persistence stores only the Firebase `refreshToken` plus minimal identity metadata.
 - command execution has built-in defaults; overrides are read from `SKILLMD_GITHUB_CLIENT_ID`, `SKILLMD_FIREBASE_API_KEY`, `SKILLMD_FIREBASE_PROJECT_ID`, and trusted user config at `~/.skillmd/.env`.
+- when the CLI runs from a local checkout script (`<repo>/cli/dist/cli.js`) and the current working directory is inside that checkout, the default Firebase project is `skillmarkdown-development`; otherwise packaged/global behavior defaults to `skillmarkdown` unless overridden.
 
 Rationale:
 Authentication is needed for future remote operations, while preserving secret minimization (no GitHub client secret in CLI).
@@ -195,13 +196,17 @@ Search is skill-level discovery, while history provides immutable version audita
 Contract:
 
 - command surface:
-  - `skillmd use <skill-id> [--version <semver> | --channel <latest|beta>] [--allow-yanked] [--json]`
+  - `skillmd use <skill-id> [--version <semver> | --channel <latest|beta>] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--allow-yanked] [--json]`
 - `<skill-id>` accepts `@owner/skill` and `owner/skill` input forms.
 - selection behavior:
   - default selector is `latest` channel
   - `--version` and `--channel` are mutually exclusive
 - install target:
-  - project-local path `.agent/skills/<registry-host>/<owner>/<skill>` rooted at current working directory
+  - provider-aware project-local path rooted at current working directory:
+    - `skillmd`: `.agent/skills/<registry-host>/<owner>/<skill>`
+    - `claude`: `.claude/skills/<registry-host>/<owner>/<skill>`
+    - `gemini`: `.gemini/skills/<registry-host>/<owner>/<skill>`
+    - `custom:<slug>`: `.agents/skills/<slug>/<registry-host>/<owner>/<skill>`
 - integrity guarantees before install:
   - verify expected media type
   - verify downloaded bytes length equals declared `sizeBytes`
@@ -229,10 +234,14 @@ This creates a safe bridge from discovery (`search`, `history`) to practical loc
 Contract:
 
 - command surface:
-  - `skillmd update [skill-id ...] [--all] [--allow-yanked] [--json]`
+  - `skillmd update [skill-id ...] [--all] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--allow-yanked] [--json]`
 - targeting behavior:
   - no args and `--all` are equivalent
-  - `--all` scans `.agent/skills/registry.skillmarkdown.com/*/*` rooted at current working directory
+  - `--all` scans selected agent-target install root:
+    - default: `.agent/skills/registry.skillmarkdown.com/*/*`
+    - `--agent-target claude`: `.claude/skills/registry.skillmarkdown.com/*/*`
+    - `--agent-target gemini`: `.gemini/skills/registry.skillmarkdown.com/*/*`
+    - `--agent-target custom:<slug>`: `.agents/skills/<slug>/registry.skillmarkdown.com/*/*`
   - explicit `skill-id` arguments update only that subset
 - selection behavior:
   - version-pinned installs are skipped (non-fatal)

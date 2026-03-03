@@ -58,6 +58,7 @@ function baseOptions(overrides = {}) {
       firebaseProjectId: "skillmarkdown-development",
       registryBaseUrl: "https://registry.example.com",
       requestTimeoutMs: 10000,
+      defaultAgentTarget: "skillmd",
     }),
     packArtifact: () => packedArtifact(),
     buildManifest: () => validManifest(),
@@ -223,6 +224,27 @@ test("forwards --visibility to prepare payload", async () => {
 
   assert.equal(result, 0);
   assert.equal(capturedVisibility, "private");
+});
+
+test("forwards --agent-target to prepare payload", async () => {
+  let capturedTarget;
+  const options = baseOptions({
+    preparePublish: async (_baseUrl, _idToken, payload) => {
+      capturedTarget = payload.agentTarget;
+      return {
+        status: "idempotent",
+        publishToken: "pit-token",
+        expiresAt: "2026-03-02T00:00:00Z",
+      };
+    },
+  });
+
+  const { result } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0", "--agent-target", "claude"], options),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(capturedTarget, "claude");
 });
 
 test("fails when manifest exceeds configured max size", async () => {

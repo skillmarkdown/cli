@@ -6,8 +6,12 @@ const path = require("node:path");
 const { makeTempDirectory, cleanupDirectory } = require("../helpers/fs-test-utils.js");
 const { requireDist } = require("../helpers/dist-imports.js");
 
-const { discoverInstalledSkills, readInstalledSkillMetadata, toInstalledSkillTarget } =
-  requireDist("lib/update/discovery.js");
+const {
+  discoverInstalledSkills,
+  discoverInstalledSkillsAcrossTargets,
+  readInstalledSkillMetadata,
+  toInstalledSkillTarget,
+} = requireDist("lib/update/discovery.js");
 
 const TEST_PREFIX = "skillmd-update-discovery-";
 
@@ -28,6 +32,81 @@ test("discoverInstalledSkills finds valid directories and sorts deterministicall
     assert.deepEqual(
       discovered.map((entry) => entry.skillId),
       ["@owner-a/skill-a", "@owner-b/skill-z"],
+    );
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("discoverInstalledSkills scans provider-specific host roots", async () => {
+  const root = makeTempDirectory(TEST_PREFIX);
+
+  try {
+    const hostRoot = path.join(root, ".claude", "skills", "registry.skillmarkdown.com");
+    fs.mkdirSync(path.join(hostRoot, "owner-a", "skill-a"), { recursive: true });
+
+    const discovered = await discoverInstalledSkills(
+      root,
+      "https://registry.example.com",
+      "claude",
+    );
+    assert.equal(discovered.length, 1);
+    assert.equal(discovered[0].agentTarget, "claude");
+    assert.ok(discovered[0].installedPath.includes("/.claude/skills/registry.skillmarkdown.com/"));
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("discoverInstalledSkillsAcrossTargets aggregates builtin and custom target roots", async () => {
+  const root = makeTempDirectory(TEST_PREFIX);
+
+  try {
+    fs.mkdirSync(
+      path.join(root, ".agent", "skills", "registry.skillmarkdown.com", "owner-a", "skill-a"),
+      {
+        recursive: true,
+      },
+    );
+    fs.mkdirSync(
+      path.join(root, ".claude", "skills", "registry.skillmarkdown.com", "owner-b", "skill-b"),
+      {
+        recursive: true,
+      },
+    );
+    fs.mkdirSync(
+      path.join(
+        root,
+        ".agents",
+        "skills",
+        "myagent",
+        "registry.skillmarkdown.com",
+        "owner-c",
+        "skill-c",
+      ),
+      { recursive: true },
+    );
+    fs.mkdirSync(
+      path.join(
+        root,
+        ".agents",
+        "skills",
+        "INVALID",
+        "registry.skillmarkdown.com",
+        "owner-d",
+        "skill-d",
+      ),
+      { recursive: true },
+    );
+
+    const discovered = await discoverInstalledSkillsAcrossTargets(
+      root,
+      "https://registry.example.com",
+    );
+
+    assert.deepEqual(
+      discovered.map((entry) => `${entry.skillId}:${entry.agentTarget}`),
+      ["@owner-a/skill-a:skillmd", "@owner-b/skill-b:claude", "@owner-c/skill-c:custom:myagent"],
     );
   } finally {
     cleanupDirectory(root);
@@ -69,6 +148,7 @@ test("readInstalledSkillMetadata returns parsed metadata when file exists", asyn
             strategy: "latest_fallback_beta",
             value: null,
           },
+          agentTarget: "custom:myagent",
         },
         null,
         2,
@@ -80,6 +160,7 @@ test("readInstalledSkillMetadata returns parsed metadata when file exists", asyn
     assert.equal(metadata.skillId, "@owner/skill");
     assert.equal(metadata.version, "1.2.3");
     assert.equal(metadata.installIntent.strategy, "latest_fallback_beta");
+    assert.equal(metadata.agentTarget, "custom:myagent");
   } finally {
     cleanupDirectory(root);
   }
@@ -122,4 +203,5 @@ test("toInstalledSkillTarget normalizes owner and skill slugs", () => {
       "/.agent/skills/registry.skillmarkdown.com/owner-name/skill-name",
     ),
   );
+  assert.equal(target.agentTarget, "skillmd");
 });

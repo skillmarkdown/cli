@@ -101,3 +101,97 @@ test("ignores cwd .env to avoid untrusted directory overrides", () => {
     cleanupDirectory(cwd);
   }
 });
+
+test("uses development default project for local checkout cli script", () => {
+  const homeDir = makeTempDirectory(AUTH_CONFIG_TEST_PREFIX);
+  const localCliRoot = makeTempDirectory(AUTH_CONFIG_TEST_PREFIX);
+
+  try {
+    fs.mkdirSync(path.join(localCliRoot, "dist"), { recursive: true });
+    fs.mkdirSync(path.join(localCliRoot, "src"), { recursive: true });
+    fs.writeFileSync(
+      path.join(localCliRoot, "package.json"),
+      JSON.stringify({ name: "@skillmarkdown/cli" }, null, 2),
+      "utf8",
+    );
+    fs.writeFileSync(path.join(localCliRoot, "tsconfig.json"), "{}", "utf8");
+    fs.writeFileSync(path.join(localCliRoot, "dist", "cli.js"), "", "utf8");
+
+    const config = getLoginEnvConfig(
+      {},
+      {
+        homeDir,
+        executionPath: path.join(localCliRoot, "dist", "cli.js"),
+        cwd: localCliRoot,
+      },
+    );
+
+    assert.equal(config.firebaseProjectId, "skillmarkdown-development");
+    assert.equal(config.githubClientId, DEFAULT_LOGIN_AUTH_CONFIG.githubClientId);
+    assert.equal(config.firebaseApiKey, DEFAULT_LOGIN_AUTH_CONFIG.firebaseApiKey);
+  } finally {
+    cleanupDirectory(homeDir);
+    cleanupDirectory(localCliRoot);
+  }
+});
+
+test("uses production default project for local checkout script outside repo cwd", () => {
+  const homeDir = makeTempDirectory(AUTH_CONFIG_TEST_PREFIX);
+  const localCliRoot = makeTempDirectory(AUTH_CONFIG_TEST_PREFIX);
+  const externalCwd = makeTempDirectory(AUTH_CONFIG_TEST_PREFIX);
+
+  try {
+    fs.mkdirSync(path.join(localCliRoot, "dist"), { recursive: true });
+    fs.mkdirSync(path.join(localCliRoot, "src"), { recursive: true });
+    fs.writeFileSync(
+      path.join(localCliRoot, "package.json"),
+      JSON.stringify({ name: "@skillmarkdown/cli" }, null, 2),
+      "utf8",
+    );
+    fs.writeFileSync(path.join(localCliRoot, "tsconfig.json"), "{}", "utf8");
+    fs.writeFileSync(path.join(localCliRoot, "dist", "cli.js"), "", "utf8");
+
+    const config = getLoginEnvConfig(
+      {},
+      {
+        homeDir,
+        executionPath: path.join(localCliRoot, "dist", "cli.js"),
+        cwd: externalCwd,
+      },
+    );
+
+    assert.equal(config.firebaseProjectId, DEFAULT_LOGIN_AUTH_CONFIG.firebaseProjectId);
+  } finally {
+    cleanupDirectory(homeDir);
+    cleanupDirectory(localCliRoot);
+    cleanupDirectory(externalCwd);
+  }
+});
+
+test("uses production default project for packaged/global cli script", () => {
+  const homeDir = makeTempDirectory(AUTH_CONFIG_TEST_PREFIX);
+  const packagedCliRoot = makeTempDirectory(AUTH_CONFIG_TEST_PREFIX);
+
+  try {
+    fs.mkdirSync(path.join(packagedCliRoot, "dist"), { recursive: true });
+    fs.writeFileSync(
+      path.join(packagedCliRoot, "package.json"),
+      JSON.stringify({ name: "@skillmarkdown/cli" }, null, 2),
+      "utf8",
+    );
+    fs.writeFileSync(path.join(packagedCliRoot, "dist", "cli.js"), "", "utf8");
+
+    const config = getLoginEnvConfig(
+      {},
+      {
+        homeDir,
+        executionPath: path.join(packagedCliRoot, "dist", "cli.js"),
+      },
+    );
+
+    assert.equal(config.firebaseProjectId, DEFAULT_LOGIN_AUTH_CONFIG.firebaseProjectId);
+  } finally {
+    cleanupDirectory(homeDir);
+    cleanupDirectory(packagedCliRoot);
+  }
+});

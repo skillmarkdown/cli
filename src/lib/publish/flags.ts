@@ -5,6 +5,7 @@ import {
   type PublishVisibility,
   PUBLISH_VISIBILITIES,
 } from "./types";
+import { normalizeAgentTarget } from "../shared/agent-target";
 
 const SEMVER_PATTERN =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
@@ -42,6 +43,7 @@ export function parsePublishFlags(args: string[]): PublishFlags {
   let version: string | undefined;
   let channel: PublishChannel | undefined;
   let visibility: PublishVisibility | undefined;
+  let agentTarget: PublishFlags["agentTarget"];
   let dryRun = false;
   let json = false;
 
@@ -125,6 +127,32 @@ export function parsePublishFlags(args: string[]): PublishFlags {
       continue;
     }
 
+    if (arg === "--agent-target") {
+      const parsed = parseValueArg(args, index);
+      if (!parsed.value) {
+        return { dryRun: false, json: false, valid: false };
+      }
+
+      const parsedTarget = normalizeAgentTarget(parsed.value);
+      if (!parsedTarget) {
+        return { dryRun: false, json: false, valid: false };
+      }
+
+      agentTarget = parsedTarget;
+      index = parsed.nextIndex;
+      continue;
+    }
+
+    if (arg.startsWith("--agent-target=")) {
+      const parsedTarget = normalizeAgentTarget(arg.slice("--agent-target=".length));
+      if (!parsedTarget) {
+        return { dryRun: false, json: false, valid: false };
+      }
+
+      agentTarget = parsedTarget;
+      continue;
+    }
+
     if (arg.startsWith("-")) {
       return { dryRun: false, json: false, valid: false };
     }
@@ -145,6 +173,7 @@ export function parsePublishFlags(args: string[]): PublishFlags {
     version,
     channel,
     visibility,
+    agentTarget,
     dryRun,
     json,
     valid: true,

@@ -12,6 +12,7 @@ test("parses skill id with default selector behavior", () => {
     skillId: "@stefdevscore/test-skill",
     version: undefined,
     channel: undefined,
+    agentTarget: undefined,
     allowYanked: false,
     json: false,
     valid: true,
@@ -25,6 +26,7 @@ test("parses version selector with allow-yanked and json flags", () => {
     skillId: "owner/skill",
     version: "1.2.3",
     channel: undefined,
+    agentTarget: undefined,
     allowYanked: true,
     json: true,
     valid: true,
@@ -38,10 +40,17 @@ test("parses channel selector in equals form", () => {
     skillId: "owner/skill",
     version: undefined,
     channel: "beta",
+    agentTarget: undefined,
     allowYanked: false,
     json: false,
     valid: true,
   });
+});
+
+test("parses agent target", () => {
+  const parsed = parseUseFlags(["owner/skill", "--agent-target", "custom:myagent"]);
+  assert.equal(parsed.valid, true);
+  assert.equal(parsed.agentTarget, "custom:myagent");
 });
 
 for (const args of [
@@ -50,6 +59,7 @@ for (const args of [
   ["owner/skill", "--version", "x"],
   ["owner/skill", "--channel"],
   ["owner/skill", "--channel", "rc"],
+  ["owner/skill", "--agent-target", "custom:UPPER"],
   ["owner/skill", "--version", "1.2.3", "--channel", "latest"],
   ["owner/skill", "--unknown"],
 ]) {

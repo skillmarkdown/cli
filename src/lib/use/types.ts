@@ -1,9 +1,11 @@
 import { type PublishChannel } from "../publish/types";
+import { type AgentTarget } from "../shared/agent-target";
 
 export interface UseFlags {
   skillId?: string;
   version?: string;
   channel?: PublishChannel;
+  agentTarget?: AgentTarget;
   allowYanked: boolean;
   json: boolean;
   valid: boolean;
@@ -13,6 +15,7 @@ export interface UseEnvConfig {
   firebaseProjectId: string;
   registryBaseUrl: string;
   requestTimeoutMs: number;
+  defaultAgentTarget: AgentTarget;
 }
 
 export interface ResolveSkillVersionResponse {
@@ -21,6 +24,7 @@ export interface ResolveSkillVersionResponse {
   skill: string;
   channel: PublishChannel;
   version: string;
+  agentTarget?: AgentTarget;
 }
 
 export interface ArtifactDescriptorRequest {
@@ -42,6 +46,7 @@ export interface ArtifactDescriptorResponse {
   yankedReason: string | null;
   downloadUrl: string;
   downloadExpiresAt: string;
+  agentTarget?: AgentTarget;
 }
 
 export interface UseDownloadResult {
@@ -70,6 +75,7 @@ export interface InstalledSkillMetadata {
   installedAt: string;
   sourceCommand: string;
   installIntent: InstallIntent;
+  agentTarget: AgentTarget;
 }
 
 export interface UseCommandResult {
@@ -84,6 +90,7 @@ export interface UseCommandResult {
   registryBaseUrl: string;
   installedAt: string;
   source: "registry";
+  agentTarget: AgentTarget;
 }
 
 export type InstallSelector =

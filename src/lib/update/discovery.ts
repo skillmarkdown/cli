@@ -3,6 +3,12 @@ import { join } from "node:path";
 import { type Dirent } from "node:fs";
 
 import { parseSkillId } from "../registry/skill-id";
+import {
+  BUILTIN_AGENT_TARGETS,
+  DEFAULT_AGENT_TARGET,
+  normalizeAgentTarget,
+  type AgentTarget,
+} from "../shared/agent-target";
 import { resolveInstalledSkillPath, resolveInstalledSkillsHostRoot } from "../use/pathing";
 import { type InstallIntent } from "../use/types";
 import { type InstalledSkillTarget, type UpdateInstalledMetadata } from "./types";
@@ -71,16 +77,21 @@ function normalizeMetadata(value: unknown): UpdateInstalledMetadata | null {
     installedAt: typeof record.installedAt === "string" ? record.installedAt : undefined,
     sourceCommand: typeof record.sourceCommand === "string" ? record.sourceCommand : undefined,
     installIntent: toInstallIntent(record.installIntent),
+    agentTarget:
+      typeof record.agentTarget === "string"
+        ? (normalizeAgentTarget(record.agentTarget) ?? undefined)
+        : undefined,
   };
 }
 
 export async function discoverInstalledSkills(
   cwd: string,
   registryBaseUrl: string,
+  agentTarget: AgentTarget = DEFAULT_AGENT_TARGET,
   dependencies: Partial<DiscoveryDependencies> = {},
 ): Promise<InstalledSkillTarget[]> {
   const readdir = dependencies.readdir ?? DEFAULT_DEPENDENCIES.readdir;
-  const hostRoot = resolveInstalledSkillsHostRoot(cwd, registryBaseUrl);
+  const hostRoot = resolveInstalledSkillsHostRoot(cwd, registryBaseUrl, agentTarget);
 
   let ownerEntries: Dirent[];
   try {
@@ -126,7 +137,9 @@ export async function discoverInstalledSkills(
             registryBaseUrl,
             parsed.ownerSlug,
             parsed.skillSlug,
+            agentTarget,
           ),
+          agentTarget,
         });
       } catch {
         // Ignore unexpected directory names that are not valid skill identifiers.
@@ -138,10 +151,64 @@ export async function discoverInstalledSkills(
   return targets;
 }
 
+export async function discoverInstalledSkillsAcrossTargets(
+  cwd: string,
+  registryBaseUrl: string,
+  dependencies: Partial<DiscoveryDependencies> = {},
+): Promise<InstalledSkillTarget[]> {
+  const readdir = dependencies.readdir ?? DEFAULT_DEPENDENCIES.readdir;
+  const discoveredByPath = new Map<string, InstalledSkillTarget>();
+
+  for (const target of BUILTIN_AGENT_TARGETS) {
+    const discovered = await discoverInstalledSkills(cwd, registryBaseUrl, target, { readdir });
+    for (const entry of discovered) {
+      discoveredByPath.set(entry.installedPath, entry);
+    }
+  }
+
+  const customTargetsRoot = join(cwd, ".agents", "skills");
+  let customTargetEntries: Dirent[];
+  try {
+    customTargetEntries = await readdir(customTargetsRoot, { withFileTypes: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
+    customTargetEntries = [];
+  }
+
+  for (const entry of customTargetEntries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const candidateTarget = normalizeAgentTarget(`custom:${entry.name}`);
+    if (!candidateTarget || !candidateTarget.startsWith("custom:")) {
+      continue;
+    }
+
+    const discovered = await discoverInstalledSkills(cwd, registryBaseUrl, candidateTarget, {
+      readdir,
+    });
+    for (const target of discovered) {
+      discoveredByPath.set(target.installedPath, target);
+    }
+  }
+
+  return Array.from(discoveredByPath.values()).sort((left, right) => {
+    const skillCompare = left.skillId.localeCompare(right.skillId);
+    if (skillCompare !== 0) {
+      return skillCompare;
+    }
+    return left.installedPath.localeCompare(right.installedPath);
+  });
+}
+
 export function toInstalledSkillTarget(
   cwd: string,
   registryBaseUrl: string,
   rawSkillId: string,
+  agentTarget: AgentTarget = DEFAULT_AGENT_TARGET,
 ): InstalledSkillTarget {
   const parsed = parseSkillId(rawSkillId);
   return {
@@ -153,7 +220,9 @@ export function toInstalledSkillTarget(
       registryBaseUrl,
       parsed.ownerSlug,
       parsed.skillSlug,
+      agentTarget,
     ),
+    agentTarget,
   };
 }
 

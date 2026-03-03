@@ -36,6 +36,12 @@ function makeSkillFixture() {
 
   fs.mkdirSync(path.join(dir, ".agent"));
   fs.writeFileSync(path.join(dir, ".agent", "ignored.txt"), "ignored", "utf8");
+  fs.mkdirSync(path.join(dir, ".claude"));
+  fs.writeFileSync(path.join(dir, ".claude", "ignored.txt"), "ignored", "utf8");
+  fs.mkdirSync(path.join(dir, ".gemini"));
+  fs.writeFileSync(path.join(dir, ".gemini", "ignored.txt"), "ignored", "utf8");
+  fs.mkdirSync(path.join(dir, ".agents"));
+  fs.writeFileSync(path.join(dir, ".agents", "ignored.txt"), "ignored", "utf8");
 
   fs.writeFileSync(path.join(dir, ".DS_Store"), "ignored", "utf8");
   fs.writeFileSync(path.join(dir, ".env"), "TOKEN=secret", "utf8");
@@ -103,6 +109,9 @@ test("packSkillArtifact digest is unchanged when ignored content changes", () =>
   try {
     const before = packSkillArtifact(dir);
     fs.writeFileSync(path.join(dir, ".agent", "ignored.txt"), "changed .agent", "utf8");
+    fs.writeFileSync(path.join(dir, ".claude", "ignored.txt"), "changed .claude", "utf8");
+    fs.writeFileSync(path.join(dir, ".gemini", "ignored.txt"), "changed .gemini", "utf8");
+    fs.writeFileSync(path.join(dir, ".agents", "ignored.txt"), "changed .agents", "utf8");
     fs.writeFileSync(path.join(dir, ".git", "ignored.txt"), "changed .git", "utf8");
     fs.writeFileSync(path.join(dir, "node_modules", "ignored.txt"), "changed node_modules", "utf8");
     fs.writeFileSync(path.join(dir, ".DS_Store"), "changed ds_store", "utf8");

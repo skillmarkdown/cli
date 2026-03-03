@@ -32,9 +32,43 @@ test("resolveInstallTempRoot builds .agent temp root", () => {
   assert.equal(resolveInstallTempRoot("/workspace/project"), "/workspace/project/.agent/.tmp");
 });
 
+test("resolveInstallTempRoot supports provider-specific temp roots", () => {
+  assert.equal(
+    resolveInstallTempRoot("/workspace/project", "claude"),
+    "/workspace/project/.claude/.tmp",
+  );
+  assert.equal(
+    resolveInstallTempRoot("/workspace/project", "gemini"),
+    "/workspace/project/.gemini/.tmp",
+  );
+  assert.equal(
+    resolveInstallTempRoot("/workspace/project", "custom:myagent"),
+    "/workspace/project/.agents/.tmp/myagent",
+  );
+});
+
 test("resolveInstalledSkillsHostRoot builds canonical host root", () => {
   assert.equal(
     resolveInstalledSkillsHostRoot("/workspace/project", "https://registry.example.com"),
     "/workspace/project/.agent/skills/registry.skillmarkdown.com",
+  );
+});
+
+test("resolveInstalledSkillsHostRoot supports provider-specific roots", () => {
+  assert.equal(
+    resolveInstalledSkillsHostRoot("/workspace/project", "https://registry.example.com", "claude"),
+    "/workspace/project/.claude/skills/registry.skillmarkdown.com",
+  );
+  assert.equal(
+    resolveInstalledSkillsHostRoot("/workspace/project", "https://registry.example.com", "gemini"),
+    "/workspace/project/.gemini/skills/registry.skillmarkdown.com",
+  );
+  assert.equal(
+    resolveInstalledSkillsHostRoot(
+      "/workspace/project",
+      "https://registry.example.com",
+      "custom:myagent",
+    ),
+    "/workspace/project/.agents/skills/myagent/registry.skillmarkdown.com",
   );
 });

@@ -13,6 +13,7 @@ test("parses required flags with separate values", () => {
     version: "1.2.3",
     channel: undefined,
     visibility: undefined,
+    agentTarget: undefined,
     dryRun: true,
     json: false,
     valid: true,
@@ -27,10 +28,17 @@ test("parses equals syntax and json/channel flags", () => {
     version: "1.2.3-beta.1",
     channel: "beta",
     visibility: undefined,
+    agentTarget: undefined,
     dryRun: false,
     json: true,
     valid: true,
   });
+});
+
+test("parses optional agent target flag", () => {
+  const parsed = parsePublishFlags(["--version", "1.2.3", "--agent-target", "gemini"]);
+  assert.equal(parsed.valid, true);
+  assert.equal(parsed.agentTarget, "gemini");
 });
 
 test("parses optional visibility flag", () => {
@@ -43,6 +51,7 @@ for (const args of [
   [],
   ["--version", "1.2"],
   ["--version", "1.2.3", "--channel", "rc"],
+  ["--version", "1.2.3", "--agent-target", "custom:UPPER"],
   ["--version", "1.2.3", "--oops"],
   ["a", "b", "--version", "1.2.3"],
 ]) {
@@ -64,6 +73,7 @@ test("accepts version-only publish flags", () => {
     version: "1.2.3",
     channel: undefined,
     visibility: undefined,
+    agentTarget: undefined,
     dryRun: false,
     json: false,
     valid: true,

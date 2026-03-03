@@ -313,7 +313,7 @@ test("spawned CLI: use fails with usage when skill-id is missing", () => {
     assert.equal(result.status, 1);
     assert.match(
       result.stderr,
-      /Usage: skillmd use <skill-id> \[--version <semver> \| --channel <latest\|beta>\] \[--allow-yanked\] \[--json\]/,
+      /Usage: skillmd use <skill-id> \[--version <semver> \| --channel <latest\|beta>\] \[--agent-target <skillmd\|claude\|gemini\|custom:<slug>>\] \[--allow-yanked\] \[--json\]/,
     );
   } finally {
     cleanupDirectory(root);

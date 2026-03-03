@@ -4,8 +4,10 @@ import { getUseEnvConfig, type UseEnvConfig } from "../lib/use/config";
 import { isUseApiError } from "../lib/use/errors";
 import { type InstallSelector } from "../lib/use/types";
 import { installFromRegistry as defaultInstallFromRegistry } from "../lib/use/workflow";
+import { DEFAULT_AGENT_TARGET } from "../lib/shared/agent-target";
 import { parseUpdateFlags } from "../lib/update/flags";
 import {
+  discoverInstalledSkillsAcrossTargets as defaultDiscoverInstalledSkillsAcrossTargets,
   discoverInstalledSkills as defaultDiscoverInstalledSkills,
   readInstalledSkillMetadata as defaultReadInstalledSkillMetadata,
   toInstalledSkillTarget,
@@ -29,6 +31,7 @@ interface UpdateCommandOptions {
   now?: () => Date;
   getConfig?: (env: NodeJS.ProcessEnv) => UseEnvConfig;
   discoverInstalledSkills?: typeof defaultDiscoverInstalledSkills;
+  discoverInstalledSkillsAcrossTargets?: typeof defaultDiscoverInstalledSkillsAcrossTargets;
   readInstalledSkillMetadata?: typeof defaultReadInstalledSkillMetadata;
   installFromRegistry?: typeof defaultInstallFromRegistry;
   access?: typeof fs.access;
@@ -68,6 +71,8 @@ function toJsonResult(mode: UpdateMode, entries: UpdateCommandEntry[]): UpdateJs
   for (const entry of entries) {
     const jsonEntry: UpdateJsonEntry = {
       skillId: entry.skillId,
+      agentTarget: entry.agentTarget,
+      installedPath: entry.installedPath,
       status: entry.status,
       fromVersion: entry.fromVersion,
       toVersion: entry.toVersion,
@@ -111,6 +116,11 @@ function printHumanResults(entries: UpdateCommandEntry[]): void {
         wrap: true,
         maxLines: 2,
         value: (row) => row.skillId,
+      },
+      {
+        header: "TARGET",
+        width: 10,
+        value: (row) => row.agentTarget ?? "-",
       },
       {
         header: "FROM",
@@ -166,6 +176,8 @@ export async function runUpdateCommand(
   const getConfigFn = options.getConfig ?? getUseEnvConfig;
   const discoverInstalledSkillsFn =
     options.discoverInstalledSkills ?? defaultDiscoverInstalledSkills;
+  const discoverInstalledSkillsAcrossTargetsFn =
+    options.discoverInstalledSkillsAcrossTargets ?? defaultDiscoverInstalledSkillsAcrossTargets;
   const readInstalledSkillMetadataFn =
     options.readInstalledSkillMetadata ?? defaultReadInstalledSkillMetadata;
   const installFromRegistryFn = options.installFromRegistry ?? defaultInstallFromRegistry;
@@ -197,15 +209,32 @@ export async function runUpdateCommand(
 
   try {
     const config = getConfigFn(env);
+    const selectedAgentTarget =
+      parsed.agentTarget ?? config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET;
+    const hasExplicitEnvAgentTarget =
+      typeof env.SKILLMD_AGENT_TARGET === "string" && env.SKILLMD_AGENT_TARGET.trim().length > 0;
     const mode: UpdateMode = parsed.all || parsed.skillIds.length === 0 ? "all" : "ids";
     const targets: InstalledSkillTarget[] = [];
 
     if (mode === "all") {
-      targets.push(...(await discoverInstalledSkillsFn(cwd, config.registryBaseUrl)));
+      if (parsed.agentTarget || hasExplicitEnvAgentTarget) {
+        targets.push(
+          ...(await discoverInstalledSkillsFn(cwd, config.registryBaseUrl, selectedAgentTarget)),
+        );
+      } else {
+        targets.push(
+          ...(await discoverInstalledSkillsAcrossTargetsFn(cwd, config.registryBaseUrl)),
+        );
+      }
     } else {
       const seenSkillIds = new Set<string>();
       for (const rawSkillId of parsed.skillIds) {
-        const target = toInstalledSkillTarget(cwd, config.registryBaseUrl, rawSkillId);
+        const target = toInstalledSkillTarget(
+          cwd,
+          config.registryBaseUrl,
+          rawSkillId,
+          selectedAgentTarget,
+        );
         if (seenSkillIds.has(target.skillId)) {
           continue;
         }
@@ -234,6 +263,8 @@ export async function runUpdateCommand(
           if ((error as NodeJS.ErrnoException).code === "ENOENT") {
             entries.push({
               skillId: target.skillId,
+              agentTarget: target.agentTarget,
+              installedPath: target.installedPath,
               status: "failed",
               reason: "skill is not installed in this project",
             });
@@ -243,6 +274,8 @@ export async function runUpdateCommand(
           const message = error instanceof Error ? error.message : "unknown filesystem error";
           entries.push({
             skillId: target.skillId,
+            agentTarget: target.agentTarget,
+            installedPath: target.installedPath,
             status: "failed",
             reason: `unable to access installed skill path: ${message}`,
           });
@@ -257,6 +290,8 @@ export async function runUpdateCommand(
         const message = error instanceof Error ? error.message : "unknown metadata error";
         entries.push({
           skillId: target.skillId,
+          agentTarget: target.agentTarget,
+          installedPath: target.installedPath,
           status: "failed",
           reason: `invalid install metadata: ${message}`,
         });
@@ -264,11 +299,19 @@ export async function runUpdateCommand(
       }
       const fromVersion = metadata?.version;
       const intent = resolveUpdateIntent(metadata);
+      const effectiveAgentTarget =
+        parsed.agentTarget ??
+        metadata?.agentTarget ??
+        target.agentTarget ??
+        config.defaultAgentTarget ??
+        DEFAULT_AGENT_TARGET;
 
       if (intent.selector.strategy === "version") {
         const pinnedVersion = intent.selector.value;
         entries.push({
           skillId: target.skillId,
+          agentTarget: target.agentTarget,
+          installedPath: target.installedPath,
           fromVersion: fromVersion ?? pinnedVersion,
           toVersion: fromVersion ?? pinnedVersion,
           status: "skipped_pinned",
@@ -287,10 +330,15 @@ export async function runUpdateCommand(
             ownerSlug: target.ownerSlug,
             skillSlug: target.skillSlug,
             selector: toSelector(intent),
+            selectedAgentTarget: effectiveAgentTarget,
+            defaultAgentTarget: config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET,
             allowYanked: parsed.allowYanked,
             now,
             sourceCommandFactory: ({ canonicalSkillId }) => {
               const parts = ["skillmd", "update", canonicalSkillId];
+              if (effectiveAgentTarget !== DEFAULT_AGENT_TARGET) {
+                parts.push("--agent-target", effectiveAgentTarget);
+              }
               if (parsed.allowYanked) {
                 parts.push("--allow-yanked");
               }
@@ -302,6 +350,8 @@ export async function runUpdateCommand(
 
         entries.push({
           skillId: result.skillId,
+          agentTarget: effectiveAgentTarget,
+          installedPath: result.installedPath,
           fromVersion,
           toVersion: result.version,
           status: "updated",
@@ -309,6 +359,8 @@ export async function runUpdateCommand(
       } catch (error) {
         entries.push({
           skillId: target.skillId,
+          agentTarget: target.agentTarget,
+          installedPath: target.installedPath,
           fromVersion,
           status: "failed",
           reason: toErrorReason(error),
