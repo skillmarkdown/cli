@@ -7,3 +7,9 @@ test-skill/
 determinism-report.json
 .e2e*
 .sweep*
+/.agent/
+/.claude/
+/.gemini/
+/.agents/
+/skills-lock.json
+/tmp/
