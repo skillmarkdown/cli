@@ -32,6 +32,40 @@ function isSearchSkillsResponse(value: unknown): value is SearchSkillsResponse {
   );
 }
 
+function normalizeStringMap(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  const mapped: Record<string, string> = {};
+  for (const [key, candidate] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof candidate === "string") {
+      mapped[key] = candidate;
+    }
+  }
+  return mapped;
+}
+
+function normalizeSearchSkillsResponse(value: SearchSkillsResponse): SearchSkillsResponse {
+  const normalizedResults = value.results.map((result) => {
+    if (!result || typeof result !== "object") {
+      return result;
+    }
+
+    const distTags = normalizeStringMap((result as { distTags?: unknown }).distTags);
+
+    return {
+      ...result,
+      distTags,
+    };
+  });
+
+  return {
+    ...value,
+    results: normalizedResults,
+  };
+}
+
 export async function searchSkills(
   baseUrl: string,
   request: SearchSkillsRequest,
@@ -72,5 +106,5 @@ export async function searchSkills(
     throw new Error("Search API response was missing required fields");
   }
 
-  return parsed;
+  return normalizeSearchSkillsResponse(parsed);
 }

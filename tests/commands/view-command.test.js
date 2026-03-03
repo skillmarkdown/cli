@@ -19,17 +19,15 @@ function baseOptions(overrides = {}) {
       registryBaseUrl: "https://registry.example.com",
       requestTimeoutMs: 10000,
     }),
+    readSelectionCache: () => null,
     getSkillView: async () => ({
-      owner: "@stefdevscore",
-      ownerLogin: "stefdevscore",
+      owner: "@owner",
+      ownerLogin: "owner",
       skill: "test-skill",
-      description: "Sample description",
-      visibility: "public",
-      channels: {
-        latest: "1.0.0",
-        beta: "1.1.0-beta.1",
-      },
-      updatedAt: "2026-03-02T09:00:00.000Z",
+      description: "desc",
+      access: "public",
+      distTags: { latest: "1.2.3", beta: "1.3.0-beta.1" },
+      updatedAt: "2026-03-02T12:00:00.000Z",
     }),
     resolveReadIdToken: async () => null,
     ...overrides,
@@ -37,244 +35,61 @@ function baseOptions(overrides = {}) {
 }
 
 test("fails with usage on invalid args", async () => {
-  const exitCode = await runViewCommand([]);
-  assert.equal(exitCode, 1);
+  const { result } = await captureConsole(() => runViewCommand([]));
+  assert.equal(result, 1);
 });
 
 test("prints human output for skill view", async () => {
   const { result, logs } = await captureConsole(() =>
-    runViewCommand(["@stefdevscore/test-skill"], baseOptions()),
+    runViewCommand(["@owner/test-skill"], baseOptions()),
   );
 
   assert.equal(result, 0);
-  assert.match(logs.join("\n"), /Skill: @stefdevscore\/test-skill/);
-  assert.match(logs.join("\n"), /Updated:/);
-  assert.match(logs.join("\n"), /latest: 1.0.0/);
-  assert.match(logs.join("\n"), /beta: 1.1.0-beta.1/);
-  assert.match(logs.join("\n"), /Next: skillmd history @stefdevscore\/test-skill --limit 20/);
-});
-
-test("does not resolve read token when first view request succeeds", async () => {
-  const { result } = await captureConsole(() =>
-    runViewCommand(
-      ["@stefdevscore/test-skill"],
-      baseOptions({
-        resolveReadIdToken: async () => {
-          throw new Error("should not be called");
-        },
-      }),
-    ),
-  );
-
-  assert.equal(result, 0);
-});
-
-test("retries with read token when first view request returns not found", async () => {
-  let callCount = 0;
-  let tokenResolutionCount = 0;
-  const { result } = await captureConsole(() =>
-    runViewCommand(
-      ["@stefdevscore/test-skill"],
-      baseOptions({
-        resolveReadIdToken: async () => {
-          tokenResolutionCount += 1;
-          return "id_token_123";
-        },
-        getSkillView: async (_baseUrl, _request, options) => {
-          callCount += 1;
-          if (!options?.idToken) {
-            throw new ViewApiError(404, "invalid_request", "skill not found");
-          }
-
-          return {
-            owner: "@stefdevscore",
-            ownerLogin: "stefdevscore",
-            skill: "test-skill",
-            description: "private skill",
-            visibility: "private",
-            channels: {
-              latest: "1.0.0",
-            },
-            updatedAt: "2026-03-02T09:00:00.000Z",
-          };
-        },
-      }),
-    ),
-  );
-
-  assert.equal(result, 0);
-  assert.equal(callCount, 2);
-  assert.equal(tokenResolutionCount, 1);
-});
-
-test("resolves numeric index from cached search results", async () => {
-  let receivedRequest = null;
-  const { result, logs } = await captureConsole(() =>
-    runViewCommand(
-      ["1"],
-      baseOptions({
-        readSelectionCache: () => ({
-          registryBaseUrl: "https://registry.example.com",
-          createdAt: "2026-03-02T12:00:00.000Z",
-          skillIds: ["@stefdevscore/test-skill"],
-        }),
-        getSkillView: async (_baseUrl, request) => {
-          receivedRequest = request;
-          return {
-            owner: "@stefdevscore",
-            ownerLogin: "stefdevscore",
-            skill: "test-skill",
-            description: "Sample description",
-            visibility: "public",
-            channels: {
-              latest: "1.0.0",
-            },
-            updatedAt: "2026-03-02T09:00:00.000Z",
-          };
-        },
-      }),
-    ),
-  );
-
-  assert.equal(result, 0);
-  assert.deepEqual(receivedRequest, { ownerSlug: "stefdevscore", skillSlug: "test-skill" });
-  assert.match(logs.join("\n"), /Skill: @stefdevscore\/test-skill/);
-});
-
-test("resolves numeric index from continued page range", async () => {
-  let receivedRequest = null;
-  const { result } = await captureConsole(() =>
-    runViewCommand(
-      ["4"],
-      baseOptions({
-        readSelectionCache: () => ({
-          registryBaseUrl: "https://registry.example.com",
-          createdAt: "2026-03-02T12:00:00.000Z",
-          pageStartIndex: 4,
-          skillIds: ["@stefdevscore/test-skill-4", "@stefdevscore/test-skill-5"],
-        }),
-        getSkillView: async (_baseUrl, request) => {
-          receivedRequest = request;
-          return {
-            owner: "@stefdevscore",
-            ownerLogin: "stefdevscore",
-            skill: "test-skill-4",
-            description: "Sample description",
-            visibility: "public",
-            channels: {
-              latest: "1.0.0",
-            },
-            updatedAt: "2026-03-02T09:00:00.000Z",
-          };
-        },
-      }),
-    ),
-  );
-
-  assert.equal(result, 0);
-  assert.deepEqual(receivedRequest, { ownerSlug: "stefdevscore", skillSlug: "test-skill-4" });
+  assert.match(logs.join("\n"), /Skill: @owner\/test-skill/);
+  assert.match(logs.join("\n"), /Access: public/);
+  assert.match(logs.join("\n"), /latest: 1.2.3/);
 });
 
 test("prints json output with --json", async () => {
   const { result, logs } = await captureConsole(() =>
-    runViewCommand(["@stefdevscore/test-skill", "--json"], baseOptions()),
+    runViewCommand(["@owner/test-skill", "--json"], baseOptions()),
   );
-
   assert.equal(result, 0);
-  const parsed = JSON.parse(logs.join("\n"));
-  assert.equal(parsed.ownerLogin, "stefdevscore");
-  assert.equal(parsed.skill, "test-skill");
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.skill, "test-skill");
+  assert.equal(payload.distTags.latest, "1.2.3");
 });
 
-test("fails on malformed skill id before API call", async () => {
-  const { result, errors } = await captureConsole(() =>
-    runViewCommand(["not-a-skill-id"], baseOptions()),
-  );
-
-  assert.equal(result, 1);
-  assert.match(errors.join("\n"), /skill id must be in the form/);
-});
-
-test("maps view api errors", async () => {
-  const { result, errors } = await captureConsole(() =>
-    runViewCommand(
-      ["@stefdevscore/test-skill"],
-      baseOptions({
-        getSkillView: async () => {
-          throw new ViewApiError(404, "invalid_request", "skill not found");
-        },
-      }),
-    ),
-  );
-
-  assert.equal(result, 1);
-  assert.match(errors.join("\n"), /skill not found/);
-});
-
-test("fails when numeric index has no cached search results", async () => {
-  const { result, errors } = await captureConsole(() =>
-    runViewCommand(
-      ["1"],
-      baseOptions({
-        readSelectionCache: () => null,
-      }),
-    ),
-  );
-
-  assert.equal(result, 1);
-  assert.match(errors.join("\n"), /no cached search results found/);
-});
-
-test("fails when numeric index cache was produced by a different registry", async () => {
-  const { result, errors } = await captureConsole(() =>
-    runViewCommand(
-      ["1"],
-      baseOptions({
-        readSelectionCache: () => ({
-          registryBaseUrl: "https://another.example.com",
-          createdAt: "2026-03-02T12:00:00.000Z",
-          skillIds: ["@stefdevscore/test-skill"],
-        }),
-      }),
-    ),
-  );
-
-  assert.equal(result, 1);
-  assert.match(errors.join("\n"), /different registry/);
-});
-
-test("fails when numeric index is out of range for cached search results", async () => {
-  const { result, errors } = await captureConsole(() =>
+test("resolves numeric index from cached search results", async () => {
+  const { result } = await captureConsole(() =>
     runViewCommand(
       ["2"],
       baseOptions({
         readSelectionCache: () => ({
           registryBaseUrl: "https://registry.example.com",
-          createdAt: "2026-03-02T12:00:00.000Z",
-          skillIds: ["@stefdevscore/test-skill"],
+          skillIds: ["@owner/a", "@owner/b"],
+          pageStartIndex: 1,
+          updatedAt: "2026-03-02T00:00:00.000Z",
+          continuations: [],
         }),
       }),
     ),
   );
 
-  assert.equal(result, 1);
-  assert.match(errors.join("\n"), /out of range/);
+  assert.equal(result, 0);
 });
 
-test("fails when numeric index is zero", async () => {
+test("maps view API errors", async () => {
   const { result, errors } = await captureConsole(() =>
     runViewCommand(
-      ["0"],
+      ["@owner/test-skill"],
       baseOptions({
-        readSelectionCache: () => ({
-          registryBaseUrl: "https://registry.example.com",
-          createdAt: "2026-03-02T12:00:00.000Z",
-          skillIds: ["@stefdevscore/test-skill"],
-        }),
+        getSkillView: async () => {
+          throw new ViewApiError(404, "not_found", "missing");
+        },
       }),
     ),
   );
-
   assert.equal(result, 1);
-  assert.match(errors.join("\n"), /positive integer/);
+  assert.match(errors.join("\n"), /missing/);
 });

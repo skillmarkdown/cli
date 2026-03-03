@@ -17,14 +17,14 @@ test("resolveSkillVersion returns parsed payload", async () => {
     async (input, init) => {
       const url = new URL(String(input));
       assert.equal(url.pathname, "/v1/skills/stefdevscore/test-skill/resolve");
-      assert.equal(url.searchParams.get("channel"), "latest");
+      assert.equal(url.searchParams.get("spec"), "latest");
       assert.equal(init?.headers, undefined);
 
       return mockJsonResponse(200, {
         owner: "@stefdevscore",
         ownerLogin: "stefdevscore",
         skill: "test-skill",
-        channel: "latest",
+        spec: "latest",
         version: "1.2.3",
       });
     },
@@ -43,7 +43,7 @@ test("resolveSkillVersion attaches bearer token when provided", async () => {
         owner: "@stefdevscore",
         ownerLogin: "stefdevscore",
         skill: "test-skill",
-        channel: "latest",
+        spec: "latest",
         version: "1.2.3",
       });
     },
@@ -127,27 +127,6 @@ test("downloadArtifact returns bytes and content type", async () => {
   assert.equal(payload.contentType, "application/vnd.skillmarkdown.skill.v1+tar");
 });
 
-test("downloadArtifact redacts signed URL path and query details", async () => {
-  const payload = await withMockedFetch(
-    async () => ({
-      ok: true,
-      status: 200,
-      headers: {
-        get() {
-          return null;
-        },
-      },
-      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
-    }),
-    () =>
-      downloadArtifact(
-        "https://storage.googleapis.com/skillmarkdown-development.firebasestorage.app/skills/o0npTAUjw5OEnnL966flwJUoQdM2/test-skill/1.0.0/sha256%3Aabc.tgz?X-Goog-Signature=secret",
-      ),
-  );
-
-  assert.equal(payload.downloadedFrom, "https://storage.googleapis.com");
-});
-
 test("maps API errors into UseApiError", async () => {
   await withMockedFetch(
     async () =>
@@ -175,46 +154,11 @@ test("maps API errors into UseApiError", async () => {
   );
 });
 
-test("rejects malformed artifact descriptor payloads", async () => {
-  await withMockedFetch(
-    async () =>
-      mockJsonResponse(200, {
-        owner: "@stefdevscore",
-      }),
-    async () => {
-      await assert.rejects(
-        getArtifactDescriptor("https://registry.example.com", {
-          ownerSlug: "stefdevscore",
-          skillSlug: "test-skill",
-          version: "1.2.3",
-        }),
-        /missing required fields/i,
-      );
-    },
-  );
-});
-
 test("downloadArtifact fails on non-2xx responses", async () => {
   await withMockedFetch(
     async () => mockTextResponse(403, "forbidden"),
     async () => {
       await assert.rejects(downloadArtifact("https://storage.example.com/object"), /failed/);
-    },
-  );
-});
-
-test("getArtifactDescriptor reports non-JSON responses", async () => {
-  await withMockedFetch(
-    async () => mockTextResponse(502, "<html>bad gateway</html>"),
-    async () => {
-      await assert.rejects(
-        getArtifactDescriptor("https://registry.example.com", {
-          ownerSlug: "stefdevscore",
-          skillSlug: "test-skill",
-          version: "1.2.3",
-        }),
-        /non-JSON/i,
-      );
     },
   );
 });

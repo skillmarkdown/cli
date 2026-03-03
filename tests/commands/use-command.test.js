@@ -26,7 +26,7 @@ function baseOptions(overrides = {}) {
       owner: "@stefdevscore",
       ownerLogin: "stefdevscore",
       skill: "test-skill",
-      channel: "latest",
+      spec: "latest",
       version: "1.2.3",
     }),
     getArtifactDescriptor: async () => ({
@@ -50,6 +50,12 @@ function baseOptions(overrides = {}) {
     }),
     installArtifact: async () => {},
     resolveReadIdToken: async () => null,
+    loadSkillsLock: async () => ({
+      lockfileVersion: 1,
+      generatedAt: "2026-03-02T00:00:00.000Z",
+      entries: {},
+    }),
+    saveSkillsLock: async () => {},
     ...overrides,
   };
 }
@@ -59,45 +65,37 @@ test("fails with usage on invalid args", async () => {
   assert.equal(exitCode, 1);
 });
 
-test("installs with default latest selector and prints human output", async () => {
-  let resolvedChannel;
-  let installInput;
+test("installs with default latest spec selector and updates lock", async () => {
+  let resolvedSpec;
+  let savedLock;
   const { result, logs } = await captureConsole(() =>
     runUseCommand(
       ["@stefdevscore/test-skill"],
       baseOptions({
-        resolveVersion: async (_baseUrl, _owner, _skill, channel) => {
-          resolvedChannel = channel;
+        resolveVersion: async (_baseUrl, _owner, _skill, spec) => {
+          resolvedSpec = spec;
           return {
             owner: "@stefdevscore",
             ownerLogin: "stefdevscore",
             skill: "test-skill",
-            channel: "latest",
+            spec: "latest",
             version: "1.2.3",
           };
         },
-        installArtifact: async (input) => {
-          installInput = input;
+        saveSkillsLock: async (_cwd, lock) => {
+          savedLock = lock;
         },
       }),
     ),
   );
 
   assert.equal(result, 0);
-  assert.equal(resolvedChannel, "latest");
+  assert.equal(resolvedSpec, "latest");
   assert.match(logs.join("\n"), /Installed @stefdevscore\/test-skill@1.2.3/);
-  assert.match(logs.join("\n"), /Next: skillmd history @stefdevscore\/test-skill --limit 20/);
-  assert.ok(
-    installInput.targetPath.endsWith(
-      "/.agent/skills/registry.skillmarkdown.com/stefdevscore/test-skill",
-    ),
-  );
-  assert.equal(installInput.metadata.downloadedFrom, "https://storage.example.com");
-  assert.equal(installInput.metadata.agentTarget, "skillmd");
-  assert.deepEqual(installInput.metadata.installIntent, {
-    strategy: "latest_fallback_beta",
-    value: null,
-  });
+  assert.equal(Object.keys(savedLock.entries).length, 1);
+  const entry = Object.values(savedLock.entries)[0];
+  assert.equal(entry.selectorSpec, "latest");
+  assert.equal(entry.resolvedVersion, "1.2.3");
 });
 
 test("uses descriptor agent target when flag is omitted", async () => {
@@ -130,7 +128,6 @@ test("uses descriptor agent target when flag is omitted", async () => {
 
   assert.equal(result, 0);
   assert.ok(installInput.targetPath.includes("/.claude/skills/registry.skillmarkdown.com/"));
-  assert.equal(installInput.metadata.agentTarget, "claude");
 });
 
 test("explicit --agent-target overrides descriptor target", async () => {
@@ -163,35 +160,40 @@ test("explicit --agent-target overrides descriptor target", async () => {
 
   assert.equal(result, 0);
   assert.ok(installInput.targetPath.includes("/.gemini/skills/registry.skillmarkdown.com/"));
-  assert.equal(installInput.metadata.agentTarget, "gemini");
 });
 
-test("installs custom targets under .agents namespace", async () => {
-  let installInput;
+test("supports explicit --spec selector", async () => {
+  let resolvedSpec;
   const { result } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill", "--agent-target", "custom:myagent"],
+      ["@stefdevscore/test-skill", "--spec", "^1.2.0"],
       baseOptions({
-        installArtifact: async (input) => {
-          installInput = input;
+        resolveVersion: async (_baseUrl, _owner, _skill, spec) => {
+          resolvedSpec = spec;
+          return {
+            owner: "@stefdevscore",
+            ownerLogin: "stefdevscore",
+            skill: "test-skill",
+            spec,
+            version: "1.2.3",
+          };
         },
       }),
     ),
   );
 
   assert.equal(result, 0);
-  assert.ok(
-    installInput.targetPath.includes("/.agents/skills/myagent/registry.skillmarkdown.com/"),
-  );
-  assert.equal(installInput.metadata.agentTarget, "custom:myagent");
+  assert.equal(resolvedSpec, "^1.2.0");
 });
 
-test("does not resolve read token when install succeeds without auth retry", async () => {
+test("uses explicit --version without calling resolve endpoint", async () => {
+  let resolveCalled = false;
   const { result } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill"],
+      ["@stefdevscore/test-skill", "--version", "1.2.3"],
       baseOptions({
-        resolveReadIdToken: async () => {
+        resolveVersion: async () => {
+          resolveCalled = true;
           throw new Error("should not be called");
         },
       }),
@@ -199,6 +201,7 @@ test("does not resolve read token when install succeeds without auth retry", asy
   );
 
   assert.equal(result, 0);
+  assert.equal(resolveCalled, false);
 });
 
 test("retries resolve with read token when first attempt returns not found", async () => {
@@ -212,17 +215,17 @@ test("retries resolve with read token when first attempt returns not found", asy
           tokenResolutionCount += 1;
           return "id_token_123";
         },
-        resolveVersion: async (_baseUrl, _owner, _skill, channel, options) => {
-          resolveCalls.push({ channel, idToken: options?.idToken ?? null });
+        resolveVersion: async (_baseUrl, _owner, _skill, _spec, options) => {
+          resolveCalls.push(options?.idToken ?? null);
           if (!options?.idToken) {
-            throw new UseApiError(404, "invalid_request", "skill not found");
+            throw new UseApiError(404, "not_found", "skill not found");
           }
 
           return {
             owner: "@stefdevscore",
             ownerLogin: "stefdevscore",
             skill: "test-skill",
-            channel: "latest",
+            spec: "latest",
             version: "1.2.3",
           };
         },
@@ -231,68 +234,8 @@ test("retries resolve with read token when first attempt returns not found", asy
   );
 
   assert.equal(result, 0);
-  assert.deepEqual(resolveCalls, [
-    { channel: "latest", idToken: null },
-    { channel: "latest", idToken: "id_token_123" },
-  ]);
+  assert.deepEqual(resolveCalls, [null, "id_token_123"]);
   assert.equal(tokenResolutionCount, 1);
-});
-
-test("falls back to beta when latest channel is not set by default", async () => {
-  const resolveCalls = [];
-  let installInput;
-
-  const { result } = await captureConsole(() =>
-    runUseCommand(
-      ["@stefdevscore/test-skill"],
-      baseOptions({
-        resolveVersion: async (_baseUrl, _owner, _skill, channel) => {
-          resolveCalls.push(channel);
-          if (channel === "latest") {
-            throw new UseApiError(404, "invalid_request", "no stable channel configured", {
-              reason: "channel_not_set",
-            });
-          }
-
-          return {
-            owner: "@stefdevscore",
-            ownerLogin: "stefdevscore",
-            skill: "test-skill",
-            channel: "beta",
-            version: "1.2.3-beta.1",
-          };
-        },
-        getArtifactDescriptor: async () => ({
-          owner: "@stefdevscore",
-          ownerLogin: "stefdevscore",
-          skill: "test-skill",
-          version: "1.2.3-beta.1",
-          digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
-          sizeBytes: 5,
-          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-          yanked: false,
-          yankedAt: null,
-          yankedReason: null,
-          downloadUrl: "https://storage.example.com/object",
-          downloadExpiresAt: "2026-03-02T12:40:00.000Z",
-        }),
-        installArtifact: async (input) => {
-          installInput = input;
-        },
-      }),
-    ),
-  );
-
-  assert.equal(result, 0);
-  assert.deepEqual(resolveCalls, ["latest", "beta"]);
-  assert.equal(
-    installInput.metadata.sourceCommand,
-    "skillmd use @stefdevscore/test-skill --channel beta",
-  );
-  assert.deepEqual(installInput.metadata.installIntent, {
-    strategy: "latest_fallback_beta",
-    value: null,
-  });
 });
 
 test("prints json output with --json", async () => {
@@ -365,7 +308,7 @@ test("maps use API errors", async () => {
       ["@stefdevscore/test-skill"],
       baseOptions({
         resolveVersion: async () => {
-          throw new UseApiError(404, "invalid_request", "skill not found");
+          throw new UseApiError(404, "not_found", "skill not found");
         },
       }),
     ),
@@ -373,80 +316,4 @@ test("maps use API errors", async () => {
 
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /skill not found/);
-});
-
-test("uses explicit --version without calling resolve endpoint", async () => {
-  let resolveCalled = false;
-  let installInput;
-  const { result } = await captureConsole(() =>
-    runUseCommand(
-      ["@stefdevscore/test-skill", "--version", "1.2.3"],
-      baseOptions({
-        resolveVersion: async () => {
-          resolveCalled = true;
-          throw new Error("should not be called");
-        },
-        installArtifact: async (input) => {
-          installInput = input;
-        },
-      }),
-    ),
-  );
-
-  assert.equal(result, 0);
-  assert.equal(resolveCalled, false);
-  assert.deepEqual(installInput.metadata.installIntent, {
-    strategy: "version",
-    value: "1.2.3",
-  });
-});
-
-test("passes --channel beta to resolve and records sourceCommand", async () => {
-  let resolvedChannel;
-  let installInput;
-  const { result } = await captureConsole(() =>
-    runUseCommand(
-      ["@stefdevscore/test-skill", "--channel", "beta"],
-      baseOptions({
-        resolveVersion: async (_baseUrl, _owner, _skill, channel) => {
-          resolvedChannel = channel;
-          return {
-            owner: "@stefdevscore",
-            ownerLogin: "stefdevscore",
-            skill: "test-skill",
-            channel: "beta",
-            version: "1.2.3-beta.1",
-          };
-        },
-        getArtifactDescriptor: async () => ({
-          owner: "@stefdevscore",
-          ownerLogin: "stefdevscore",
-          skill: "test-skill",
-          version: "1.2.3-beta.1",
-          digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
-          sizeBytes: 5,
-          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-          yanked: false,
-          yankedAt: null,
-          yankedReason: null,
-          downloadUrl: "https://storage.example.com/object",
-          downloadExpiresAt: "2026-03-02T12:40:00.000Z",
-        }),
-        installArtifact: async (input) => {
-          installInput = input;
-        },
-      }),
-    ),
-  );
-
-  assert.equal(result, 0);
-  assert.equal(resolvedChannel, "beta");
-  assert.equal(
-    installInput.metadata.sourceCommand,
-    "skillmd use @stefdevscore/test-skill --channel beta",
-  );
-  assert.deepEqual(installInput.metadata.installIntent, {
-    strategy: "channel",
-    value: "beta",
-  });
 });

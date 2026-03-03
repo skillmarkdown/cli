@@ -3,16 +3,17 @@ const assert = require("node:assert/strict");
 
 const { requireDist } = require("../helpers/dist-imports.js");
 
-const { isPrereleaseVersion, parsePublishFlags } = requireDist("lib/publish/flags.js");
+const { parsePublishFlags } = requireDist("lib/publish/flags.js");
 
-test("parses required flags with separate values", () => {
+test("parses required publish flags", () => {
   const parsed = parsePublishFlags(["./my-skill", "--version", "1.2.3", "--dry-run"]);
 
   assert.deepEqual(parsed, {
     pathArg: "./my-skill",
     version: "1.2.3",
-    channel: undefined,
-    visibility: undefined,
+    tag: undefined,
+    access: undefined,
+    provenance: false,
     agentTarget: undefined,
     dryRun: true,
     json: false,
@@ -20,14 +21,21 @@ test("parses required flags with separate values", () => {
   });
 });
 
-test("parses equals syntax and json/channel flags", () => {
-  const parsed = parsePublishFlags(["--version=1.2.3-beta.1", "--channel=beta", "--json"]);
+test("parses tag/access/provenance/json flags", () => {
+  const parsed = parsePublishFlags([
+    "--version=1.2.3-beta.1",
+    "--tag=beta",
+    "--access=private",
+    "--provenance",
+    "--json",
+  ]);
 
   assert.deepEqual(parsed, {
     pathArg: undefined,
     version: "1.2.3-beta.1",
-    channel: "beta",
-    visibility: undefined,
+    tag: "beta",
+    access: "private",
+    provenance: true,
     agentTarget: undefined,
     dryRun: false,
     json: true,
@@ -41,16 +49,11 @@ test("parses optional agent target flag", () => {
   assert.equal(parsed.agentTarget, "gemini");
 });
 
-test("parses optional visibility flag", () => {
-  const parsed = parsePublishFlags(["--version", "1.2.3", "--visibility", "private"]);
-  assert.equal(parsed.valid, true);
-  assert.equal(parsed.visibility, "private");
-});
-
 for (const args of [
   [],
   ["--version", "1.2"],
-  ["--version", "1.2.3", "--channel", "rc"],
+  ["--version", "1.2.3", "--tag", "UPPER"],
+  ["--version", "1.2.3", "--access", "team"],
   ["--version", "1.2.3", "--agent-target", "custom:UPPER"],
   ["--version", "1.2.3", "--oops"],
   ["a", "b", "--version", "1.2.3"],
@@ -60,22 +63,3 @@ for (const args of [
     assert.equal(parsed.valid, false);
   });
 }
-
-test("detects prerelease versions", () => {
-  assert.equal(isPrereleaseVersion("1.2.3-alpha.1"), true);
-  assert.equal(isPrereleaseVersion("1.2.3"), false);
-});
-
-test("accepts version-only publish flags", () => {
-  const parsed = parsePublishFlags(["--version", "1.2.3"]);
-  assert.deepEqual(parsed, {
-    pathArg: undefined,
-    version: "1.2.3",
-    channel: undefined,
-    visibility: undefined,
-    agentTarget: undefined,
-    dryRun: false,
-    json: false,
-    valid: true,
-  });
-});

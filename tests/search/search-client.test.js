@@ -108,3 +108,27 @@ test("searchSkills rejects malformed success payloads", async () => {
     },
   );
 });
+
+test("searchSkills defaults missing distTags to empty map", async () => {
+  const payload = await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        query: "agent",
+        limit: 20,
+        results: [
+          {
+            skillId: "@owner/test-skill",
+            owner: "@owner",
+            ownerLogin: "owner",
+            skill: "test-skill",
+            description: "desc",
+            updatedAt: "2026-03-03T10:00:00.000Z",
+          },
+        ],
+        nextCursor: null,
+      }),
+    () => searchSkills("https://registry.example.com", {}),
+  );
+
+  assert.deepEqual(payload.results[0].distTags, {});
+});

@@ -17,10 +17,7 @@ import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/rea
 interface IndexedSearchResult {
   index: number;
   skillId: string;
-  channels: {
-    latest?: string;
-    beta?: string;
-  };
+  distTags: Record<string, string>;
   updatedAt: string;
   description: string;
 }
@@ -72,7 +69,7 @@ function printHumanResults(
     const indexedResults: IndexedSearchResult[] = payload.results.map((result, rowIndex) => ({
       index: startIndex + rowIndex,
       skillId: result.skillId,
-      channels: result.channels,
+      distTags: result.distTags ?? {},
       updatedAt: result.updatedAt,
       description: result.description,
     }));
@@ -97,7 +94,7 @@ function printHumanResults(
         {
           header: "LATEST",
           width: 10,
-          value: (row) => row.channels.latest ?? "-",
+          value: (row) => row.distTags.latest ?? "-",
         },
         {
           header: "UPDATED",

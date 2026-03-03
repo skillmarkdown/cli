@@ -2,13 +2,15 @@ import { join } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import { parse } from "yaml";
 
-import { type PackedArtifact, type PublishChannel, type PublishManifest } from "./types";
+import { type PackedArtifact, type PublishAccess, type PublishManifest } from "./types";
 
 interface BuildPublishManifestOptions {
   targetDir: string;
   skill: string;
   version: string;
-  channel: PublishChannel;
+  tag: string;
+  access: PublishAccess;
+  provenance: boolean;
   artifact: PackedArtifact;
 }
 
@@ -48,7 +50,9 @@ export function buildPublishManifest(options: BuildPublishManifestOptions): Publ
     schemaVersion: "skillmd.publish.v1",
     skill: options.skill,
     version: options.version,
-    channel: options.channel,
+    tag: options.tag,
+    access: options.access,
+    provenance: options.provenance,
     digest: options.artifact.digest,
     sizeBytes: options.artifact.sizeBytes,
     mediaType: options.artifact.mediaType,

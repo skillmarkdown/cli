@@ -17,7 +17,9 @@ function validManifest() {
     schemaVersion: "skillmd.publish.v1",
     skill: "publish-skill",
     version: "1.0.0",
-    channel: "latest",
+    tag: "latest",
+    access: "public",
+    provenance: false,
     digest: "sha256:abc",
     sizeBytes: 123,
     mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
@@ -78,7 +80,9 @@ function baseOptions(overrides = {}) {
       status: "published",
       skillId: "@core/publish-skill",
       version: "1.0.0",
-      channel: "latest",
+      tag: "latest",
+      distTags: { latest: "1.0.0" },
+      provenance: { requested: false, recorded: false },
     }),
     ...overrides,
   };
@@ -180,6 +184,15 @@ test("handles idempotent publish response", async () => {
       publishToken: "pit-token",
       expiresAt: "2026-03-02T00:00:00Z",
     }),
+    commitPublish: async () => ({
+      status: "idempotent",
+      skillId: "@core/publish-skill",
+      version: "1.0.0",
+      tag: "latest",
+      distTags: { latest: "1.0.0" },
+      agentTarget: "skillmd",
+      provenance: { requested: false, recorded: false },
+    }),
   });
 
   const { result, logs } = await captureConsole(() =>
@@ -188,6 +201,44 @@ test("handles idempotent publish response", async () => {
 
   assert.equal(result, 0);
   assert.match(logs.join("\n"), /Already published/);
+});
+
+test("commits idempotent prepare responses without uploading artifact", async () => {
+  let uploadCalled = false;
+  let commitCalled = false;
+
+  const options = baseOptions({
+    preparePublish: async () => ({
+      status: "idempotent",
+      publishToken: "pit-token",
+      expiresAt: "2026-03-02T00:00:00Z",
+    }),
+    uploadArtifact: async () => {
+      uploadCalled = true;
+    },
+    commitPublish: async (_baseUrl, _idToken, payload) => {
+      commitCalled = true;
+      assert.equal(payload.publishToken, "pit-token");
+      return {
+        status: "idempotent",
+        skillId: "@core/publish-skill",
+        version: "1.0.0",
+        tag: "stable",
+        distTags: { latest: "1.0.0", stable: "1.0.0" },
+        agentTarget: "skillmd",
+        provenance: { requested: false, recorded: false },
+      };
+    },
+  });
+
+  const { result, logs } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0", "--tag", "stable"], options),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(uploadCalled, false);
+  assert.equal(commitCalled, true);
+  assert.match(logs.join("\n"), /Already published @core\/publish-skill@1.0.0 \(tag: stable/);
 });
 
 test("maps version conflict errors", async () => {
@@ -205,11 +256,13 @@ test("maps version conflict errors", async () => {
   assert.match(errors.join("\n"), /version conflict/i);
 });
 
-test("forwards --visibility to prepare payload", async () => {
-  let capturedVisibility;
+test("forwards --access and --provenance to prepare payload", async () => {
+  let capturedAccess;
+  let capturedProvenance;
   const options = baseOptions({
     preparePublish: async (_baseUrl, _idToken, payload) => {
-      capturedVisibility = payload.visibility;
+      capturedAccess = payload.access;
+      capturedProvenance = payload.provenance;
       return {
         status: "idempotent",
         publishToken: "pit-token",
@@ -219,11 +272,12 @@ test("forwards --visibility to prepare payload", async () => {
   });
 
   const { result } = await captureConsole(() =>
-    runPublishCommand(["--version", "1.0.0", "--visibility", "private"], options),
+    runPublishCommand(["--version", "1.0.0", "--access", "private", "--provenance"], options),
   );
 
   assert.equal(result, 0);
-  assert.equal(capturedVisibility, "private");
+  assert.equal(capturedAccess, "private");
+  assert.equal(capturedProvenance, true);
 });
 
 test("forwards --agent-target to prepare payload", async () => {

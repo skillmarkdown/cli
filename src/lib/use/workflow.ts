@@ -1,4 +1,3 @@
-import { type PublishChannel } from "../publish/types";
 import { callWithReadTokenRetry } from "../auth/read-token-retry";
 import { resolveInstalledSkillPath, resolveInstallTempRoot } from "./pathing";
 import { DEFAULT_AGENT_TARGET, type AgentTarget } from "../shared/agent-target";
@@ -12,8 +11,7 @@ import { verifyDownloadedArtifact } from "./integrity";
 import { installSkillArtifact as defaultInstallSkillArtifact } from "./install";
 import {
   type ArtifactDescriptorResponse,
-  type InstallIntent,
-  type InstalledSkillMetadata,
+  type InstalledSkillLockEntry,
   type InstallSelector,
   type InstallWorkflowResult,
   type ResolveSkillVersionResponse,
@@ -34,7 +32,6 @@ export interface InstallWorkflowInput {
   sourceCommandFactory: (input: {
     canonicalSkillId: string;
     selector: InstallSelector;
-    resolvedChannel?: PublishChannel;
     resolvedAgentTarget: AgentTarget;
   }) => string;
   now?: () => Date;
@@ -45,7 +42,7 @@ export interface UseWorkflowDependencies {
     baseUrl: string,
     ownerSlug: string,
     skillSlug: string,
-    channel: PublishChannel,
+    spec: string,
     options?: { timeoutMs?: number; idToken?: string },
   ) => Promise<ResolveSkillVersionResponse>;
   getArtifactDescriptor?: (
@@ -61,24 +58,7 @@ export interface UseWorkflowDependencies {
     targetPath: string;
     tempRoot: string;
     archiveBytes: Buffer;
-    metadata: InstalledSkillMetadata;
   }) => Promise<void>;
-}
-
-function shouldFallbackToBeta(error: unknown): boolean {
-  if (!isUseApiError(error)) {
-    return false;
-  }
-
-  if (error.status !== 404 || error.code !== "invalid_request") {
-    return false;
-  }
-
-  if (!error.details || typeof error.details !== "object") {
-    return false;
-  }
-
-  return (error.details as { reason?: unknown }).reason === "channel_not_set";
 }
 
 function shouldRetryWithReadToken(error: unknown): boolean {
@@ -90,7 +70,7 @@ function shouldRetryWithReadToken(error: unknown): boolean {
     return true;
   }
 
-  if (error.status === 404 && error.code === "invalid_request") {
+  if (error.status === 404 && (error.code === "not_found" || error.code === "invalid_request")) {
     return /not found/i.test(error.message);
   }
 
@@ -105,25 +85,12 @@ function sanitizeDownloadedFrom(value: string): string {
   }
 }
 
-function toInstallIntent(selector: InstallSelector): InstallIntent {
+function selectorToSpec(selector: InstallSelector): string {
   if (selector.strategy === "version") {
-    return {
-      strategy: "version",
-      value: selector.version,
-    };
+    return selector.version;
   }
 
-  if (selector.strategy === "channel") {
-    return {
-      strategy: "channel",
-      value: selector.channel,
-    };
-  }
-
-  return {
-    strategy: "latest_fallback_beta",
-    value: null,
-  };
+  return selector.spec;
 }
 
 export async function installFromRegistry(
@@ -152,44 +119,18 @@ export async function installFromRegistry(
   }
 
   let selectedVersion: string;
-  let resolvedChannel: PublishChannel | undefined;
 
   if (input.selector.strategy === "version") {
     selectedVersion = input.selector.version;
-  } else if (input.selector.strategy === "channel") {
-    const requestedChannel = input.selector.channel;
+  } else {
+    const selectorSpec = input.selector.spec;
     const resolved = await callWithOptionalReadTokenRetry((token) =>
-      resolveVersionFn(input.registryBaseUrl, input.ownerSlug, input.skillSlug, requestedChannel, {
+      resolveVersionFn(input.registryBaseUrl, input.ownerSlug, input.skillSlug, selectorSpec, {
         timeoutMs: input.requestTimeoutMs,
         idToken: token,
       }),
     );
     selectedVersion = resolved.version;
-    resolvedChannel = resolved.channel;
-  } else {
-    try {
-      const resolved = await callWithOptionalReadTokenRetry((token) =>
-        resolveVersionFn(input.registryBaseUrl, input.ownerSlug, input.skillSlug, "latest", {
-          timeoutMs: input.requestTimeoutMs,
-          idToken: token,
-        }),
-      );
-      selectedVersion = resolved.version;
-      resolvedChannel = resolved.channel;
-    } catch (error) {
-      if (!shouldFallbackToBeta(error)) {
-        throw error;
-      }
-
-      const resolved = await callWithOptionalReadTokenRetry((token) =>
-        resolveVersionFn(input.registryBaseUrl, input.ownerSlug, input.skillSlug, "beta", {
-          timeoutMs: input.requestTimeoutMs,
-          idToken: token,
-        }),
-      );
-      selectedVersion = resolved.version;
-      resolvedChannel = resolved.channel;
-    }
   }
 
   const descriptor = await callWithOptionalReadTokenRetry((token) =>
@@ -234,23 +175,23 @@ export async function installFromRegistry(
   const sourceCommand = input.sourceCommandFactory({
     canonicalSkillId,
     selector: input.selector,
-    resolvedChannel,
     resolvedAgentTarget,
   });
-
-  const metadata: InstalledSkillMetadata = {
+  const selectorSpec = selectorToSpec(input.selector);
+  const lockEntry: InstalledSkillLockEntry = {
     skillId: canonicalSkillId,
     ownerLogin: descriptor.ownerLogin,
     skill: descriptor.skill,
+    selectorSpec,
     version: descriptor.version,
     digest: descriptor.digest,
     sizeBytes: descriptor.sizeBytes,
     mediaType: descriptor.mediaType,
+    installedPath,
     registryBaseUrl: input.registryBaseUrl,
     downloadedFrom: sanitizeDownloadedFrom(download.downloadedFrom),
     installedAt,
     sourceCommand,
-    installIntent: toInstallIntent(input.selector),
     agentTarget: resolvedAgentTarget,
   };
 
@@ -258,7 +199,6 @@ export async function installFromRegistry(
     targetPath: installedPath,
     tempRoot: resolveInstallTempRoot(input.cwd, resolvedAgentTarget),
     archiveBytes: download.bytes,
-    metadata,
   });
 
   return {
@@ -276,7 +216,6 @@ export async function installFromRegistry(
       source: "registry",
       agentTarget: resolvedAgentTarget,
     },
-    metadata,
-    resolvedChannel,
+    lockEntry,
   };
 }

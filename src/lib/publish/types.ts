@@ -4,16 +4,15 @@ export const PUBLISH_MEDIA_TYPE = "application/vnd.skillmarkdown.skill.v1+tar";
 export const MAX_PUBLISH_ARTIFACT_SIZE_BYTES = 25 * 1024 * 1024;
 export const MAX_PUBLISH_MANIFEST_SIZE_BYTES = 256 * 1024;
 
-export const PUBLISH_CHANNELS = ["latest", "beta"] as const;
-export type PublishChannel = (typeof PUBLISH_CHANNELS)[number];
-export const PUBLISH_VISIBILITIES = ["public", "private"] as const;
-export type PublishVisibility = (typeof PUBLISH_VISIBILITIES)[number];
+export const PUBLISH_ACCESSES = ["public", "private"] as const;
+export type PublishAccess = (typeof PUBLISH_ACCESSES)[number];
 
 export interface PublishFlags {
   pathArg?: string;
   version?: string;
-  channel?: PublishChannel;
-  visibility?: PublishVisibility;
+  tag?: string;
+  access?: PublishAccess;
+  provenance: boolean;
   agentTarget?: AgentTarget;
   dryRun: boolean;
   json: boolean;
@@ -38,7 +37,9 @@ export interface PublishManifest {
   schemaVersion: "skillmd.publish.v1";
   skill: string;
   version: string;
-  channel: PublishChannel;
+  tag: string;
+  access: PublishAccess;
+  provenance: boolean;
   digest: string;
   sizeBytes: number;
   mediaType: string;
@@ -57,8 +58,14 @@ export interface PublishEnvConfig {
 export interface PreparePublishRequest {
   skill: string;
   version: string;
-  channel: PublishChannel;
-  visibility?: PublishVisibility;
+  tag: string;
+  access: PublishAccess;
+  provenance: boolean;
+  packageMeta: Record<string, unknown> & {
+    name: string;
+    version: string;
+    description: string;
+  };
   agentTarget?: AgentTarget;
   digest: string;
   sizeBytes: number;
@@ -76,14 +83,8 @@ export interface PreparePublishUploadResponse {
 
 export interface PreparePublishIdempotentResponse {
   status: "idempotent";
-  publishToken?: string;
+  publishToken: string;
   expiresAt?: string;
-  // Backward-compatible optional fields for older server responses.
-  skillId?: string;
-  version?: string;
-  digest?: string;
-  channel?: PublishChannel;
-  agentTarget?: AgentTarget;
 }
 
 export type PreparePublishResponse =
@@ -98,7 +99,11 @@ export interface CommitPublishResponse {
   status: "published" | "idempotent";
   skillId: string;
   version: string;
-  digest?: string;
-  channel: PublishChannel;
+  tag: string;
+  distTags: Record<string, string>;
   agentTarget?: AgentTarget;
+  provenance: {
+    requested: boolean;
+    recorded: boolean;
+  };
 }

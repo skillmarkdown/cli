@@ -1,4 +1,3 @@
-import { type InstallIntent } from "../use/types";
 import { type AgentTarget } from "../shared/agent-target";
 
 export interface UpdateFlags {
@@ -19,35 +18,34 @@ export interface InstalledSkillTarget {
 }
 
 export interface InstalledSkillRecord extends InstalledSkillTarget {
-  metadata: UpdateInstalledMetadata | null;
+  metadata: SkillsLockEntry | null;
 }
 
 export type UpdateMode = "all" | "ids";
 
 export type ResolvedUpdateSelector =
   | { strategy: "version"; value: string }
-  | { strategy: "channel"; value: "latest" | "beta" }
-  | { strategy: "latest_fallback_beta"; value: null };
+  | { strategy: "spec"; value: string };
 
 export interface UpdateIntentResolution {
   selector: ResolvedUpdateSelector;
-  installIntent: InstallIntent;
 }
 
-export interface UpdateInstalledMetadata {
-  skillId?: string;
-  ownerLogin?: string;
-  skill?: string;
-  version?: string;
-  digest?: string;
-  sizeBytes?: number;
-  mediaType?: string;
-  registryBaseUrl?: string;
-  downloadedFrom?: string;
-  installedAt?: string;
-  sourceCommand?: string;
-  installIntent?: InstallIntent;
-  agentTarget?: AgentTarget;
+export interface SkillsLockEntry {
+  skillId: string;
+  ownerLogin: string;
+  skill: string;
+  selectorSpec: string;
+  resolvedVersion: string;
+  digest: string;
+  sizeBytes: number;
+  mediaType: string;
+  installedPath: string;
+  registryBaseUrl: string;
+  installedAt: string;
+  sourceCommand: string;
+  downloadedFrom: string;
+  agentTarget: AgentTarget;
 }
 
 export interface UpdateCommandEntry {

@@ -11,6 +11,11 @@ import {
   type UseWorkflowDependencies,
 } from "../lib/use/workflow";
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
+import {
+  loadSkillsLock as defaultLoadSkillsLock,
+  saveSkillsLock as defaultSaveSkillsLock,
+  upsertSkillsLockEntry,
+} from "../lib/workspace/skills-lock";
 
 interface UseCommandOptions {
   cwd?: string;
@@ -23,6 +28,8 @@ interface UseCommandOptions {
   downloadArtifact?: UseWorkflowDependencies["downloadArtifact"];
   installArtifact?: UseWorkflowDependencies["installArtifact"];
   resolveReadIdToken?: () => Promise<string | null>;
+  loadSkillsLock?: typeof defaultLoadSkillsLock;
+  saveSkillsLock?: typeof defaultSaveSkillsLock;
 }
 
 function printJson(payload: Record<string, unknown>): void {
@@ -52,16 +59,16 @@ export async function runUseCommand(
     const cwd = options.cwd ?? process.cwd();
     const getConfigFn = options.getConfig ?? getUseEnvConfig;
     const installFromRegistryFn = options.installFromRegistry ?? defaultInstallFromRegistry;
+    const loadSkillsLockFn = options.loadSkillsLock ?? defaultLoadSkillsLock;
+    const saveSkillsLockFn = options.saveSkillsLock ?? defaultSaveSkillsLock;
     const config = getConfigFn(env);
     const resolveReadIdTokenFn =
       options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }));
     const selector: InstallSelector = parsed.version
       ? { strategy: "version", version: parsed.version }
-      : parsed.channel
-        ? { strategy: "channel", channel: parsed.channel }
-        : { strategy: "latest_fallback_beta" };
+      : { strategy: "spec", spec: parsed.spec ?? "latest" };
 
-    const { result } = await installFromRegistryFn(
+    const { result, lockEntry } = await installFromRegistryFn(
       {
         registryBaseUrl: config.registryBaseUrl,
         requestTimeoutMs: config.requestTimeoutMs,
@@ -74,14 +81,12 @@ export async function runUseCommand(
         defaultAgentTarget: config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET,
         allowYanked: parsed.allowYanked,
         now,
-        sourceCommandFactory: ({ canonicalSkillId, resolvedChannel, resolvedAgentTarget }) => {
+        sourceCommandFactory: ({ canonicalSkillId, resolvedAgentTarget }) => {
           const parts = ["skillmd", "use", canonicalSkillId];
           if (parsed.version) {
             parts.push("--version", parsed.version);
-          } else if (parsed.channel) {
-            parts.push("--channel", parsed.channel);
-          } else if (resolvedChannel === "beta") {
-            parts.push("--channel", "beta");
+          } else if (parsed.spec) {
+            parts.push("--spec", parsed.spec);
           }
           if (parsed.agentTarget) {
             parts.push("--agent-target", parsed.agentTarget);
@@ -101,6 +106,28 @@ export async function runUseCommand(
         installArtifact: options.installArtifact,
       },
     );
+    const lock = await loadSkillsLockFn(cwd);
+    const nextLock = upsertSkillsLockEntry(
+      lock,
+      {
+        skillId: lockEntry.skillId,
+        ownerLogin: lockEntry.ownerLogin,
+        skill: lockEntry.skill,
+        agentTarget: lockEntry.agentTarget,
+        selectorSpec: lockEntry.selectorSpec,
+        resolvedVersion: lockEntry.version,
+        digest: lockEntry.digest,
+        sizeBytes: lockEntry.sizeBytes,
+        mediaType: lockEntry.mediaType,
+        installedPath: lockEntry.installedPath,
+        registryBaseUrl: lockEntry.registryBaseUrl,
+        installedAt: lockEntry.installedAt,
+        sourceCommand: lockEntry.sourceCommand,
+        downloadedFrom: lockEntry.downloadedFrom,
+      },
+      now(),
+    );
+    await saveSkillsLockFn(cwd, nextLock);
 
     if (parsed.json) {
       printJson(result as unknown as Record<string, unknown>);

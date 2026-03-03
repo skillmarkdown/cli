@@ -35,11 +35,19 @@ function printHumanResult(payload: ViewResponse): void {
   console.log(`Skill: ${canonicalSkillId}`);
   console.log(`Owner: ${payload.owner} (login: ${payload.ownerLogin})`);
   console.log(`Updated: ${payload.updatedAt}`);
-  console.log(`Visibility: ${payload.visibility}`);
+  console.log(`Access: ${payload.access}`);
   console.log(`Description: ${payload.description || "-"}`);
-  console.log("Channels:");
-  console.log(`  latest: ${payload.channels.latest ?? "-"}`);
-  console.log(`  beta: ${payload.channels.beta ?? "-"}`);
+  console.log("Dist-Tags:");
+  const tags = Object.entries(payload.distTags).sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
+  if (tags.length === 0) {
+    console.log("  (none)");
+  } else {
+    for (const [tag, version] of tags) {
+      console.log(`  ${tag}: ${version}`);
+    }
+  }
   console.log(`Next: skillmd history ${canonicalSkillId} --limit 20`);
 }
 
