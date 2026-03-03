@@ -31,9 +31,9 @@ function baseOptions(overrides = {}) {
           sizeBytes: 123,
           mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
           publishedAt: "2026-03-02T09:00:00.000Z",
-          yanked: false,
-          yankedAt: null,
-          yankedReason: null,
+          deprecated: false,
+          deprecatedAt: null,
+          deprecatedMessage: null,
         },
       ],
       nextCursor: "next_cursor",
@@ -118,7 +118,7 @@ test("retries history request with read token after not found", async () => {
   assert.equal(tokenResolutionCount, 1);
 });
 
-test("prints yanked metadata and truncates digest in human output", async () => {
+test("prints deprecated metadata and truncates digest in human output", async () => {
   const { result, logs } = await captureConsole(() =>
     runHistoryCommand(
       ["@stefdevscore/test-skill", "--limit", "10"],
@@ -135,9 +135,9 @@ test("prints yanked metadata and truncates digest in human output", async () => 
               sizeBytes: 12345,
               mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
               publishedAt: "2026-03-02T09:00:00.000Z",
-              yanked: true,
-              yankedAt: "2026-03-02T10:00:00.000Z",
-              yankedReason: "security issue",
+              deprecated: true,
+              deprecatedAt: "2026-03-02T10:00:00.000Z",
+              deprecatedMessage: "security issue",
             },
           ],
           nextCursor: "cursor_2",

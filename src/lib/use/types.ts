@@ -5,7 +5,6 @@ export interface UseFlags {
   version?: string;
   spec?: string;
   agentTarget?: AgentTarget;
-  allowYanked: boolean;
   json: boolean;
   valid: boolean;
 }
@@ -40,9 +39,9 @@ export interface ArtifactDescriptorResponse {
   digest: string;
   sizeBytes: number;
   mediaType: string;
-  yanked: boolean;
-  yankedAt: string | null;
-  yankedReason: string | null;
+  deprecated: boolean;
+  deprecatedAt: string | null;
+  deprecatedMessage: string | null;
   downloadUrl: string;
   downloadExpiresAt: string;
   agentTarget?: AgentTarget;
@@ -93,4 +92,5 @@ export type InstallSelector =
 export interface InstallWorkflowResult {
   result: UseCommandResult;
   lockEntry: InstalledSkillLockEntry;
+  warnings: string[];
 }

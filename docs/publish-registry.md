@@ -7,7 +7,7 @@ This document defines the registry data and artifact model for `skillmd publish`
 - Public-read registry metadata/artifacts
 - Authenticated writes via Firebase ID token
 - Immutable semver versions backed by content digests
-- No hard delete; versions may be yanked in backend policy
+- No hard delete; versions are tombstoned on unpublish in backend policy
 
 ## Canonical identifiers
 
@@ -34,8 +34,7 @@ This document defines the registry data and artifact model for `skillmd publish`
 - `skillSlug`
 - `description`
 - `visibility` (`public`)
-- `channels.latest` (optional semver)
-- `channels.beta` (optional semver)
+- `distTags` (map tag -> semver)
 - `createdAt`
 - `updatedAt`
 
@@ -49,9 +48,10 @@ This document defines the registry data and artifact model for `skillmd publish`
 - `publishedByUid`
 - `publishedByEmail` (optional)
 - `publishedAt`
-- `yanked` (bool)
-- `yankedAt` (optional)
-- `yankedReason` (optional)
+- `deprecatedAt` (optional)
+- `deprecatedMessage` (optional)
+- `unpublishedAt` (optional)
+- `unpublishedByUid` (optional)
 
 ## Storage shape
 

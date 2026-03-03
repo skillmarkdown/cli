@@ -135,7 +135,7 @@ skillmd history <skill-id> [--limit <1-50>] [--cursor <token>] [--json]
 Install a skill into the current project.
 
 ```bash
-skillmd use <skill-id> [--version <semver> | --spec <tag|version|range>] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--allow-yanked] [--json]
+skillmd use <skill-id> [--version <semver> | --spec <tag|version|range>] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]
 ```
 
 ### `skillmd update`
@@ -143,7 +143,7 @@ skillmd use <skill-id> [--version <semver> | --spec <tag|version|range>] [--agen
 Update installed skills in the current project.
 
 ```bash
-skillmd update [skill-id ...] [--all] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--allow-yanked] [--json]
+skillmd update [skill-id ...] [--all] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]
 ```
 
 - `skillmd update` and `skillmd update --all` do the same thing
@@ -156,6 +156,22 @@ List and manage dist-tags for your published skills.
 skillmd tag ls <skill-id> [--json]
 skillmd tag add <skill-id>@<version> <tag> [--json]
 skillmd tag rm <skill-id> <tag> [--json]
+```
+
+### `skillmd deprecate`
+
+Mark one version or a semver range as deprecated.
+
+```bash
+skillmd deprecate <skill-id>@<version|range> --message "<text>" [--json]
+```
+
+### `skillmd unpublish`
+
+Tombstone one published version (policy-gated in registry).
+
+```bash
+skillmd unpublish <skill-id>@<version> [--json]
 ```
 
 ## License

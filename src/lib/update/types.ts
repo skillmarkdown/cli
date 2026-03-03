@@ -2,7 +2,6 @@ import { type AgentTarget } from "../shared/agent-target";
 
 export interface UpdateFlags {
   all: boolean;
-  allowYanked: boolean;
   json: boolean;
   skillIds: string[];
   agentTarget?: AgentTarget;

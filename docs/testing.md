@@ -313,7 +313,7 @@ tmpdir="$(mktemp -d)"
 mkdir "$tmpdir/publish-skill"
 (cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" init --template verbose --no-validate)
 (cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" publish --version 1.0.0 --dry-run)
-(cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" publish --version 1.0.1 --visibility private --dry-run)
+(cd "$tmpdir/publish-skill" && node "$REPO_DIR/dist/cli.js" publish --version 1.0.1 --access private --dry-run)
 ```
 
 Expected:
@@ -321,8 +321,8 @@ Expected:
 - strict validation is executed and passes.
 - CLI prints a dry-run summary with:
   - `@owner/skill@version`
-  - channel (`latest` for stable semver)
-  - visibility (`public` by default, `private` when explicitly set)
+  - tag (`latest` by default)
+  - access (`public` by default, `private` when explicitly set)
   - digest (`sha256:...`)
   - artifact size bytes
 
@@ -339,7 +339,8 @@ mkdir "$tmpdir/publish-skill-json"
 Expected:
 
 - valid JSON object with `status: \"dry-run\"`
-- `channel: \"beta\"` for prerelease semver
+- `tag: \"latest\"` by default
+- `access: \"public\"` by default
 
 Project mismatch path:
 
@@ -397,9 +398,9 @@ Expected:
 
 - output starts with a boxed table:
   - top border begins with `┌`
-  - header row contains `VERSION`, `PUBLISHED`, `YANKED`, `SIZE`, `DIGEST`, `MEDIA`
+  - header row contains `VERSION`, `PUBLISHED`, `DEPRECATED`, `SIZE`, `DIGEST`, `MEDIA`
 - digest is shortened in human mode (`sha256:<prefix>...`)
-- yanked rows show `yes:<reason>` in `YANKED`
+- deprecated rows show `yes:<reason>` in `DEPRECATED`
 - next page hint prints when cursor exists
 
 History pagination:
@@ -485,3 +486,39 @@ Expected:
 
 - valid JSON payload with `mode`, `total`, `updated[]`, `skipped[]`, `failed[]`
 - version-pinned installs appear in `skipped[]` with `status: \"skipped_pinned\"`
+
+## 14) Replayable full command sweep (dev + prod)
+
+Use the replayable script for frequent end-to-end sweeps:
+
+```bash
+REPO_DIR="$(pwd)"
+npm run sweep:commands:dev
+npm run sweep:commands:prod
+```
+
+Or run directly with custom options:
+
+```bash
+REPO_DIR="$(pwd)"
+node "$REPO_DIR/scripts/command-sweep.mjs" --env both --allow-auth-blocked --report-file /tmp/skillmd-sweep.json
+```
+
+Options:
+
+- `--env dev|prod|both`: choose profile(s).
+- `--write`: include write commands (`publish` real + `tag add/rm` + `deprecate` + `unpublish`).
+- `--allow-auth-blocked`: treat auth-blocked steps as non-fatal.
+- `--report-file <path>`: write full machine-readable JSON report.
+- `--keep-workspace`: keep temp workspace for postmortem.
+
+Environment notes:
+
+- Dev write flows need a valid dev web API key: set `SKILLMD_DEV_FIREBASE_API_KEY`.
+- Prod profile uses `skillmarkdown` project and `https://registry.skillmarkdown.com`.
+
+Exit code contract:
+
+- `0`: no failures (auth-blocked steps allowed only with `--allow-auth-blocked`).
+- `2`: one or more hard command failures.
+- `3`: blocked auth steps encountered without `--allow-auth-blocked`.

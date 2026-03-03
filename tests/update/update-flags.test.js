@@ -10,7 +10,6 @@ test("parses no-arg update as valid", () => {
 
   assert.deepEqual(parsed, {
     all: false,
-    allowYanked: false,
     json: false,
     skillIds: [],
     agentTarget: undefined,
@@ -19,11 +18,10 @@ test("parses no-arg update as valid", () => {
 });
 
 test("parses --all with flags", () => {
-  const parsed = parseUpdateFlags(["--all", "--allow-yanked", "--json"]);
+  const parsed = parseUpdateFlags(["--all", "--json"]);
 
   assert.deepEqual(parsed, {
     all: true,
-    allowYanked: true,
     json: true,
     skillIds: [],
     agentTarget: undefined,
@@ -36,7 +34,6 @@ test("parses multiple skill ids", () => {
 
   assert.deepEqual(parsed, {
     all: false,
-    allowYanked: false,
     json: false,
     skillIds: ["@owner/skill-a", "owner/skill-b"],
     agentTarget: undefined,

@@ -358,7 +358,7 @@ export async function runUpdateCommand(
 
       const parsedSkillId = parseSkillId(entry.skillId);
       try {
-        const { result, lockEntry } = await installFromRegistryFn(
+        const workflow = await installFromRegistryFn(
           {
             registryBaseUrl: config.registryBaseUrl,
             requestTimeoutMs: config.requestTimeoutMs,
@@ -369,21 +369,22 @@ export async function runUpdateCommand(
             selector: toSelector(intent.selector.value),
             selectedAgentTarget: entry.agentTarget as AgentTarget,
             defaultAgentTarget: config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET,
-            allowYanked: parsed.allowYanked,
             now,
             sourceCommandFactory: ({ canonicalSkillId }) => {
               const parts = ["skillmd", "update", canonicalSkillId];
               if (entry.agentTarget !== DEFAULT_AGENT_TARGET) {
                 parts.push("--agent-target", entry.agentTarget);
               }
-              if (parsed.allowYanked) {
-                parts.push("--allow-yanked");
-              }
               return parts.join(" ");
             },
           },
           {},
         );
+        const { result, lockEntry } = workflow;
+        const warnings = workflow.warnings ?? [];
+        for (const warning of warnings) {
+          console.error(`Warning: ${entry.skillId}: ${warning}`);
+        }
 
         lock = upsertSkillsLockEntry(
           lock,
@@ -413,6 +414,7 @@ export async function runUpdateCommand(
           fromVersion: entry.resolvedVersion,
           toVersion: result.version,
           status: "updated",
+          reason: warnings.length > 0 ? warnings.join(" | ") : undefined,
         });
       } catch (error) {
         entries.push({

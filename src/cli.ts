@@ -7,6 +7,8 @@ import { runLogoutCommand } from "./commands/logout";
 import { runPublishCommand } from "./commands/publish";
 import { runSearchCommand } from "./commands/search";
 import { runTagCommand } from "./commands/tag";
+import { runDeprecateCommand } from "./commands/deprecate";
+import { runUnpublishCommand } from "./commands/unpublish";
 import { runUpdateCommand } from "./commands/update";
 import { runUseCommand } from "./commands/use";
 import { runValidateCommand } from "./commands/validate";
@@ -27,6 +29,8 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   use: runUseCommand,
   update: runUpdateCommand,
   tag: runTagCommand,
+  deprecate: runDeprecateCommand,
+  unpublish: runUnpublishCommand,
 };
 
 async function main(): Promise<void> {

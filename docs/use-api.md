@@ -4,7 +4,7 @@ This document defines the HTTP contracts consumed by `skillmd use`.
 
 ## Resolve endpoint
 
-### `GET /v1/skills/{owner}/{skill}/resolve?channel=latest|beta`
+### `GET /v1/skills/{owner}/{skill}/resolve?spec=<tag|version|range>`
 
 Used when `--version` is not explicitly provided.
 
@@ -13,8 +13,14 @@ Expected success fields:
 - `owner`
 - `ownerLogin`
 - `skill`
-- `channel`
+- `spec`
 - `version`
+- `agentTarget` (optional)
+- `deprecated` (boolean)
+- `deprecatedAt` (optional)
+- `deprecatedMessage` (optional)
+
+`spec` defaults to `latest` when omitted.
 
 ## Artifact descriptor endpoint
 
@@ -29,10 +35,10 @@ Expected success fields:
 - `digest`
 - `sizeBytes`
 - `mediaType`
-- `yanked`
-- `yankedAt`
-- `yankedReason`
+- `deprecated`
+- `deprecatedAt`
+- `deprecatedMessage`
 - `downloadUrl`
 - `downloadExpiresAt`
 
-`downloadUrl` is then used by the CLI for a direct artifact byte download, followed by local integrity verification.
+`downloadUrl` is then used by the CLI for direct artifact byte download, followed by local integrity verification.

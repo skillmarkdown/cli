@@ -36,7 +36,10 @@ function printJson(payload: Record<string, unknown>): void {
   console.log(JSON.stringify(payload, null, 2));
 }
 
-function printHumanResult(result: UseCommandResult): void {
+function printHumanResult(result: UseCommandResult, warnings: string[]): void {
+  for (const warning of warnings) {
+    console.error(`Warning: ${warning}`);
+  }
   console.log(
     `Installed ${result.skillId}@${result.version} to ${result.installedPath} (digest=${result.digest}).`,
   );
@@ -68,7 +71,7 @@ export async function runUseCommand(
       ? { strategy: "version", version: parsed.version }
       : { strategy: "spec", spec: parsed.spec ?? "latest" };
 
-    const { result, lockEntry } = await installFromRegistryFn(
+    const workflow = await installFromRegistryFn(
       {
         registryBaseUrl: config.registryBaseUrl,
         requestTimeoutMs: config.requestTimeoutMs,
@@ -79,7 +82,6 @@ export async function runUseCommand(
         selector,
         selectedAgentTarget: parsed.agentTarget,
         defaultAgentTarget: config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET,
-        allowYanked: parsed.allowYanked,
         now,
         sourceCommandFactory: ({ canonicalSkillId, resolvedAgentTarget }) => {
           const parts = ["skillmd", "use", canonicalSkillId];
@@ -93,9 +95,6 @@ export async function runUseCommand(
           } else if (resolvedAgentTarget !== DEFAULT_AGENT_TARGET) {
             parts.push("--agent-target", resolvedAgentTarget);
           }
-          if (parsed.allowYanked) {
-            parts.push("--allow-yanked");
-          }
           return parts.join(" ");
         },
       },
@@ -106,6 +105,8 @@ export async function runUseCommand(
         installArtifact: options.installArtifact,
       },
     );
+    const { result, lockEntry } = workflow;
+    const warnings = workflow.warnings ?? [];
     const lock = await loadSkillsLockFn(cwd);
     const nextLock = upsertSkillsLockEntry(
       lock,
@@ -130,11 +131,14 @@ export async function runUseCommand(
     await saveSkillsLockFn(cwd, nextLock);
 
     if (parsed.json) {
-      printJson(result as unknown as Record<string, unknown>);
+      printJson({
+        ...result,
+        warnings,
+      } as unknown as Record<string, unknown>);
       return 0;
     }
 
-    printHumanResult(result);
+    printHumanResult(result, warnings);
     return 0;
   } catch (error) {
     if (isUseApiError(error)) {

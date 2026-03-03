@@ -28,7 +28,6 @@ export interface InstallWorkflowInput {
   selector: InstallSelector;
   selectedAgentTarget?: AgentTarget;
   defaultAgentTarget?: AgentTarget;
-  allowYanked: boolean;
   sourceCommandFactory: (input: {
     canonicalSkillId: string;
     selector: InstallSelector;
@@ -144,12 +143,12 @@ export async function installFromRegistry(
       { timeoutMs: input.requestTimeoutMs, idToken: token },
     ),
   );
-
-  if (descriptor.yanked && !input.allowYanked) {
-    throw new Error(
-      `selected version is yanked. Re-run with --allow-yanked to proceed` +
-        `${descriptor.yankedReason ? ` (${descriptor.yankedReason})` : ""}.`,
-    );
+  const warnings: string[] = [];
+  if (descriptor.deprecated) {
+    const message = descriptor.deprecatedMessage
+      ? `Deprecated version ${descriptor.version}: ${descriptor.deprecatedMessage}.`
+      : `Deprecated version ${descriptor.version}.`;
+    warnings.push(message);
   }
 
   const download = await downloadArtifactFn(descriptor.downloadUrl, {
@@ -217,5 +216,6 @@ export async function installFromRegistry(
       agentTarget: resolvedAgentTarget,
     },
     lockEntry,
+    warnings,
   };
 }

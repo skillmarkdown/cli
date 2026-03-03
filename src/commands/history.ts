@@ -61,15 +61,15 @@ function printHumanResults(skillId: string, limit: number | undefined, payload: 
           value: (row) => row.publishedAt,
         },
         {
-          header: "YANKED",
+          header: "DEPRECATED",
           minWidth: 10,
           maxWidth: 24,
           shrinkPriority: 2,
           value: (row) => {
-            if (!row.yanked) {
+            if (!row.deprecated) {
               return "no";
             }
-            return row.yankedReason ? `yes:${row.yankedReason}` : "yes";
+            return row.deprecatedMessage ? `yes:${row.deprecatedMessage}` : "yes";
           },
         },
         {
