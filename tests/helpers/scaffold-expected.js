@@ -2,6 +2,7 @@ const MINIMAL_SCAFFOLD_FILES = ["SKILL.md"];
 
 const VERBOSE_SCAFFOLD_FILES = [
   ".gitignore",
+  "LICENSE",
   "SKILL.md",
   "assets/.gitkeep",
   "assets/README.md",

@@ -78,6 +78,12 @@ test("scaffolds verbose template with strict directories and sections", () => {
     assert.match(skillMd, /## Examples/);
     assert.match(skillMd, /## Limitations \/ Failure modes/);
     assert.match(skillMd, /## Security \/ Tool access/);
+
+    const license = fs.readFileSync(path.join(dir, "LICENSE"), "utf8");
+    assert.match(license, /^MIT License$/m);
+    assert.match(license, /Replace \[year\] and \[full name\] before publishing\./);
+    assert.match(license, /Permission is hereby granted, free of charge/);
+    assert.match(license, /THE SOFTWARE IS PROVIDED "AS IS"/);
   } finally {
     cleanupDirectory(root);
   }
