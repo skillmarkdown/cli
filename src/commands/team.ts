@@ -92,10 +92,8 @@ export async function runTeamCommand(
     const idToken = await (
       options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }))
     )();
-    if (!idToken) {
-      console.error("skillmd team: not logged in. Run 'skillmd login' first.");
-      return 1;
-    }
+    if (!idToken)
+      return (console.error("skillmd team: not logged in. Run 'skillmd login' first."), 1);
 
     if (parsed.action === "create" && parsed.team) {
       const result = await (options.createTeam ?? defaultCreateTeam)(
@@ -198,7 +196,7 @@ export async function runTeamCommand(
       const reason = typeof details?.reason === "string" ? details.reason : undefined;
       if (reason) console.error(`skillmd team: reason=${reason}`);
       const hint = hintForReason(reason);
-      if (!parsed.json && hint) console.error(hint);
+      if (hint && !parsed.json) console.error(hint);
       return 1;
     }
 

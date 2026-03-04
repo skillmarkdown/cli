@@ -20,9 +20,46 @@ interface TeamClientOptions {
   timeoutMs?: number;
 }
 
+const TEAM_API_LABEL = "Team API";
+
 function toTeamApiError(status: number, payload: ApiErrorPayload): TeamApiError {
   const parsed = extractApiErrorFields(status, payload, `team API request failed (${status})`);
   return new TeamApiError(status, parsed.code, parsed.message, parsed.details);
+}
+
+async function requestTeam(
+  url: URL,
+  method: "GET" | "POST" | "PATCH" | "DELETE",
+  idToken: string,
+  options: TeamClientOptions,
+  request?: unknown,
+): Promise<Response> {
+  return fetchWithTimeout(
+    url,
+    {
+      method,
+      headers: request
+        ? {
+            ...(authHeaders(idToken) ?? {}),
+            "Content-Type": "application/json",
+          }
+        : authHeaders(idToken),
+      ...(request ? { body: JSON.stringify(request) } : {}),
+    },
+    { timeoutMs: options.timeoutMs },
+  );
+}
+
+async function parseTeamResponse<T>(
+  response: Response,
+  isValid: (value: unknown) => value is T,
+): Promise<T> {
+  return parseApiResponse(response, {
+    label: TEAM_API_LABEL,
+    isValid,
+    missingFieldsMessage: "Team API response was missing required fields",
+    toApiError: toTeamApiError,
+  });
 }
 
 function isRole(value: unknown): value is TeamRole {
@@ -129,25 +166,14 @@ export async function createTeam(
   request: TeamCreateRequest,
   options: TeamClientOptions = {},
 ): Promise<TeamRecord> {
-  const response = await fetchWithTimeout(
+  const response = await requestTeam(
     new URL(`${baseUrl}/v1/teams`),
-    {
-      method: "POST",
-      headers: {
-        ...(authHeaders(idToken) ?? {}),
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-    },
-    { timeoutMs: options.timeoutMs },
+    "POST",
+    idToken,
+    options,
+    request,
   );
-
-  return parseApiResponse(response, {
-    label: "Team API",
-    isValid: isTeamRecord,
-    missingFieldsMessage: "Team API response was missing required fields",
-    toApiError: toTeamApiError,
-  });
+  return parseTeamResponse(response, isTeamRecord);
 }
 
 export async function getTeam(
@@ -156,21 +182,13 @@ export async function getTeam(
   teamSlug: string,
   options: TeamClientOptions = {},
 ): Promise<TeamRecord> {
-  const response = await fetchWithTimeout(
+  const response = await requestTeam(
     new URL(`${baseUrl}/v1/teams/${encodeURIComponent(teamSlug)}`),
-    {
-      method: "GET",
-      headers: authHeaders(idToken),
-    },
-    { timeoutMs: options.timeoutMs },
+    "GET",
+    idToken,
+    options,
   );
-
-  return parseApiResponse(response, {
-    label: "Team API",
-    isValid: isTeamRecord,
-    missingFieldsMessage: "Team API response was missing required fields",
-    toApiError: toTeamApiError,
-  });
+  return parseTeamResponse(response, isTeamRecord);
 }
 
 export async function listTeamMembers(
@@ -179,21 +197,13 @@ export async function listTeamMembers(
   teamSlug: string,
   options: TeamClientOptions = {},
 ): Promise<TeamMembersResponse> {
-  const response = await fetchWithTimeout(
+  const response = await requestTeam(
     new URL(`${baseUrl}/v1/teams/${encodeURIComponent(teamSlug)}/members`),
-    {
-      method: "GET",
-      headers: authHeaders(idToken),
-    },
-    { timeoutMs: options.timeoutMs },
+    "GET",
+    idToken,
+    options,
   );
-
-  return parseApiResponse(response, {
-    label: "Team API",
-    isValid: isTeamMembersResponse,
-    missingFieldsMessage: "Team API response was missing required fields",
-    toApiError: toTeamApiError,
-  });
+  return parseTeamResponse(response, isTeamMembersResponse);
 }
 
 export async function addTeamMember(
@@ -203,25 +213,14 @@ export async function addTeamMember(
   request: TeamMemberAddRequest,
   options: TeamClientOptions = {},
 ): Promise<TeamMemberMutationResponse> {
-  const response = await fetchWithTimeout(
+  const response = await requestTeam(
     new URL(`${baseUrl}/v1/teams/${encodeURIComponent(teamSlug)}/members`),
-    {
-      method: "POST",
-      headers: {
-        ...(authHeaders(idToken) ?? {}),
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-    },
-    { timeoutMs: options.timeoutMs },
+    "POST",
+    idToken,
+    options,
+    request,
   );
-
-  const parsed = await parseApiResponse(response, {
-    label: "Team API",
-    isValid: isTeamMemberMutationWireResponse,
-    missingFieldsMessage: "Team API response was missing required fields",
-    toApiError: toTeamApiError,
-  });
+  const parsed = await parseTeamResponse(response, isTeamMemberMutationWireResponse);
   return toMemberMutationResponse(parsed);
 }
 
@@ -233,27 +232,16 @@ export async function updateTeamMemberRole(
   request: TeamMemberUpdateRequest,
   options: TeamClientOptions = {},
 ): Promise<TeamMemberMutationResponse> {
-  const response = await fetchWithTimeout(
+  const response = await requestTeam(
     new URL(
       `${baseUrl}/v1/teams/${encodeURIComponent(teamSlug)}/members/${encodeURIComponent(ownerLogin)}`,
     ),
-    {
-      method: "PATCH",
-      headers: {
-        ...(authHeaders(idToken) ?? {}),
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-    },
-    { timeoutMs: options.timeoutMs },
+    "PATCH",
+    idToken,
+    options,
+    request,
   );
-
-  const parsed = await parseApiResponse(response, {
-    label: "Team API",
-    isValid: isTeamMemberMutationWireResponse,
-    missingFieldsMessage: "Team API response was missing required fields",
-    toApiError: toTeamApiError,
-  });
+  const parsed = await parseTeamResponse(response, isTeamMemberMutationWireResponse);
   return toMemberMutationResponse(parsed);
 }
 
@@ -264,22 +252,14 @@ export async function removeTeamMember(
   ownerLogin: string,
   options: TeamClientOptions = {},
 ): Promise<TeamMemberMutationResponse> {
-  const response = await fetchWithTimeout(
+  const response = await requestTeam(
     new URL(
       `${baseUrl}/v1/teams/${encodeURIComponent(teamSlug)}/members/${encodeURIComponent(ownerLogin)}`,
     ),
-    {
-      method: "DELETE",
-      headers: authHeaders(idToken),
-    },
-    { timeoutMs: options.timeoutMs },
+    "DELETE",
+    idToken,
+    options,
   );
-
-  const parsed = await parseApiResponse(response, {
-    label: "Team API",
-    isValid: isTeamMemberMutationWireResponse,
-    missingFieldsMessage: "Team API response was missing required fields",
-    toApiError: toTeamApiError,
-  });
+  const parsed = await parseTeamResponse(response, isTeamMemberMutationWireResponse);
   return toMemberMutationResponse(parsed);
 }
