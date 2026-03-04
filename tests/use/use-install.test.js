@@ -141,28 +141,17 @@ test("installSkillArtifact replaces existing target atomically without writing m
       targetPath,
       tempRoot,
       archiveBytes,
-      metadata: {
-        skillId: "@owner/test-skill",
-        ownerLogin: "owner",
-        skill: "test-skill",
-        version: "1.2.3",
-        digest: "sha256:test",
-        sizeBytes: archiveBytes.length,
-        mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-        registryBaseUrl: "https://registry.example.com",
-        downloadedFrom: "https://storage.example.com/object",
-        installedAt: "2026-03-02T12:00:00.000Z",
-        sourceCommand: "skillmd use @owner/test-skill --version 1.2.3",
-        agentTarget: "skillmd",
-      },
     });
 
     assert.equal(fs.existsSync(path.join(targetPath, "SKILL.md")), true);
     assert.equal(fs.existsSync(path.join(targetPath, "scripts", "run.sh")), true);
     assert.equal(fs.existsSync(path.join(targetPath, "old.txt")), false);
 
-    const metadataPath = path.join(targetPath, ".skillmd-install.json");
-    await assert.rejects(() => fsp.readFile(metadataPath, "utf8"), { code: "ENOENT" });
+    const hiddenFiles = await fsp.readdir(targetPath);
+    assert.equal(
+      hiddenFiles.some((name) => name.endsWith(".json")),
+      false,
+    );
   } finally {
     cleanupDirectory(root);
   }
@@ -188,19 +177,6 @@ test("installSkillArtifact fails when SKILL.md is missing from archive root", as
         ),
         tempRoot: path.join(root, ".agent", ".tmp"),
         archiveBytes,
-        metadata: {
-          skillId: "@owner/bad-skill",
-          ownerLogin: "owner",
-          skill: "bad-skill",
-          version: "1.0.0",
-          digest: "sha256:test",
-          sizeBytes: archiveBytes.length,
-          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-          registryBaseUrl: "https://registry.example.com",
-          downloadedFrom: "https://storage.example.com/object",
-          installedAt: "2026-03-02T12:00:00.000Z",
-          sourceCommand: "skillmd use @owner/bad-skill --version 1.0.0",
-        },
       }),
       /SKILL\.md/i,
     );
@@ -229,19 +205,6 @@ test("installSkillArtifact fails when SKILL.md is a symlink", async () => {
         ),
         tempRoot: path.join(root, ".agent", ".tmp"),
         archiveBytes,
-        metadata: {
-          skillId: "@owner/symlink-skill",
-          ownerLogin: "owner",
-          skill: "symlink-skill",
-          version: "1.0.0",
-          digest: "sha256:test",
-          sizeBytes: archiveBytes.length,
-          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-          registryBaseUrl: "https://registry.example.com",
-          downloadedFrom: "https://storage.example.com/object",
-          installedAt: "2026-03-02T12:00:00.000Z",
-          sourceCommand: "skillmd use @owner/symlink-skill --version 1.0.0",
-        },
       }),
       /unsupported symboliclink entry/i,
     );
@@ -270,19 +233,6 @@ test("installSkillArtifact fails when archive contains non-SKILL symlink", async
         ),
         tempRoot: path.join(root, ".agent", ".tmp"),
         archiveBytes,
-        metadata: {
-          skillId: "@owner/symlinked-script",
-          ownerLogin: "owner",
-          skill: "symlinked-script",
-          version: "1.0.0",
-          digest: "sha256:test",
-          sizeBytes: archiveBytes.length,
-          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-          registryBaseUrl: "https://registry.example.com",
-          downloadedFrom: "https://storage.example.com/object",
-          installedAt: "2026-03-02T12:00:00.000Z",
-          sourceCommand: "skillmd use @owner/symlinked-script --version 1.0.0",
-        },
       }),
       /unsupported symboliclink entry/i,
     );
@@ -311,19 +261,6 @@ test("installSkillArtifact fails when archive contains hardlink entry", async ()
         ),
         tempRoot: path.join(root, ".agent", ".tmp"),
         archiveBytes,
-        metadata: {
-          skillId: "@owner/hardlink-skill",
-          ownerLogin: "owner",
-          skill: "hardlink-skill",
-          version: "1.0.0",
-          digest: "sha256:test",
-          sizeBytes: archiveBytes.length,
-          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-          registryBaseUrl: "https://registry.example.com",
-          downloadedFrom: "https://storage.example.com/object",
-          installedAt: "2026-03-02T12:00:00.000Z",
-          sourceCommand: "skillmd use @owner/hardlink-skill --version 1.0.0",
-        },
       }),
       /unsupported link entry/i,
     );
@@ -373,19 +310,6 @@ test("installSkillArtifact restores previous target if install swap fails", asyn
           targetPath,
           tempRoot,
           archiveBytes,
-          metadata: {
-            skillId: "@owner/restore-skill",
-            ownerLogin: "owner",
-            skill: "restore-skill",
-            version: "1.0.0",
-            digest: "sha256:test",
-            sizeBytes: archiveBytes.length,
-            mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-            registryBaseUrl: "https://registry.example.com",
-            downloadedFrom: "https://storage.example.com/object",
-            installedAt: "2026-03-02T12:00:00.000Z",
-            sourceCommand: "skillmd use @owner/restore-skill --version 1.0.0",
-          },
         },
         { fileOps },
       ),
@@ -442,19 +366,6 @@ test("installSkillArtifact surfaces restore failure details", async () => {
           targetPath,
           tempRoot,
           archiveBytes,
-          metadata: {
-            skillId: "@owner/broken-restore-skill",
-            ownerLogin: "owner",
-            skill: "broken-restore-skill",
-            version: "1.0.0",
-            digest: "sha256:test",
-            sizeBytes: archiveBytes.length,
-            mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-            registryBaseUrl: "https://registry.example.com",
-            downloadedFrom: "https://storage.example.com/object",
-            installedAt: "2026-03-02T12:00:00.000Z",
-            sourceCommand: "skillmd use @owner/broken-restore-skill --version 1.0.0",
-          },
         },
         { fileOps },
       ),

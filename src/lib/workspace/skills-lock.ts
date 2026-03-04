@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 
 import { normalizeAgentTarget, type AgentTarget } from "../shared/agent-target";
 
@@ -220,7 +221,7 @@ export async function saveSkillsLock(
   }
   const fileOps = { ...DEFAULT_DEPENDENCIES, ...dependencies };
   const path = resolveLockPath(cwd);
-  const tempPath = `${path}.tmp`;
+  const tempPath = `${path}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`;
   const payload = `${JSON.stringify(normalized, null, 2)}\n`;
 
   await fileOps.mkdir(cwd, { recursive: true });
