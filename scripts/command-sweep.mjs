@@ -238,6 +238,32 @@ function runStep({ state, name, args, cwd, env, skipReason = null }) {
   return finalized;
 }
 
+function runExpectedErrorStep({ state, name, args, cwd, env, expectedPattern, skipReason = null }) {
+  if (skipReason) {
+    const skipped = {
+      name,
+      args,
+      cwd,
+      exitCode: -1,
+      stdout: "",
+      stderr: skipReason,
+      combined: skipReason,
+      durationMs: 0,
+      status: "skipped",
+    };
+    printStep(skipped, state);
+    return skipped;
+  }
+
+  const raw = runCli({ env, cwd, args });
+  const matchedExpectedPattern = expectedPattern ? expectedPattern.test(raw.combined) : true;
+  const expectedFailureMatched = raw.exitCode !== 0 && matchedExpectedPattern;
+  const status = expectedFailureMatched ? "pass" : isAuthBlocked(raw.combined) ? "blocked" : "fail";
+  const finalized = { ...raw, name, status };
+  printStep(finalized, state);
+  return finalized;
+}
+
 function parseSearchResult(stdout) {
   let payload;
   try {
@@ -322,9 +348,13 @@ function runProfileSweep({
   const initDir = join(workspace, "init-verbose");
   const publishDir = join(workspace, `publish-skill-${Date.now()}`);
   const workDir = join(workspace, "work");
+  const edgeDir = join(workspace, "edge-cases");
+  const isolatedHomeDir = join(workspace, "isolated-home");
   mkdirSync(initDir, { recursive: true });
   mkdirSync(publishDir, { recursive: true });
   mkdirSync(workDir, { recursive: true });
+  mkdirSync(edgeDir, { recursive: true });
+  mkdirSync(isolatedHomeDir, { recursive: true });
 
   runStep({ state, name: "login-status", args: ["login", "--status"], cwd: ROOT_DIR, env });
   runStep({ state, name: "whoami", args: ["whoami", "--json"], cwd: ROOT_DIR, env });
@@ -386,6 +416,40 @@ function runProfileSweep({
     if (parsed) {
       readSkill.skillId = parsed.skillId;
       readSkill.latestVersion = parsed.latestVersion;
+    }
+  }
+
+  if (writeEnabled && !readSkill.skillId) {
+    const seedReadStep = runStep({
+      state,
+      name: "seed-read-skill",
+      args: [
+        "publish",
+        publishDir,
+        "--version",
+        "1.0.0",
+        "--tag",
+        "latest",
+        "--access",
+        "public",
+        "--agent-target",
+        "skillmd",
+        "--json",
+      ],
+      cwd: ROOT_DIR,
+      env,
+    });
+
+    if (seedReadStep.status === "pass") {
+      try {
+        const payload = JSON.parse(seedReadStep.stdout);
+        if (payload && typeof payload.skillId === "string" && typeof payload.version === "string") {
+          readSkill.skillId = payload.skillId;
+          readSkill.latestVersion = payload.version;
+        }
+      } catch {
+        // ignore parse failure; follow existing missing-read-skill behavior
+      }
     }
   }
 
@@ -511,6 +575,59 @@ function runProfileSweep({
     args: ["update", "--all", "--json"],
     cwd: workDir,
     env,
+  });
+
+  runStep({
+    state,
+    name: "logout-isolated",
+    args: ["logout"],
+    cwd: ROOT_DIR,
+    env: { ...env, HOME: isolatedHomeDir },
+  });
+
+  runExpectedErrorStep({
+    state,
+    name: "edge-install-missing-skills-json",
+    args: ["install"],
+    cwd: edgeDir,
+    env,
+    expectedPattern: /skills\.json not found in current directory/i,
+  });
+
+  runExpectedErrorStep({
+    state,
+    name: "edge-use-invalid-version",
+    args: ["use", "@stefdevscore/example", "--version", "1.0"],
+    cwd: ROOT_DIR,
+    env,
+    expectedPattern: /Usage: skillmd use/i,
+  });
+
+  runExpectedErrorStep({
+    state,
+    name: "edge-publish-invalid-access",
+    args: ["publish", publishDir, "--version", "1.0.0", "--access", "team"],
+    cwd: ROOT_DIR,
+    env,
+    expectedPattern: /Usage: skillmd publish/i,
+  });
+
+  runExpectedErrorStep({
+    state,
+    name: "edge-tag-add-semver-tag-rejected",
+    args: ["tag", "add", "@stefdevscore/example@1.0.0", "1.2.3"],
+    cwd: ROOT_DIR,
+    env,
+    expectedPattern: /Usage: skillmd tag/i,
+  });
+
+  runExpectedErrorStep({
+    state,
+    name: "edge-token-add-invalid-days",
+    args: ["token", "add", "edge-bad-days", "--days", "0"],
+    cwd: ROOT_DIR,
+    env,
+    expectedPattern: /Usage: skillmd token/i,
   });
 
   let ownedSkillId = null;
