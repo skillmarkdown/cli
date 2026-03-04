@@ -29,6 +29,12 @@ npm run sweep:commands:prod
 
 Run environments sequentially (not concurrently) to avoid auth/session drift.
 
+If local session/project context drifts while switching environments, re-authenticate:
+
+```bash
+skillmd login --reauth
+```
+
 ## Commit quality bar
 
 - `npm run lint` passes.

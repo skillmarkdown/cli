@@ -142,20 +142,6 @@ Token scope model:
 
 ## Troubleshooting
 
-### Session project mismatch
-
-Symptom:
-
-```text
-session project 'skillmarkdown' does not match current config 'skillmarkdown-development'
-```
-
-Fix:
-
-```bash
-skillmd login --reauth
-```
-
 ### Scope errors with automation token
 
 Symptom: `unauthorized` or `forbidden` on write commands.
