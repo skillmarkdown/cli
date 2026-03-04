@@ -19,6 +19,36 @@ interface WhoamiCommandOptions {
   ) => Promise<WhoamiResponse>;
 }
 
+function formatEntitlements(entitlements: WhoamiResponse["entitlements"]): string {
+  if (!entitlements || Object.keys(entitlements).length === 0) {
+    return "-";
+  }
+  return Object.entries(entitlements)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join(", ");
+}
+
+function printWhoamiHuman(result: WhoamiResponse): void {
+  console.log(`Owner: ${result.owner} (${result.ownerLogin})`);
+  console.log(`UID: ${result.uid}`);
+  console.log(`Auth: ${result.authType} (${result.scope})`);
+  console.log(`Project: ${result.projectId ?? "unknown"}`);
+  console.log(`Email: ${result.email ?? "-"}`);
+  if (result.plan) {
+    console.log(`Plan: ${result.plan}`);
+  }
+  if (result.entitlements) {
+    console.log(`Entitlements: ${formatEntitlements(result.entitlements)}`);
+  }
+  if (result.teams) {
+    console.log(`Teams: ${result.teams.length}`);
+    for (const membership of result.teams) {
+      console.log(`- ${membership.team} (${membership.role})`);
+    }
+  }
+}
+
 export async function runWhoamiCommand(
   args: string[],
   options: WhoamiCommandOptions = {},
@@ -46,11 +76,7 @@ export async function runWhoamiCommand(
     if (parsed.json) {
       printJson(result as unknown as Record<string, unknown>);
     } else {
-      console.log(`Owner: ${result.owner} (${result.ownerLogin})`);
-      console.log(`UID: ${result.uid}`);
-      console.log(`Auth: ${result.authType} (${result.scope})`);
-      console.log(`Project: ${result.projectId ?? "unknown"}`);
-      console.log(`Email: ${result.email ?? "-"}`);
+      printWhoamiHuman(result);
     }
     return 0;
   } catch (error) {

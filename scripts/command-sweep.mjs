@@ -435,6 +435,45 @@ function runProfileSweep({
   runStep({ state, name: "whoami", args: ["whoami", "--json"], cwd: ROOT_DIR, env });
   runStep({ state, name: "token-ls", args: ["token", "ls", "--json"], cwd: ROOT_DIR, env });
 
+  const teamSlug = pickFirstNonEmpty(process.env.SKILLMD_SWEEP_TEAM_SLUG)?.toLowerCase() ?? null;
+  const teamMemberLogin =
+    pickFirstNonEmpty(process.env.SKILLMD_SWEEP_TEAM_MEMBER_LOGIN)?.toLowerCase() ?? null;
+  const missingTeamReason = !teamSlug
+    ? "set SKILLMD_SWEEP_TEAM_SLUG='<team-slug>' to enable team command checks"
+    : null;
+  const missingTeamMemberReason =
+    !teamSlug || !teamMemberLogin
+      ? "set SKILLMD_SWEEP_TEAM_SLUG and SKILLMD_SWEEP_TEAM_MEMBER_LOGIN to enable team member mutation checks"
+      : null;
+
+  runStep({
+    state,
+    name: "team-view",
+    args: teamSlug ? ["team", "view", teamSlug, "--json"] : ["team", "view"],
+    cwd: ROOT_DIR,
+    env,
+    skipReason: missingTeamReason,
+  });
+  runStep({
+    state,
+    name: "team-members-ls",
+    args: teamSlug ? ["team", "members", "ls", teamSlug, "--json"] : ["team", "members", "ls"],
+    cwd: ROOT_DIR,
+    env,
+    skipReason: missingTeamReason,
+  });
+  runStep({
+    state,
+    name: "team-members-set-role",
+    args:
+      teamSlug && teamMemberLogin
+        ? ["team", "members", "set-role", teamSlug, teamMemberLogin, "member", "--json"]
+        : ["team", "members", "set-role"],
+    cwd: ROOT_DIR,
+    env,
+    skipReason: missingTeamMemberReason,
+  });
+
   runStep({
     state,
     name: "init-verbose",

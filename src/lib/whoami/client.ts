@@ -23,6 +23,30 @@ function isWhoamiResponse(value: unknown): value is WhoamiResponse {
   }
 
   const record = value as Record<string, unknown>;
+  const teamsValid =
+    record.teams === undefined ||
+    (Array.isArray(record.teams) &&
+      record.teams.every((entry) => {
+        if (!entry || typeof entry !== "object") {
+          return false;
+        }
+        const team = entry as Record<string, unknown>;
+        return (
+          typeof team.team === "string" &&
+          (team.role === "owner" || team.role === "admin" || team.role === "member")
+        );
+      }));
+  const entitlementsValid =
+    record.entitlements === undefined ||
+    (record.entitlements !== null &&
+      typeof record.entitlements === "object" &&
+      !Array.isArray(record.entitlements));
+  const planValid =
+    record.plan === undefined ||
+    record.plan === "free" ||
+    record.plan === "pro" ||
+    record.plan === "teams";
+
   return (
     typeof record.uid === "string" &&
     typeof record.owner === "string" &&
@@ -30,7 +54,10 @@ function isWhoamiResponse(value: unknown): value is WhoamiResponse {
     (typeof record.email === "string" || record.email === null) &&
     (typeof record.projectId === "string" || record.projectId === null) &&
     (record.authType === "firebase" || record.authType === "token") &&
-    (record.scope === "read" || record.scope === "publish" || record.scope === "admin")
+    (record.scope === "read" || record.scope === "publish" || record.scope === "admin") &&
+    planValid &&
+    entitlementsValid &&
+    teamsValid
   );
 }
 
