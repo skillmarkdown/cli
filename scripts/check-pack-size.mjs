@@ -1,69 +1,9 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
+import { hasPackedFile, parsePackJson, summarizeByTopLevel } from "./check-pack-size-lib.mjs";
 
-const MAX_UNPACKED_BYTES = 235_000;
-
-function tryParsePackPayload(candidate) {
-  try {
-    const parsed = JSON.parse(candidate);
-    if (!Array.isArray(parsed) || parsed.length === 0 || !parsed[0]) {
-      return null;
-    }
-
-    const first = parsed[0];
-    if (!first || typeof first !== "object") {
-      return null;
-    }
-
-    return first;
-  } catch {
-    return null;
-  }
-}
-
-function parsePackJson(output) {
-  const direct = tryParsePackPayload(output.trim());
-  if (direct) {
-    return direct;
-  }
-
-  let cursor = output.length;
-  while (cursor > 0) {
-    const start = output.lastIndexOf("[", cursor - 1);
-    if (start < 0) {
-      break;
-    }
-
-    const parsed = tryParsePackPayload(output.slice(start).trim());
-    if (parsed) {
-      return parsed;
-    }
-
-    cursor = start;
-  }
-
-  throw new Error("npm pack --json did not return parseable JSON output");
-}
-
-function summarizeByTopLevel(files) {
-  const byGroup = new Map();
-
-  for (const file of files) {
-    const filePath = typeof file.path === "string" ? file.path : "<unknown>";
-    const size = typeof file.size === "number" ? file.size : 0;
-
-    let group = filePath;
-    if (filePath.includes("/")) {
-      const [head, tail] = filePath.split("/", 2);
-      group = head === "dist" && tail ? `dist/${tail.split("/")[0]}` : head;
-    }
-
-    byGroup.set(group, (byGroup.get(group) ?? 0) + size);
-  }
-
-  return [...byGroup.entries()].sort((a, b) => b[1] - a[1]);
-}
+const MAX_UNPACKED_BYTES = 130_000;
 
 function formatBytes(value) {
   return `${value.toLocaleString("en-US")} B`;
@@ -78,6 +18,11 @@ const payload = parsePackJson(raw);
 const unpackedSize = typeof payload.unpackedSize === "number" ? payload.unpackedSize : 0;
 const packedSize = typeof payload.size === "number" ? payload.size : 0;
 const files = Array.isArray(payload.files) ? payload.files : [];
+if (!hasPackedFile(files, "dist/cli.js")) {
+  console.error("Pack size check failed: npm pack output does not contain dist/cli.js.");
+  console.error("Run 'npm run build' before running check:pack-size.");
+  process.exit(1);
+}
 
 console.log(`Packed size: ${formatBytes(packedSize)}`);
 console.log(
@@ -90,6 +35,13 @@ if (grouped.length > 0) {
   for (const [group, size] of grouped) {
     console.log(`- ${group}: ${formatBytes(size)}`);
   }
+}
+
+const delta = unpackedSize - MAX_UNPACKED_BYTES;
+if (delta <= 0) {
+  console.log(`Delta to limit: ${formatBytes(Math.abs(delta))} under.`);
+} else {
+  console.log(`Delta to limit: ${formatBytes(delta)} over.`);
 }
 
 if (unpackedSize > MAX_UNPACKED_BYTES) {

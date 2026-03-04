@@ -1,45 +1,14 @@
-import { valid as isValidSemver, validRange as asValidSemverRange } from "semver";
 import { type ParsedTagFlags } from "./types";
-
-const TAG_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
-const SEMVER_PATTERN = new RegExp(
-  "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)" +
-    "(?:-([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?" +
-    "(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$",
-);
+import { isCanonicalSemver } from "../shared/semver";
+import { splitSkillAndSelector } from "../shared/skill-selector";
+import { parseStrictDistTag } from "../shared/tag-validation";
 
 function splitSkillAndVersion(value: string): { skillId: string; version: string } | null {
-  const separator = value.lastIndexOf("@");
-  if (separator <= 0 || separator === value.length - 1) {
+  const split = splitSkillAndSelector(value);
+  if (!split || !isCanonicalSemver(split.selector)) {
     return null;
   }
-
-  const skillId = value.slice(0, separator);
-  const version = value.slice(separator + 1);
-  if (!skillId || !version || !SEMVER_PATTERN.test(version)) {
-    return null;
-  }
-
-  return {
-    skillId,
-    version,
-  };
-}
-
-function parseTag(value: string): string | null {
-  if (!TAG_PATTERN.test(value)) {
-    return null;
-  }
-
-  if (isValidSemver(value)) {
-    return null;
-  }
-
-  if (asValidSemverRange(value)) {
-    return null;
-  }
-
-  return value;
+  return { skillId: split.skillId, version: split.selector };
 }
 
 export function parseTagFlags(args: string[]): ParsedTagFlags {
@@ -86,7 +55,7 @@ export function parseTagFlags(args: string[]): ParsedTagFlags {
     }
 
     const skillWithVersion = splitSkillAndVersion(positional[1]);
-    const tag = parseTag(positional[2]);
+    const tag = parseStrictDistTag(positional[2]);
     if (!skillWithVersion || !tag) {
       return { valid: false, json: false };
     }
@@ -106,7 +75,7 @@ export function parseTagFlags(args: string[]): ParsedTagFlags {
       return { valid: false, json: false };
     }
 
-    const tag = parseTag(positional[2]);
+    const tag = parseStrictDistTag(positional[2]);
     if (!tag) {
       return { valid: false, json: false };
     }

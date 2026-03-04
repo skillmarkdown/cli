@@ -7,6 +7,7 @@ import { build } from "esbuild";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outFile = resolve(repoRoot, "dist", "cli.js");
+const debugBuild = process.argv.includes("--debug");
 
 mkdirSync(dirname(outFile), { recursive: true });
 
@@ -19,7 +20,7 @@ await build({
   target: ["node18"],
   external: ["tar", "yaml", "semver"],
   legalComments: "none",
-  minify: false,
+  minify: !debugBuild,
   sourcemap: false,
   logLevel: "info",
 });

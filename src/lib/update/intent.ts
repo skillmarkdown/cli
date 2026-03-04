@@ -1,4 +1,5 @@
 import { type SkillsLockEntry, type UpdateIntentResolution } from "./types";
+import { isCanonicalSemver } from "../shared/semver";
 
 function asVersionSelector(value: string): UpdateIntentResolution {
   return {
@@ -18,12 +19,9 @@ function asSpecSelector(value: string): UpdateIntentResolution {
   };
 }
 
-const SEMVER_PATTERN =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
-
 export function resolveUpdateIntent(metadata: SkillsLockEntry | null): UpdateIntentResolution {
   const selectorSpec = metadata?.selectorSpec?.trim() || "latest";
-  if (SEMVER_PATTERN.test(selectorSpec)) {
+  if (isCanonicalSemver(selectorSpec)) {
     return asVersionSelector(selectorSpec);
   }
   return asSpecSelector(selectorSpec);

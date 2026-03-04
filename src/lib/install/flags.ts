@@ -1,7 +1,9 @@
 import { normalizeAgentTarget } from "../shared/agent-target";
+import { parseOptionValue } from "../shared/flag-parse";
 import { type InstallFlags } from "./types";
 
 export function parseInstallFlags(args: string[]): InstallFlags {
+  const invalid = (): InstallFlags => ({ prune: false, json: false, valid: false });
   let prune = false;
   let json = false;
   let agentTarget: InstallFlags["agentTarget"];
@@ -19,30 +21,18 @@ export function parseInstallFlags(args: string[]): InstallFlags {
       continue;
     }
 
-    if (arg === "--agent-target") {
-      const value = args[index + 1];
-      if (!value || value.startsWith("-")) {
-        return { prune: false, json: false, valid: false };
-      }
-      const parsedTarget = normalizeAgentTarget(value);
+    const parsedTargetValue = parseOptionValue(args, index, "agent-target");
+    if (parsedTargetValue.matched) {
+      const parsedTarget = normalizeAgentTarget(parsedTargetValue.value ?? "");
       if (!parsedTarget) {
-        return { prune: false, json: false, valid: false };
+        return invalid();
       }
       agentTarget = parsedTarget;
-      index += 1;
+      index = parsedTargetValue.nextIndex;
       continue;
     }
 
-    if (arg.startsWith("--agent-target=")) {
-      const parsedTarget = normalizeAgentTarget(arg.slice("--agent-target=".length));
-      if (!parsedTarget) {
-        return { prune: false, json: false, valid: false };
-      }
-      agentTarget = parsedTarget;
-      continue;
-    }
-
-    return { prune: false, json: false, valid: false };
+    return invalid();
   }
 
   return {

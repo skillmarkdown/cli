@@ -15,9 +15,12 @@
   "main": "dist/cli.js",
   "scripts": {
     "build": "npm run clean && npm run typecheck && node scripts/build-bundle.mjs && node scripts/ensure-cli-executable.mjs",
+    "build:debug": "npm run clean && npm run typecheck && node scripts/build-bundle.mjs --debug && node scripts/ensure-cli-executable.mjs",
     "build:test": "npm run clean && tsc -p tsconfig.json && node scripts/build-bundle.mjs && node scripts/ensure-cli-executable.mjs",
+    "check:src-loc": "node scripts/check-src-loc.mjs",
+    "check:unused": "tsc -p tsconfig.json --noEmit --noUnusedLocals --noUnusedParameters",
     "check:pack-size": "node scripts/check-pack-size.mjs",
-    "ci:check": "npm run format:check && npm run lint && npm test && npm run check:pack-size",
+    "ci:check": "npm run format:check && npm run lint && npm run check:unused && npm run check:src-loc && npm test && npm run check:pack-size",
     "clean": "rm -rf dist",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

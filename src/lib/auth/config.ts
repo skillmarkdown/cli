@@ -10,37 +10,32 @@ export interface LoginEnvConfig {
   firebaseProjectId: string;
 }
 
-const USER_ENV_RELATIVE_PATH = ".skillmd/.env";
-
 interface LoginConfigOptions {
   homeDir?: string;
   executionPath?: string;
   cwd?: string;
 }
 
+const USER_ENV_RELATIVE_PATH = ".skillmd/.env";
 const LOCAL_DEV_DEFAULT_PROJECT_ID = "skillmarkdown-development";
 const CLI_PACKAGE_NAME = "@skillmarkdown/cli";
 const CLI_SCRIPT_BASENAME = "cli.js";
 
 function parseDotEnv(content: string): Record<string, string> {
   const values: Record<string, string> = {};
-
   for (const rawLine of content.split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line || line.startsWith("#")) {
       continue;
     }
-
     const equalIndex = line.indexOf("=");
     if (equalIndex <= 0) {
       continue;
     }
-
     const key = line.slice(0, equalIndex).trim();
     if (!key) {
       continue;
     }
-
     let value = line.slice(equalIndex + 1).trim();
     if (
       (value.startsWith('"') && value.endsWith('"')) ||
@@ -48,45 +43,23 @@ function parseDotEnv(content: string): Record<string, string> {
     ) {
       value = value.slice(1, -1);
     }
-
     values[key] = value;
   }
-
   return values;
 }
 
-function loadDotEnv(dotEnvPath: string): Record<string, string> {
-  if (!existsSync(dotEnvPath)) {
+function loadDotEnv(path: string): Record<string, string> {
+  if (!existsSync(path)) {
     return {};
   }
-
   try {
-    return parseDotEnv(readFileSync(dotEnvPath, "utf8"));
+    return parseDotEnv(readFileSync(path, "utf8"));
   } catch {
     return {};
   }
 }
 
-function pickValue(...candidates: Array<string | undefined>): string | undefined {
-  for (const candidate of candidates) {
-    if (candidate && candidate.trim()) {
-      return candidate.trim();
-    }
-  }
-
-  return undefined;
-}
-
-function resolveExecutionPath(executionPath: string): string {
-  const resolved = resolve(executionPath);
-  try {
-    return realpathSync(resolved);
-  } catch {
-    return resolved;
-  }
-}
-
-function normalizePath(pathValue: string): string {
+function resolveRealPath(pathValue: string): string {
   const resolved = resolve(pathValue);
   try {
     return realpathSync(resolved);
@@ -95,14 +68,14 @@ function normalizePath(pathValue: string): string {
   }
 }
 
-function readPackageName(packageJsonPath: string): string | undefined {
-  try {
-    const raw = readFileSync(packageJsonPath, "utf8");
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return typeof parsed.name === "string" ? parsed.name : undefined;
-  } catch {
-    return undefined;
+function firstNonEmpty(...candidates: Array<string | undefined>): string | undefined {
+  for (const candidate of candidates) {
+    const trimmed = candidate?.trim();
+    if (trimmed) {
+      return trimmed;
+    }
   }
+  return undefined;
 }
 
 function resolveDefaultProjectId(options: LoginConfigOptions = {}): string {
@@ -111,7 +84,7 @@ function resolveDefaultProjectId(options: LoginConfigOptions = {}): string {
     return DEFAULT_LOGIN_AUTH_CONFIG.firebaseProjectId;
   }
 
-  const scriptPath = resolveExecutionPath(executionPath);
+  const scriptPath = resolveRealPath(executionPath);
   if (basename(scriptPath) !== CLI_SCRIPT_BASENAME) {
     return DEFAULT_LOGIN_AUTH_CONFIG.firebaseProjectId;
   }
@@ -122,26 +95,33 @@ function resolveDefaultProjectId(options: LoginConfigOptions = {}): string {
     return DEFAULT_LOGIN_AUTH_CONFIG.firebaseProjectId;
   }
 
-  const packageName = readPackageName(packageJsonPath);
-  if (packageName !== CLI_PACKAGE_NAME) {
+  let packageName: string | undefined;
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { name?: unknown };
+    packageName = typeof packageJson.name === "string" ? packageJson.name : undefined;
+  } catch {
+    packageName = undefined;
+  }
+
+  const isLocalCheckout =
+    packageName === CLI_PACKAGE_NAME &&
+    existsSync(join(packageRoot, "src")) &&
+    existsSync(join(packageRoot, "tsconfig.json"));
+
+  if (!isLocalCheckout) {
     return DEFAULT_LOGIN_AUTH_CONFIG.firebaseProjectId;
   }
 
-  const looksLikeLocalCheckout =
-    existsSync(join(packageRoot, "src")) && existsSync(join(packageRoot, "tsconfig.json"));
-
-  if (!looksLikeLocalCheckout) {
-    return DEFAULT_LOGIN_AUTH_CONFIG.firebaseProjectId;
-  }
-
-  const cwd = normalizePath(options.cwd ?? process.cwd());
-  const normalizedPackageRoot = normalizePath(packageRoot);
-  const isRunningInsideLocalCheckout =
-    cwd === normalizedPackageRoot || cwd.startsWith(`${normalizedPackageRoot}${sep}`);
-
-  return isRunningInsideLocalCheckout
+  const normalizedPackageRoot = resolveRealPath(packageRoot);
+  const normalizedCwd = resolveRealPath(options.cwd ?? process.cwd());
+  return normalizedCwd === normalizedPackageRoot ||
+    normalizedCwd.startsWith(`${normalizedPackageRoot}${sep}`)
     ? LOCAL_DEV_DEFAULT_PROJECT_ID
     : DEFAULT_LOGIN_AUTH_CONFIG.firebaseProjectId;
+}
+
+export function getDefaultUserEnvPath(options: LoginConfigOptions = {}): string {
+  return join(options.homeDir ?? homedir(), USER_ENV_RELATIVE_PATH);
 }
 
 export function getLoginEnvConfig(
@@ -149,35 +129,25 @@ export function getLoginEnvConfig(
   options: LoginConfigOptions = {},
 ): LoginEnvConfig {
   const dotEnv = loadDotEnv(getDefaultUserEnvPath(options));
-  const defaultProjectId = resolveDefaultProjectId(options);
-
-  const githubClientId = pickValue(
+  const githubClientId = firstNonEmpty(
     env.SKILLMD_GITHUB_CLIENT_ID,
     dotEnv.SKILLMD_GITHUB_CLIENT_ID,
     DEFAULT_LOGIN_AUTH_CONFIG.githubClientId,
   );
-  const firebaseApiKey = pickValue(
+  const firebaseApiKey = firstNonEmpty(
     env.SKILLMD_FIREBASE_API_KEY,
     dotEnv.SKILLMD_FIREBASE_API_KEY,
     DEFAULT_LOGIN_AUTH_CONFIG.firebaseApiKey,
   );
-  const firebaseProjectId = pickValue(
+  const firebaseProjectId = firstNonEmpty(
     env.SKILLMD_FIREBASE_PROJECT_ID,
     dotEnv.SKILLMD_FIREBASE_PROJECT_ID,
-    defaultProjectId,
+    resolveDefaultProjectId(options),
   );
 
   if (!githubClientId || !firebaseApiKey || !firebaseProjectId) {
     throw new Error("missing login configuration");
   }
 
-  return {
-    githubClientId,
-    firebaseApiKey,
-    firebaseProjectId,
-  };
-}
-
-export function getDefaultUserEnvPath(options: LoginConfigOptions = {}): string {
-  return join(options.homeDir ?? homedir(), USER_ENV_RELATIVE_PATH);
+  return { githubClientId, firebaseApiKey, firebaseProjectId };
 }

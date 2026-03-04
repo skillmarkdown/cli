@@ -2,6 +2,7 @@ import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/rea
 import { failWithUsage } from "../lib/shared/command-output";
 import { WHOAMI_USAGE } from "../lib/shared/cli-text";
 import { getLoginScopedRegistryEnvConfig } from "../lib/shared/env-config";
+import { printJson } from "../lib/shared/json-output";
 import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
 import { isWhoamiApiError } from "../lib/whoami/errors";
 import { parseWhoamiFlags } from "../lib/whoami/flags";
@@ -16,10 +17,6 @@ interface WhoamiCommandOptions {
     idToken: string,
     options?: { timeoutMs?: number },
   ) => Promise<WhoamiResponse>;
-}
-
-function printJson(payload: Record<string, unknown>): void {
-  console.log(JSON.stringify(payload, null, 2));
 }
 
 export async function runWhoamiCommand(

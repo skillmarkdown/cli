@@ -9,6 +9,7 @@ npm ci
 npm run lint
 npm test
 npm run build
+npm run check:src-loc
 npm run check:pack-size
 ```
 
@@ -41,7 +42,8 @@ skillmd login --reauth
 - `npm run lint` passes.
 - `npm test` passes.
 - `npm run build` passes.
-- `npm run check:pack-size` passes (`<= 235,000` unpacked bytes).
+- `npm run check:src-loc` passes (`<= 9,200` estimated code lines in `src`).
+- `npm run check:pack-size` passes (`<= 130,000` unpacked bytes).
 - Docs are updated for user-facing changes.
 
 ## Reporting issues in PRs

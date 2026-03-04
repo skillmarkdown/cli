@@ -1,5 +1,6 @@
 import { basename, resolve } from "node:path";
 
+import { deriveOwnerFromSession } from "../lib/auth/owner";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
 import { resolveConfiguredAuthToken } from "../lib/auth/api-token";
@@ -22,6 +23,7 @@ import {
 import { PUBLISH_USAGE } from "../lib/shared/cli-text";
 import { DEFAULT_AGENT_TARGET } from "../lib/shared/agent-target";
 import { failWithUsage, printValidationResult } from "../lib/shared/command-output";
+import { printJson } from "../lib/shared/json-output";
 import { type ValidationResult, validateSkill } from "../lib/validation/validator";
 
 interface PublishCommandOptions {
@@ -77,25 +79,6 @@ interface PublishCommandOptions {
     payload: { publishToken: string },
     options?: { timeoutMs?: number },
   ) => Promise<CommitPublishResponse>;
-}
-
-const GITHUB_USERNAME_PATTERN = /^[a-z0-9]+(?:-?[a-z0-9]+)*$/i;
-
-function printJson(payload: Record<string, unknown>): void {
-  console.log(JSON.stringify(payload, null, 2));
-}
-
-function deriveOwnerFromSession(session: AuthSession): string | null {
-  if (!session.githubUsername) {
-    return null;
-  }
-
-  const cleaned = session.githubUsername.trim().replace(/^@+/, "");
-  if (!cleaned || !GITHUB_USERNAME_PATTERN.test(cleaned)) {
-    return null;
-  }
-
-  return `@${cleaned.toLowerCase()}`;
 }
 
 function printDryRunResult(

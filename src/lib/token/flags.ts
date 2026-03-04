@@ -1,4 +1,5 @@
 import { type ParsedTokenFlags, type TokenScope } from "./types";
+import { parseIntInRange, parseOptionValue } from "../shared/flag-parse";
 
 const DEFAULT_SCOPE: TokenScope = "publish";
 const DEFAULT_DAYS = 30;
@@ -65,26 +66,23 @@ export function parseTokenFlags(args: string[]): ParsedTokenFlags {
         json = true;
         continue;
       }
-      if (current === "--scope") {
-        const next = args[index + 1];
-        if (!next || !isScope(next)) {
+      const scopeOption = parseOptionValue(args, index, "scope");
+      if (scopeOption.matched) {
+        if (!scopeOption.value || !isScope(scopeOption.value)) {
           return { valid: false, json: false };
         }
-        scope = next;
-        index += 1;
+        scope = scopeOption.value;
+        index = scopeOption.nextIndex;
         continue;
       }
-      if (current === "--days") {
-        const next = args[index + 1];
-        if (!next || !/^\d+$/u.test(next)) {
-          return { valid: false, json: false };
-        }
-        const parsedDays = Number.parseInt(next, 10);
-        if (parsedDays < MIN_DAYS || parsedDays > MAX_DAYS) {
+      const daysOption = parseOptionValue(args, index, "days");
+      if (daysOption.matched) {
+        const parsedDays = parseIntInRange(daysOption.value ?? "", MIN_DAYS, MAX_DAYS);
+        if (parsedDays === null) {
           return { valid: false, json: false };
         }
         days = parsedDays;
-        index += 1;
+        index = daysOption.nextIndex;
         continue;
       }
       return { valid: false, json: false };

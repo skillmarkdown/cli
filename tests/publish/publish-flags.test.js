@@ -53,6 +53,8 @@ for (const args of [
   [],
   ["--version", "1.2"],
   ["--version", "1.2.3", "--tag", "UPPER"],
+  ["--version", "1.2.3", "--tag", "1.2.3"],
+  ["--version", "1.2.3", "--tag", "^1.2.0"],
   ["--version", "1.2.3", "--access", "team"],
   ["--version", "1.2.3", "--agent-target", "custom:UPPER"],
   ["--version", "1.2.3", "--oops"],

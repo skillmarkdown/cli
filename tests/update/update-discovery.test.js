@@ -3,15 +3,13 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { requireDist } = require("../helpers/dist-imports.js");
 const { makeTempDirectory, cleanupDirectory } = require("../helpers/fs-test-utils.js");
-
 const {
   discoverInstalledSkills,
   discoverInstalledSkillsAcrossTargets,
   readInstalledSkillMetadata,
   toInstalledSkillTarget,
-} = requireDist("lib/update/discovery.js");
+} = require("../helpers/update-discovery-helper.js");
 
 const TEST_PREFIX = "skillmd-update-discovery-";
 

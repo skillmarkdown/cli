@@ -33,7 +33,7 @@ export async function parseJsonOrThrow<T>(response: Response, label: string): Pr
 }
 
 export function extractApiErrorFields(
-  status: number,
+  _status: number,
   payload: ApiErrorPayload,
   fallbackMessage: string,
 ): ApiErrorFields {

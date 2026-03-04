@@ -1,23 +1,10 @@
 import { normalizeAgentTarget } from "../shared/agent-target";
+import { parseOptionValue } from "../shared/flag-parse";
+import { isCanonicalSemver } from "../shared/semver";
 import { type UseFlags } from "./types";
 
-const SEMVER_PATTERN =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
-
-function parseValueArg(args: string[], index: number): { value?: string; nextIndex: number } {
-  const value = args[index + 1];
-  if (!value || value.startsWith("-")) {
-    return { nextIndex: index };
-  }
-
-  return { value, nextIndex: index + 1 };
-}
-
-function isValidSemver(value: string): boolean {
-  return SEMVER_PATTERN.test(value);
-}
-
 export function parseUseFlags(args: string[]): UseFlags {
+  const invalid = (): UseFlags => ({ json: false, valid: false });
   let skillId: string | undefined;
   let version: string | undefined;
   let spec: string | undefined;
@@ -32,85 +19,50 @@ export function parseUseFlags(args: string[]): UseFlags {
       continue;
     }
 
-    if (arg === "--version") {
-      const parsed = parseValueArg(args, index);
-      if (!parsed.value || !isValidSemver(parsed.value)) {
-        return { json: false, valid: false };
+    const parsedVersion = parseOptionValue(args, index, "version");
+    if (parsedVersion.matched) {
+      if (!parsedVersion.value || !isCanonicalSemver(parsedVersion.value)) {
+        return invalid();
       }
-
-      version = parsed.value;
-      index = parsed.nextIndex;
+      version = parsedVersion.value;
+      index = parsedVersion.nextIndex;
       continue;
     }
 
-    if (arg.startsWith("--version=")) {
-      const parsedVersion = arg.slice("--version=".length);
-      if (!isValidSemver(parsedVersion)) {
-        return { json: false, valid: false };
+    const parsedSpec = parseOptionValue(args, index, "spec");
+    if (parsedSpec.matched) {
+      if (!parsedSpec.value) {
+        return invalid();
       }
-
-      version = parsedVersion;
+      spec = parsedSpec.value;
+      index = parsedSpec.nextIndex;
       continue;
     }
 
-    if (arg === "--spec") {
-      const parsed = parseValueArg(args, index);
-      if (!parsed.value) {
-        return { json: false, valid: false };
-      }
-
-      spec = parsed.value;
-      index = parsed.nextIndex;
-      continue;
-    }
-
-    if (arg.startsWith("--spec=")) {
-      const parsedSpec = arg.slice("--spec=".length);
-      if (!parsedSpec) {
-        return { json: false, valid: false };
-      }
-      spec = parsedSpec;
-      continue;
-    }
-
-    if (arg === "--agent-target") {
-      const parsed = parseValueArg(args, index);
-      if (!parsed.value) {
-        return { json: false, valid: false };
-      }
-      const parsedTarget = normalizeAgentTarget(parsed.value);
+    const parsedTargetValue = parseOptionValue(args, index, "agent-target");
+    if (parsedTargetValue.matched) {
+      const parsedTarget = normalizeAgentTarget(parsedTargetValue.value ?? "");
       if (!parsedTarget) {
-        return { json: false, valid: false };
+        return invalid();
       }
-
       agentTarget = parsedTarget;
-      index = parsed.nextIndex;
-      continue;
-    }
-
-    if (arg.startsWith("--agent-target=")) {
-      const parsedTarget = normalizeAgentTarget(arg.slice("--agent-target=".length));
-      if (!parsedTarget) {
-        return { json: false, valid: false };
-      }
-
-      agentTarget = parsedTarget;
+      index = parsedTargetValue.nextIndex;
       continue;
     }
 
     if (arg.startsWith("-")) {
-      return { json: false, valid: false };
+      return invalid();
     }
 
     if (skillId) {
-      return { json: false, valid: false };
+      return invalid();
     }
 
     skillId = arg;
   }
 
   if (!skillId || (version && spec)) {
-    return { json: false, valid: false };
+    return invalid();
   }
 
   return {

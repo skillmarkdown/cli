@@ -1,5 +1,6 @@
-import { searchSkills } from "../lib/search/client";
+import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 import { getRegistryEnvConfig, type RegistryEnvConfig } from "../lib/registry/config";
+import { searchSkills } from "../lib/search/client";
 import { isSearchApiError } from "../lib/search/errors";
 import { parseSearchFlags } from "../lib/search/flags";
 import {
@@ -8,19 +9,11 @@ import {
   writeSearchSelectionCache,
   type SearchSelectionCache,
 } from "../lib/search/selection-cache";
+import { type SearchSkillsResponse } from "../lib/search/types";
 import { SEARCH_USAGE } from "../lib/shared/cli-text";
 import { failWithUsage } from "../lib/shared/command-output";
+import { printJson } from "../lib/shared/json-output";
 import { renderTable } from "../lib/shared/table";
-import { type SearchSkillsResponse } from "../lib/search/types";
-import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
-
-interface IndexedSearchResult {
-  index: number;
-  skillId: string;
-  distTags: Record<string, string>;
-  updatedAt: string;
-  description: string;
-}
 
 interface SearchCommandOptions {
   env?: NodeJS.ProcessEnv;
@@ -35,104 +28,94 @@ interface SearchCommandOptions {
   resolveReadIdToken?: () => Promise<string | null>;
 }
 
-function printJson(payload: Record<string, unknown>): void {
-  console.log(JSON.stringify(payload, null, 2));
-}
+const MAX_CONTINUATIONS = 100;
 
 function formatUpdatedAtForTable(value: string): string {
   const isoPrefix = value.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
   if (isoPrefix) {
     return isoPrefix[1];
   }
-
   const parsed = new Date(value);
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed.toISOString().slice(0, 16);
-  }
-
-  return value;
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString().slice(0, 16);
 }
 
-function printHumanResults(
-  query: string | undefined,
-  limit: number | undefined,
-  scope: "public" | "private",
-  startIndex: number,
-  payload: SearchSkillsResponse,
-) {
-  const maxWidth = process.stdout.isTTY ? (process.stdout.columns ?? 120) : undefined;
-
+function renderSearchResults(startIndex: number, payload: SearchSkillsResponse): void {
   if (payload.results.length === 0) {
     console.log("No skills found.");
-  } else {
-    const lastVisibleIndex = startIndex + payload.results.length - 1;
-    const indexedResults: IndexedSearchResult[] = payload.results.map((result, rowIndex) => ({
-      index: startIndex + rowIndex,
-      skillId: result.skillId,
-      distTags: result.distTags ?? {},
-      updatedAt: result.updatedAt,
-      description: result.description,
-    }));
-
-    const lines = renderTable(
-      [
-        {
-          header: "#",
-          width: Math.max(2, String(lastVisibleIndex).length),
-          align: "right",
-          value: (row) => row.index,
-        },
-        {
-          header: "SKILL",
-          minWidth: 28,
-          maxWidth: 48,
-          shrinkPriority: 0,
-          wrap: true,
-          maxLines: 3,
-          value: (row) => row.skillId,
-        },
-        {
-          header: "LATEST",
-          width: 10,
-          value: (row) => row.distTags.latest ?? "-",
-        },
-        {
-          header: "UPDATED",
-          width: 16,
-          minWidth: 16,
-          value: (row) => formatUpdatedAtForTable(row.updatedAt),
-        },
-        {
-          header: "DESCRIPTION",
-          minWidth: 12,
-          maxWidth: 64,
-          shrinkPriority: 5,
-          value: (row) => row.description ?? "",
-        },
-      ],
-      indexedResults,
-      { maxWidth },
-    );
-
-    for (const line of lines) {
-      console.log(line);
-    }
+    return;
   }
 
-  if (payload.nextCursor) {
-    const parts = ["skillmd search"];
-    if (query) {
-      parts.push(query);
-    }
-    if (limit) {
-      parts.push("--limit", String(limit));
-    }
-    if (scope === "private") {
-      parts.push("--scope", "private");
-    }
-    parts.push("--cursor", payload.nextCursor);
-    console.log(`Next page: ${parts.join(" ")}`);
+  const maxWidth = process.stdout.isTTY ? (process.stdout.columns ?? 120) : undefined;
+  const lastVisibleIndex = startIndex + payload.results.length - 1;
+  const indexedResults = payload.results.map((result, rowIndex) => ({
+    index: startIndex + rowIndex,
+    skillId: result.skillId,
+    distTags: result.distTags ?? {},
+    updatedAt: result.updatedAt,
+    description: result.description,
+  }));
+
+  for (const line of renderTable(
+    [
+      {
+        header: "#",
+        width: Math.max(2, String(lastVisibleIndex).length),
+        align: "right",
+        value: (row) => row.index,
+      },
+      {
+        header: "SKILL",
+        minWidth: 28,
+        maxWidth: 48,
+        shrinkPriority: 0,
+        wrap: true,
+        maxLines: 3,
+        value: (row) => row.skillId,
+      },
+      {
+        header: "LATEST",
+        width: 10,
+        value: (row) => row.distTags.latest ?? "-",
+      },
+      {
+        header: "UPDATED",
+        width: 16,
+        minWidth: 16,
+        value: (row) => formatUpdatedAtForTable(row.updatedAt),
+      },
+      {
+        header: "DESCRIPTION",
+        minWidth: 12,
+        maxWidth: 64,
+        shrinkPriority: 5,
+        value: (row) => row.description ?? "",
+      },
+    ],
+    indexedResults,
+    { maxWidth },
+  )) {
+    console.log(line);
   }
+}
+
+function printNextPageHint(params: {
+  query: string | undefined;
+  limit: number | undefined;
+  scope: "public" | "private";
+  nextCursor: string;
+}): void {
+  const parts = ["skillmd", "search"];
+  if (params.query) {
+    parts.push(params.query);
+  }
+  if (params.limit) {
+    parts.push("--limit", String(params.limit));
+  }
+  if (params.scope === "private") {
+    parts.push("--scope", "private");
+  }
+  parts.push("--cursor", params.nextCursor);
+  console.log(`Next page: ${parts.join(" ")}`);
 }
 
 function resolvePageStartIndex(params: {
@@ -146,7 +129,6 @@ function resolvePageStartIndex(params: {
   if (!params.cursor || !params.cache?.continuations?.length) {
     return 1;
   }
-
   const key = buildSearchContinuationKey({
     registryBaseUrl: params.registryBaseUrl,
     query: params.query,
@@ -154,13 +136,7 @@ function resolvePageStartIndex(params: {
     limit: params.limit,
     cursor: params.cursor,
   });
-
-  const match = params.cache.continuations.find((entry) => entry.key === key);
-  if (!match) {
-    return 1;
-  }
-
-  return match.nextIndex;
+  return params.cache.continuations.find((entry) => entry.key === key)?.nextIndex ?? 1;
 }
 
 function buildUpdatedContinuations(params: {
@@ -173,11 +149,9 @@ function buildUpdatedContinuations(params: {
   nextIndex: number;
   nowIso: string;
 }): SearchSelectionCache["continuations"] {
-  const existing = params.existing?.continuations ?? [];
-  const filtered = existing.filter((entry) => entry.key.length > 0);
-
+  const existing = (params.existing?.continuations ?? []).filter((entry) => entry.key.length > 0);
   if (!params.nextCursor) {
-    return filtered.slice(-100);
+    return existing.slice(-MAX_CONTINUATIONS);
   }
 
   const key = buildSearchContinuationKey({
@@ -188,17 +162,10 @@ function buildUpdatedContinuations(params: {
     cursor: params.nextCursor,
   });
 
-  const withoutExistingKey = filtered.filter((entry) => entry.key !== key);
-  const updated = [
-    ...withoutExistingKey,
-    {
-      key,
-      nextIndex: params.nextIndex,
-      createdAt: params.nowIso,
-    },
-  ];
-
-  return updated.slice(-100);
+  return [
+    ...existing.filter((entry) => entry.key !== key),
+    { key, nextIndex: params.nextIndex, createdAt: params.nowIso },
+  ].slice(-MAX_CONTINUATIONS);
 }
 
 export async function runSearchCommand(
@@ -212,23 +179,21 @@ export async function runSearchCommand(
 
   try {
     const env = options.env ?? process.env;
-    const getConfigFn = options.getConfig ?? getRegistryEnvConfig;
-    const config = getConfigFn(env);
-    const searchSkillsFn = options.searchSkills ?? searchSkills;
-    const readSelectionCacheFn = options.readSelectionCache ?? readSearchSelectionCache;
-    const writeSelectionCacheFn = options.writeSelectionCache ?? writeSearchSelectionCache;
-    const resolveReadIdTokenFn = options.resolveReadIdToken;
+    const config = (options.getConfig ?? getRegistryEnvConfig)(env);
     const idToken =
       parsed.scope === "private"
-        ? await (resolveReadIdTokenFn ?? (() => defaultResolveReadIdToken({ env })))()
+        ? await (options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env })))()
         : null;
 
     if (parsed.scope === "private" && !idToken) {
       console.error("skillmd search: private scope requires login. Run 'skillmd login' first.");
       return 1;
     }
+
+    const readSelectionCacheFn = options.readSelectionCache ?? readSearchSelectionCache;
+    const writeSelectionCacheFn = options.writeSelectionCache ?? writeSearchSelectionCache;
     const existingCache = readSelectionCacheFn();
-    const response = await searchSkillsFn(
+    const response = await (options.searchSkills ?? searchSkills)(
       config.registryBaseUrl,
       {
         query: parsed.query,
@@ -248,16 +213,6 @@ export async function runSearchCommand(
       cache: existingCache,
     });
     const nowIso = new Date().toISOString();
-    const continuations = buildUpdatedContinuations({
-      existing: existingCache,
-      registryBaseUrl: config.registryBaseUrl,
-      query: response.query,
-      scope: parsed.scope,
-      limit: response.limit,
-      nextCursor: response.nextCursor,
-      nextIndex: pageStartIndex + response.results.length,
-      nowIso,
-    });
 
     try {
       writeSelectionCacheFn({
@@ -265,7 +220,16 @@ export async function runSearchCommand(
         createdAt: nowIso,
         skillIds: response.results.map((result) => result.skillId),
         pageStartIndex,
-        continuations,
+        continuations: buildUpdatedContinuations({
+          existing: existingCache,
+          registryBaseUrl: config.registryBaseUrl,
+          query: response.query,
+          scope: parsed.scope,
+          limit: response.limit,
+          nextCursor: response.nextCursor,
+          nextIndex: pageStartIndex + response.results.length,
+          nowIso,
+        }),
       });
     } catch {
       // Cache persistence is best-effort and must not fail command execution.
@@ -276,14 +240,21 @@ export async function runSearchCommand(
       return 0;
     }
 
-    printHumanResults(parsed.query, parsed.limit, parsed.scope, pageStartIndex, response);
+    renderSearchResults(pageStartIndex, response);
+    if (response.nextCursor) {
+      printNextPageHint({
+        query: parsed.query,
+        limit: parsed.limit,
+        scope: parsed.scope,
+        nextCursor: response.nextCursor,
+      });
+    }
     return 0;
   } catch (error) {
     if (isSearchApiError(error)) {
       console.error(`skillmd search: ${error.message} (${error.code}, status ${error.status})`);
       return 1;
     }
-
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd search: ${message}`);
     return 1;

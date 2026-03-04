@@ -1,33 +1,10 @@
 import { type SearchFlags } from "./types";
+import { parseIntInRange, parseOptionValue } from "../shared/flag-parse";
 
 const MIN_SEARCH_LIMIT = 1;
 const MAX_SEARCH_LIMIT = 50;
 const SEARCH_SCOPES = ["public", "private"] as const;
 type SearchScope = (typeof SEARCH_SCOPES)[number];
-
-function parseValueArg(
-  args: string[],
-  index: number,
-  options: {
-    allowHyphenPrefixedValue?: boolean;
-    rejectKnownFlagValues?: boolean;
-  } = {},
-): { value?: string; nextIndex: number } {
-  const value = args[index + 1];
-  if (!value) {
-    return { nextIndex: index };
-  }
-
-  if (options.rejectKnownFlagValues && isKnownFlagToken(value)) {
-    return { nextIndex: index };
-  }
-
-  if (!options.allowHyphenPrefixedValue && value.startsWith("-")) {
-    return { nextIndex: index };
-  }
-
-  return { value, nextIndex: index + 1 };
-}
 
 function isKnownFlagToken(value: string): boolean {
   return (
@@ -41,24 +18,12 @@ function isKnownFlagToken(value: string): boolean {
   );
 }
 
-function parseLimit(value: string): number | null {
-  if (!/^\d+$/.test(value)) {
-    return null;
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed < MIN_SEARCH_LIMIT || parsed > MAX_SEARCH_LIMIT) {
-    return null;
-  }
-
-  return parsed;
-}
-
 function parseScope(value: string): SearchScope | null {
   return SEARCH_SCOPES.includes(value as SearchScope) ? (value as SearchScope) : null;
 }
 
 export function parseSearchFlags(args: string[]): SearchFlags {
+  const invalid = (): SearchFlags => ({ scope: "public", json: false, valid: false });
   let query: string | undefined;
   let limit: number | undefined;
   let cursor: string | undefined;
@@ -73,83 +38,52 @@ export function parseSearchFlags(args: string[]): SearchFlags {
       continue;
     }
 
-    if (arg === "--limit") {
-      const parsedValue = parseValueArg(args, index);
-      if (!parsedValue.value) {
-        return { scope: "public", json: false, valid: false };
-      }
-
-      const parsedLimit = parseLimit(parsedValue.value);
+    const parsedLimitValue = parseOptionValue(args, index, "limit");
+    if (parsedLimitValue.matched) {
+      const parsedLimit = parseIntInRange(
+        parsedLimitValue.value ?? "",
+        MIN_SEARCH_LIMIT,
+        MAX_SEARCH_LIMIT,
+      );
       if (parsedLimit === null) {
-        return { scope: "public", json: false, valid: false };
+        return invalid();
       }
-
       limit = parsedLimit;
-      index = parsedValue.nextIndex;
+      index = parsedLimitValue.nextIndex;
       continue;
     }
 
-    if (arg.startsWith("--limit=")) {
-      const parsedLimit = parseLimit(arg.slice("--limit=".length));
-      if (parsedLimit === null) {
-        return { scope: "public", json: false, valid: false };
+    const parsedCursorValue = parseOptionValue(args, index, "cursor", {
+      allowHyphenPrefixedValue: true,
+      rejectKnownFlagValues: true,
+      isKnownFlagToken,
+    });
+    if (parsedCursorValue.matched) {
+      if (!parsedCursorValue.value) {
+        return invalid();
       }
-
-      limit = parsedLimit;
+      cursor = parsedCursorValue.value;
+      index = parsedCursorValue.nextIndex;
       continue;
     }
 
-    if (arg === "--cursor") {
-      const parsedValue = parseValueArg(args, index, {
-        allowHyphenPrefixedValue: true,
-        rejectKnownFlagValues: true,
-      });
-      if (!parsedValue.value) {
-        return { scope: "public", json: false, valid: false };
-      }
-
-      cursor = parsedValue.value;
-      index = parsedValue.nextIndex;
-      continue;
-    }
-
-    if (arg.startsWith("--cursor=")) {
-      cursor = arg.slice("--cursor=".length);
-      if (!cursor) {
-        return { scope: "public", json: false, valid: false };
-      }
-      continue;
-    }
-
-    if (arg === "--scope") {
-      const parsedValue = parseValueArg(args, index);
-      if (!parsedValue.value) {
-        return { scope: "public", json: false, valid: false };
-      }
-      const parsedScope = parseScope(parsedValue.value);
+    const parsedScopeValue = parseOptionValue(args, index, "scope");
+    if (parsedScopeValue.matched) {
+      const parsedScope = parseScope(parsedScopeValue.value ?? "");
       if (!parsedScope) {
-        return { scope: "public", json: false, valid: false };
+        return invalid();
       }
       scope = parsedScope;
-      index = parsedValue.nextIndex;
-      continue;
-    }
-
-    if (arg.startsWith("--scope=")) {
-      const parsedScope = parseScope(arg.slice("--scope=".length));
-      if (!parsedScope) {
-        return { scope: "public", json: false, valid: false };
-      }
-      scope = parsedScope;
+      index = parsedScopeValue.nextIndex;
       continue;
     }
 
     if (arg.startsWith("-")) {
-      return { scope: "public", json: false, valid: false };
+      return invalid();
     }
 
     if (query !== undefined) {
-      return { scope: "public", json: false, valid: false };
+      return invalid();
     }
 
     query = arg;
