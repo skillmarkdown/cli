@@ -1,18 +1,23 @@
 # @skillmarkdown/cli
 
-`@skillmarkdown/cli` helps you create, validate, publish, find, and use Agent Skills.
+[![CI](https://github.com/skillmarkdown/cli/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/skillmarkdown/cli/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/%40skillmarkdown%2Fcli)](https://www.npmjs.com/package/@skillmarkdown/cli)
+[![npm downloads](https://img.shields.io/npm/dm/%40skillmarkdown%2Fcli)](https://www.npmjs.com/package/@skillmarkdown/cli)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Global auth option for API commands:
+npm-like lifecycle for agent skills: create, publish, install, tag, deprecate, and unpublish.
 
-```bash
-skillmd --auth-token <token> <command> ...
-```
+![skillmd CLI command sweep demo](public/assets/images/cli-readme-sweep.png)
 
-Or set:
+_Real command-sweep output from the CLI test flow._
 
-```bash
-export SKILLMD_AUTH_TOKEN=<token>
-```
+## Why skillmd
+
+- Strict v1 registry contracts (`tag`, `access`, `spec`, `distTags`, lifecycle metadata).
+- Workspace runtime model with `skills.json` intent + `skills-lock.json` resolved state.
+- Agent-targeted installs for `skillmd`, `claude`, `gemini`, and `custom:<slug>`.
+- Release operations in one CLI: dist-tags, deprecation, and policy-gated unpublish.
+- Automation-friendly auth with scoped tokens (`read`, `publish`, `admin`).
 
 ## Install
 
@@ -20,204 +25,183 @@ export SKILLMD_AUTH_TOKEN=<token>
 npm i -g @skillmarkdown/cli
 ```
 
-Or run without installing:
+Or run one-off commands with:
 
 ```bash
-npx @skillmarkdown/cli init
+npx @skillmarkdown/cli <command>
 ```
 
-## Quick Start
-
-1. Create a new skill:
+## Quickstart (60 seconds)
 
 ```bash
+# 1) Author a new skill
 mkdir my-skill && cd my-skill
-skillmd init
-```
+skillmd init --template minimal
+skillmd validate --strict
 
-2. Check it:
-
-```bash
-skillmd validate
-```
-
-3. Sign in:
-
-```bash
+# 2) Authenticate and publish
 skillmd login
-```
+skillmd publish --version 1.0.0 --tag latest --access public
 
-4. Publish:
+# 3) Discover and inspect
+skillmd search
+skillmd view @owner/my-skill
+skillmd history @owner/my-skill
 
-```bash
-skillmd publish --version 1.0.0
-```
-
-5. Find and use skills:
-
-```bash
-skillmd search agent
-skillmd view @owner/skill
-skillmd history @owner/skill
-skillmd install
-skillmd use @owner/skill
-skillmd tag ls @owner/skill
-skillmd whoami
-skillmd token ls
+# 4) Consume and maintain installs
+skillmd use @owner/my-skill
 skillmd update --all
 ```
 
-## Commands
+## Workspace install (`skills.json`)
 
-### `skillmd init`
+Use `skillmd install` for declarative, workspace-level installs.
 
-Create a new skill in the current folder.
-
-```bash
-skillmd init [--template <minimal|verbose>] [--no-validate]
+```json
+{
+  "version": 1,
+  "defaults": {
+    "agentTarget": "skillmd"
+  },
+  "dependencies": {
+    "@owner/research-skill": {
+      "spec": "latest",
+      "agentTarget": "claude"
+    },
+    "@owner/ops-skill": {
+      "spec": "^1.2.0"
+    }
+  }
+}
 ```
 
-- `minimal` (default): creates `SKILL.md`
-- `verbose`: creates `SKILL.md` plus starter folders/files
-
-### `skillmd validate`
-
-Check that a skill is valid.
-
 ```bash
-skillmd validate [path] [--strict] [--parity]
+# Install all declared dependencies
+skillmd install
+
+# Remove undeclared lock/install entries
+skillmd install --prune
 ```
 
-- `--strict`: stronger checks
-- `--parity`: compare with `skills-ref` if installed
+Notes:
 
-### `skillmd login`
+- `skills.json` is the declared intent.
+- `skills-lock.json` is CLI-owned resolved state, rewritten after successful installs/updates.
+- `skillmd use` remains available for one-off installs outside manifest flow.
 
-Sign in with GitHub.
+## Authentication modes
 
-```bash
-skillmd login [--status|--reauth]
+For API-calling commands, auth precedence is:
+
+| Priority | Source              | Example                                                |
+| -------- | ------------------- | ------------------------------------------------------ |
+| 1        | CLI flag            | `skillmd --auth-token <token> publish --version 1.2.3` |
+| 2        | Environment         | `export SKILLMD_AUTH_TOKEN=<token>`                    |
+| 3        | Interactive session | `skillmd login`                                        |
+
+Token scope model:
+
+- `read`: read endpoints
+- `publish`: read + publish/tag writes
+- `admin`: publish + lifecycle + token management
+
+## Command map (by outcome)
+
+### Authoring
+
+- `skillmd init [--template <minimal|verbose>] [--no-validate]`
+- `skillmd validate [path] [--strict] [--parity]`
+- `skillmd publish [path] --version <semver> [--tag <dist-tag>] [--access <public|private>] [--provenance] [--agent-target <target>] [--dry-run] [--json]`
+
+### Discovery
+
+- `skillmd search [query] [--limit <1-50>] [--cursor <token>] [--scope <public|private>] [--json]`
+- `skillmd view <skill-id|index> [--json]`
+- `skillmd history <skill-id> [--limit <1-50>] [--cursor <token>] [--json]`
+
+### Consumption
+
+- `skillmd use <skill-id> [--version <semver> | --spec <tag|version|range>] [--agent-target <target>] [--json]`
+- `skillmd install [--prune] [--agent-target <target>] [--json]`
+- `skillmd update [skill-id ...] [--all] [--agent-target <target>] [--json]`
+
+### Release operations
+
+- `skillmd tag ls <skill-id> [--json]`
+- `skillmd tag add <skill-id>@<version> <tag> [--json]`
+- `skillmd tag rm <skill-id> <tag> [--json]`
+- `skillmd deprecate <skill-id>@<version|range> --message "<text>" [--json]`
+- `skillmd unpublish <skill-id>@<version> [--json]`
+
+### Auth operations
+
+- `skillmd whoami [--json]`
+- `skillmd token ls [--json]`
+- `skillmd token add <name> [--scope <read|publish|admin>] [--days <1-365>] [--json]`
+- `skillmd token rm <token-id> [--json]`
+
+## Troubleshooting
+
+### Session project mismatch
+
+Symptom:
+
+```text
+session project 'skillmarkdown' does not match current config 'skillmarkdown-development'
 ```
 
-### `skillmd logout`
-
-Sign out locally.
+Fix:
 
 ```bash
-skillmd logout
+skillmd login --reauth
 ```
 
-### `skillmd publish`
+### Scope errors with automation token
 
-Publish a skill version.
+Symptom: `unauthorized` or `forbidden` on write commands.
+
+Fix: create/use a token with required scope (`publish` or `admin`) and pass it via `--auth-token` or `SKILLMD_AUTH_TOKEN`.
+
+### Invalid lockfile schema
+
+Symptom: install/update fails due to malformed `skills-lock.json`.
+
+Fix: correct schema or remove file and reinstall from `skills.json`:
 
 ```bash
-skillmd publish [path] --version <semver> [--tag <dist-tag>] [--access <public|private>] [--provenance] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--dry-run] [--json]
+rm -f skills-lock.json
+skillmd install
 ```
 
-### `skillmd search`
+### `not_found` on `use`/`tag` resolution
 
-Find skills in the registry.
+Symptom: version/tag pointer cannot be resolved.
+
+Fix:
 
 ```bash
-skillmd search [query] [--limit <1-50>] [--cursor <token>] [--scope <public|private>] [--json]
+skillmd view @owner/skill
+skillmd history @owner/skill
+skillmd tag ls @owner/skill
 ```
 
-- No `query` shows the latest skills
-- Use `--scope private` to see your private skills
+Then retry with explicit selector, for example `--spec 1.2.3` or `--spec beta`.
 
-### `skillmd view`
+## Support and project health
 
-Show details for one skill.
+- Support: [SUPPORT.md](SUPPORT.md)
+- Security policy: [SECURITY.md](SECURITY.md)
+- Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md)
 
-```bash
-skillmd view <skill-id|index> [--json]
-```
+## More docs
 
-- `<skill-id>` can be `@owner/skill` or `owner/skill`
-- `<index>` uses the number shown in your latest `search` results
-
-### `skillmd history`
-
-Show published versions for one skill.
-
-```bash
-skillmd history <skill-id> [--limit <1-50>] [--cursor <token>] [--json]
-```
-
-### `skillmd use`
-
-Install a skill into the current project.
-
-```bash
-skillmd use <skill-id> [--version <semver> | --spec <tag|version|range>] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]
-```
-
-### `skillmd install`
-
-Install workspace-declared dependencies from `skills.json`.
-
-```bash
-skillmd install [--prune] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]
-```
-
-- Reads dependency intent from `skills.json` in current directory.
-- Writes resolved installs to `skills-lock.json`.
-- Use `--prune` to remove undeclared entries from lock/install state.
-
-### `skillmd update`
-
-Update installed skills in the current project.
-
-```bash
-skillmd update [skill-id ...] [--all] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]
-```
-
-- `skillmd update` and `skillmd update --all` do the same thing
-
-### `skillmd tag`
-
-List and manage dist-tags for your published skills.
-
-```bash
-skillmd tag ls <skill-id> [--json]
-skillmd tag add <skill-id>@<version> <tag> [--json]
-skillmd tag rm <skill-id> <tag> [--json]
-```
-
-### `skillmd deprecate`
-
-Mark one version or a semver range as deprecated.
-
-```bash
-skillmd deprecate <skill-id>@<version|range> --message "<text>" [--json]
-```
-
-### `skillmd unpublish`
-
-Tombstone one published version (policy-gated in registry).
-
-```bash
-skillmd unpublish <skill-id>@<version> [--json]
-```
-
-### `skillmd whoami`
-
-Show the current authenticated registry identity.
-
-```bash
-skillmd whoami [--json]
-```
-
-### `skillmd token`
-
-Create/list/revoke automation tokens.
-
-```bash
-skillmd token ls [--json]
-skillmd token add <name> [--scope <read|publish|admin>] [--days <1-365>] [--json]
-skillmd token rm <token-id> [--json]
-```
+- Publish API: [docs/publish-api.md](docs/publish-api.md)
+- Publish registry model: [docs/publish-registry.md](docs/publish-registry.md)
+- CLI architecture: [docs/architecture.md](docs/architecture.md)
+- Testing strategy: [docs/testing.md](docs/testing.md)
+- Decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
 
 ## License
 
