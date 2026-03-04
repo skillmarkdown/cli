@@ -2,11 +2,13 @@ import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../
 import { resolveConfiguredAuthToken } from "../lib/auth/api-token";
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 import { callWithReadTokenRetry, isReadTokenRetryableStatus } from "../lib/auth/read-token-retry";
+import { deriveOwnerFromSession } from "../lib/auth/owner";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { parseSkillId } from "../lib/registry/skill-id";
 import { failWithUsage } from "../lib/shared/command-output";
 import { TAG_USAGE } from "../lib/shared/cli-text";
 import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
+import { printJson } from "../lib/shared/json-output";
 import { listDistTags, removeDistTag, setDistTag } from "../lib/tag/client";
 import { isTagApiError } from "../lib/tag/errors";
 import { parseTagFlags } from "../lib/tag/flags";
@@ -45,25 +47,6 @@ interface TagCommandOptions {
     request: { ownerSlug: string; skillSlug: string; tag: string },
     options?: { timeoutMs?: number },
   ) => Promise<DistTagDeleteResponse>;
-}
-
-const GITHUB_USERNAME_PATTERN = /^[a-z0-9]+(?:-?[a-z0-9]+)*$/i;
-
-function printJson(payload: Record<string, unknown>): void {
-  console.log(JSON.stringify(payload, null, 2));
-}
-
-function deriveOwnerFromSession(session: AuthSession): string | null {
-  if (!session.githubUsername) {
-    return null;
-  }
-
-  const cleaned = session.githubUsername.trim().replace(/^@+/, "");
-  if (!cleaned || !GITHUB_USERNAME_PATTERN.test(cleaned)) {
-    return null;
-  }
-
-  return `@${cleaned.toLowerCase()}`;
 }
 
 function shouldRetryWithReadToken(error: unknown): boolean {

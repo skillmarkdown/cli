@@ -1,30 +1,14 @@
-import { valid as isValidSemver, validRange as isValidSemverRange } from "semver";
-
 import { type DeprecateFlags, type ParsedDeprecateRequest } from "./types";
+import { parseOptionValue } from "../shared/flag-parse";
+import { isCanonicalSemver, isValidSemverRange } from "../shared/semver";
+import { splitSkillAndSelector as splitSkillSelector } from "../shared/skill-selector";
 
-const SEMVER_PATTERN = new RegExp(
-  "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)" +
-    "(?:-([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?" +
-    "(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$",
-);
-
-function splitSkillAndSelector(value: string): { skillId: string; range: string } | null {
-  const separator = value.lastIndexOf("@");
-  if (separator <= 0 || separator === value.length - 1) {
+function splitDeprecationTarget(value: string): { skillId: string; range: string } | null {
+  const split = splitSkillSelector(value);
+  if (!split) {
     return null;
   }
-
-  const skillId = value.slice(0, separator);
-  const range = value.slice(separator + 1).trim();
-  if (!skillId || !range) {
-    return null;
-  }
-
-  return { skillId, range };
-}
-
-function isCanonicalSemver(value: string): boolean {
-  return SEMVER_PATTERN.test(value) && Boolean(isValidSemver(value));
+  return { skillId: split.skillId, range: split.selector };
 }
 
 function isValidDeprecationSelector(value: string): boolean {
@@ -32,10 +16,11 @@ function isValidDeprecationSelector(value: string): boolean {
     return true;
   }
 
-  return Boolean(isValidSemverRange(value));
+  return isValidSemverRange(value);
 }
 
 export function parseDeprecateFlags(args: string[]): DeprecateFlags {
+  const invalid = (): DeprecateFlags => ({ valid: false, json: false });
   let json = false;
   let message: string | undefined;
   const positional: string[] = [];
@@ -48,30 +33,25 @@ export function parseDeprecateFlags(args: string[]): DeprecateFlags {
       continue;
     }
 
-    if (arg === "--message") {
-      const value = args[index + 1];
-      if (!value || value.startsWith("-")) {
-        return { valid: false, json: false };
+    const messageOption = parseOptionValue(args, index, "message");
+    if (messageOption.matched) {
+      if (!messageOption.value) {
+        return invalid();
       }
-      message = value.trim();
-      index += 1;
-      continue;
-    }
-
-    if (arg.startsWith("--message=")) {
-      message = arg.slice("--message=".length).trim();
+      message = messageOption.value.trim();
+      index = messageOption.nextIndex;
       continue;
     }
 
     if (arg.startsWith("-")) {
-      return { valid: false, json: false };
+      return invalid();
     }
 
     positional.push(arg);
   }
 
   if (positional.length !== 1 || !message) {
-    return { valid: false, json: false };
+    return invalid();
   }
 
   return {
@@ -87,7 +67,7 @@ export function parseDeprecateRequest(flags: DeprecateFlags): ParsedDeprecateReq
     return null;
   }
 
-  const parsed = splitSkillAndSelector(flags.skillWithSelector);
+  const parsed = splitDeprecationTarget(flags.skillWithSelector);
   if (!parsed || !isValidDeprecationSelector(parsed.range)) {
     return null;
   }

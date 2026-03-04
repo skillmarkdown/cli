@@ -26,55 +26,38 @@ const WIDE_RANGES: ReadonlyArray<readonly [number, number]> = [
   [0xffe0, 0xffe6],
 ];
 
+const intlWithSegmenter = Intl as typeof Intl & {
+  Segmenter?: new (
+    locales?: string | string[],
+    options?: { granularity?: "grapheme" | "word" | "sentence" },
+  ) => { segment: (input: string) => Iterable<{ segment: string }> };
+};
+
 function splitGraphemes(value: string): string[] {
-  const intlWithSegmenter = Intl as typeof Intl & {
-    Segmenter?: new (
-      locales?: string | string[],
-      options?: { granularity?: "grapheme" | "word" | "sentence" },
-    ) => { segment: (input: string) => Iterable<{ segment: string }> };
-  };
-
-  if (typeof intlWithSegmenter.Segmenter === "function") {
-    const segmenter = new intlWithSegmenter.Segmenter(undefined, { granularity: "grapheme" });
-    return Array.from(segmenter.segment(value), (entry) => entry.segment);
+  if (typeof intlWithSegmenter.Segmenter !== "function") {
+    return Array.from(value);
   }
-
-  return Array.from(value);
+  const segmenter = new intlWithSegmenter.Segmenter(undefined, { granularity: "grapheme" });
+  return Array.from(segmenter.segment(value), (entry) => entry.segment);
 }
 
 function isWideCodePoint(codePoint: number): boolean {
-  for (const [start, end] of WIDE_RANGES) {
-    if (codePoint >= start && codePoint <= end) {
-      return true;
-    }
-  }
-
-  return false;
+  return WIDE_RANGES.some(([start, end]) => codePoint >= start && codePoint <= end);
 }
 
 function graphemeWidth(grapheme: string): number {
-  if (!grapheme) {
+  if (!grapheme || /^\p{Mark}+$/u.test(grapheme)) {
     return 0;
   }
-
-  if (/^\p{Mark}+$/u.test(grapheme)) {
-    return 0;
-  }
-
   if (/\p{Extended_Pictographic}/u.test(grapheme)) {
     return 2;
   }
-
   for (const symbol of Array.from(grapheme)) {
     const codePoint = symbol.codePointAt(0);
-    if (codePoint === undefined) {
-      continue;
-    }
-    if (isWideCodePoint(codePoint)) {
+    if (codePoint !== undefined && isWideCodePoint(codePoint)) {
       return 2;
     }
   }
-
   return 1;
 }
 
@@ -83,22 +66,16 @@ function displayWidth(value: string): number {
 }
 
 function normalizeValue(value: string | number | null | undefined): string {
-  if (value === null || value === undefined) {
-    return "";
-  }
-
-  return String(value);
+  return value === null || value === undefined ? "" : String(value);
 }
 
 function truncateToWidth(value: string, maxWidth: number): string {
   if (displayWidth(value) <= maxWidth) {
     return value;
   }
-
   if (maxWidth <= 3) {
     return ".".repeat(maxWidth);
   }
-
   const targetWidth = maxWidth - 3;
   let currentWidth = 0;
   const parts: string[] = [];
@@ -110,46 +87,38 @@ function truncateToWidth(value: string, maxWidth: number): string {
     parts.push(grapheme);
     currentWidth += width;
   }
-
   return `${parts.join("")}...`;
 }
 
 function padToWidth(value: string, width: number, align: "left" | "right"): string {
   const clipped = truncateToWidth(value, width);
   const padding = Math.max(0, width - displayWidth(clipped));
-  if (align === "right") {
-    return `${" ".repeat(padding)}${clipped}`;
-  }
-  return `${clipped}${" ".repeat(padding)}`;
+  return align === "right"
+    ? `${" ".repeat(padding)}${clipped}`
+    : `${clipped}${" ".repeat(padding)}`;
 }
 
 function wrapToWidth(value: string, width: number): string[] {
   if (value.length === 0) {
     return [""];
   }
-
   const lines: string[] = [];
   let current = "";
   let currentWidth = 0;
-
   for (const grapheme of splitGraphemes(value)) {
     const nextWidth = graphemeWidth(grapheme);
-
     if (currentWidth > 0 && currentWidth + nextWidth > width) {
       lines.push(current);
       current = grapheme;
       currentWidth = nextWidth;
       continue;
     }
-
     current += grapheme;
     currentWidth += nextWidth;
   }
-
   if (current.length > 0) {
     lines.push(current);
   }
-
   return lines.length > 0 ? lines : [""];
 }
 
@@ -159,31 +128,21 @@ function renderCellLines(
 ): string[] {
   const width = column.width ?? 1;
   const align = column.align ?? "left";
-  const normalized = normalizeValue(value);
-
   if (!column.wrap) {
-    return [padToWidth(normalized, width, align)];
+    return [padToWidth(normalizeValue(value), width, align)];
   }
-
-  const wrapped = wrapToWidth(normalized, width);
+  const wrapped = wrapToWidth(normalizeValue(value), width);
   const maxLines = Math.max(1, column.maxLines ?? wrapped.length);
   let lines = wrapped.slice(0, maxLines);
-
   if (wrapped.length > maxLines) {
-    if (width <= 3) {
-      lines[maxLines - 1] = ".".repeat(width);
-    } else {
-      lines[maxLines - 1] = `${truncateToWidth(lines[maxLines - 1], width - 3)}...`;
-    }
+    lines[maxLines - 1] =
+      width <= 3 ? ".".repeat(width) : `${truncateToWidth(lines[maxLines - 1], width - 3)}...`;
   }
-
   return lines.map((line) => padToWidth(line, width, align));
 }
 
 function tableWidth(columns: TableColumn<unknown>[]): number {
-  const contentWidth = columns.reduce((sum, column) => sum + (column.width ?? 1), 0);
-  const bordersAndPadding = columns.length * 3 + 1;
-  return contentWidth + bordersAndPadding;
+  return columns.reduce((sum, column) => sum + (column.width ?? 1), 0) + columns.length * 3 + 1;
 }
 
 function renderBorder(
@@ -199,12 +158,10 @@ function shrinkToFit(columns: TableColumn<unknown>[], maxWidth: number): void {
   if (tableWidth(columns) <= maxWidth) {
     return;
   }
-
   const sortedIndexes = columns
     .map((column, index) => ({ index, priority: column.shrinkPriority ?? 0 }))
     .sort((a, b) => b.priority - a.priority)
     .map((entry) => entry.index);
-
   while (tableWidth(columns) > maxWidth) {
     let shrunk = false;
     for (const index of sortedIndexes) {
@@ -212,15 +169,15 @@ function shrinkToFit(columns: TableColumn<unknown>[], maxWidth: number): void {
       const minWidth =
         column.minWidth ?? Math.max(4, Math.min(column.width ?? 4, displayWidth(column.header)));
       const currentWidth = column.width ?? minWidth;
-      if (currentWidth > minWidth) {
-        column.width = currentWidth - 1;
-        shrunk = true;
-        if (tableWidth(columns) <= maxWidth) {
-          return;
-        }
+      if (currentWidth <= minWidth) {
+        continue;
+      }
+      column.width = currentWidth - 1;
+      shrunk = true;
+      if (tableWidth(columns) <= maxWidth) {
+        return;
       }
     }
-
     if (!shrunk) {
       return;
     }
@@ -232,19 +189,16 @@ function resolveColumnWidths<T>(columns: TableColumn<T>[], rows: T[]): TableColu
     if (typeof column.width === "number" && Number.isFinite(column.width)) {
       return { ...column } as TableColumn<unknown>;
     }
-
     const minWidth = Math.max(1, column.minWidth ?? displayWidth(column.header));
     const maxWidth = Math.max(minWidth, column.maxWidth ?? Number.MAX_SAFE_INTEGER);
     let width = displayWidth(column.header);
     for (const row of rows) {
-      const valueWidth = displayWidth(normalizeValue(column.value(row)));
-      width = Math.max(width, valueWidth);
+      width = Math.max(width, displayWidth(normalizeValue(column.value(row))));
       if (width >= maxWidth) {
         width = maxWidth;
         break;
       }
     }
-
     return {
       ...column,
       width: Math.max(minWidth, Math.min(maxWidth, width)),
@@ -258,41 +212,35 @@ export function renderTable<T>(
   options: TableRenderOptions = {},
 ): string[] {
   const unknownColumns = resolveColumnWidths(columns, rows);
-  const maxWidth = options.maxWidth;
-  if (typeof maxWidth === "number" && Number.isFinite(maxWidth) && maxWidth >= 20) {
-    shrinkToFit(unknownColumns, Math.floor(maxWidth));
+  if (
+    typeof options.maxWidth === "number" &&
+    Number.isFinite(options.maxWidth) &&
+    options.maxWidth >= 20
+  ) {
+    shrinkToFit(unknownColumns, Math.floor(options.maxWidth));
   }
-
   const lines: string[] = [];
   lines.push(renderBorder(unknownColumns, "┌", "┬", "┐"));
   lines.push(
-    `│ ${unknownColumns
-      .map((column) => padToWidth(column.header, column.width ?? 1, "left"))
-      .join(" │ ")} │`,
+    `│ ${unknownColumns.map((column) => padToWidth(column.header, column.width ?? 1, "left")).join(" │ ")} │`,
   );
   lines.push(renderBorder(unknownColumns, "├", "┼", "┤"));
   for (const row of rows) {
     const renderedCells = unknownColumns.map((column) =>
-      renderCellLines(column.value(row as T), column),
+      renderCellLines(column.value(row), column),
     );
     const rowHeight = renderedCells.reduce((max, cellLines) => Math.max(max, cellLines.length), 1);
-
     for (let lineIndex = 0; lineIndex < rowHeight; lineIndex += 1) {
       lines.push(
         `│ ${unknownColumns
-          .map((column, columnIndex) => {
-            const line = renderedCells[columnIndex][lineIndex];
-            if (typeof line === "string") {
-              return line;
-            }
-
-            return " ".repeat(column.width ?? 1);
-          })
+          .map(
+            (column, columnIndex) =>
+              renderedCells[columnIndex][lineIndex] ?? " ".repeat(column.width ?? 1),
+          )
           .join(" │ ")} │`,
       );
     }
   }
   lines.push(renderBorder(unknownColumns, "└", "┴", "┘"));
-
   return lines;
 }

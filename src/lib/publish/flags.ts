@@ -1,41 +1,20 @@
 import { PUBLISH_ACCESSES, type PublishFlags, type PublishAccess } from "./types";
 import { normalizeAgentTarget } from "../shared/agent-target";
-
-const SEMVER_PATTERN =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
-const TAG_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+import { parseOptionValue } from "../shared/flag-parse";
+import { isCanonicalSemver } from "../shared/semver";
+import { parseStrictDistTag } from "../shared/tag-validation";
 
 function resolveAccess(value: string): PublishAccess | null {
   return PUBLISH_ACCESSES.includes(value as PublishAccess) ? (value as PublishAccess) : null;
 }
 
-function parseValueArg(args: string[], index: number): { value?: string; nextIndex: number } {
-  const value = args[index + 1];
-  if (!value || value.startsWith("-")) {
-    return { nextIndex: index };
-  }
-
-  return { value, nextIndex: index + 1 };
-}
-
-function isValidSemver(value: string): boolean {
-  return SEMVER_PATTERN.test(value);
-}
-
-function isValidTag(value: string): boolean {
-  return TAG_PATTERN.test(value);
-}
-
-function invalidFlags(): PublishFlags {
-  return {
+export function parsePublishFlags(args: string[]): PublishFlags {
+  const invalid = (): PublishFlags => ({
     provenance: false,
     dryRun: false,
     json: false,
     valid: false,
-  };
-}
-
-export function parsePublishFlags(args: string[]): PublishFlags {
+  });
   let pathArg: string | undefined;
   let version: string | undefined;
   let tag: string | undefined;
@@ -58,69 +37,35 @@ export function parsePublishFlags(args: string[]): PublishFlags {
       continue;
     }
 
-    if (arg === "--version") {
-      const parsed = parseValueArg(args, index);
-      if (!parsed.value) {
-        return invalidFlags();
+    const parsedVersion = parseOptionValue(args, index, "version");
+    if (parsedVersion.matched) {
+      if (!parsedVersion.value) {
+        return invalid();
       }
-      version = parsed.value;
-      index = parsed.nextIndex;
+      version = parsedVersion.value;
+      index = parsedVersion.nextIndex;
       continue;
     }
 
-    if (arg.startsWith("--version=")) {
-      version = arg.slice("--version=".length);
+    const parsedTag = parseOptionValue(args, index, "tag");
+    if (parsedTag.matched) {
+      const tagValue = parsedTag.value ? parseStrictDistTag(parsedTag.value) : null;
+      if (!tagValue) {
+        return invalid();
+      }
+      tag = tagValue;
+      index = parsedTag.nextIndex;
       continue;
     }
 
-    if (arg === "--tag") {
-      const parsed = parseValueArg(args, index);
-      if (!parsed.value) {
-        return invalidFlags();
-      }
-
-      if (!isValidTag(parsed.value)) {
-        return invalidFlags();
-      }
-
-      tag = parsed.value;
-      index = parsed.nextIndex;
-      continue;
-    }
-
-    if (arg.startsWith("--tag=")) {
-      const parsedTag = arg.slice("--tag=".length);
-      if (!isValidTag(parsedTag)) {
-        return invalidFlags();
-      }
-
-      tag = parsedTag;
-      continue;
-    }
-
-    if (arg === "--access") {
-      const parsed = parseValueArg(args, index);
-      if (!parsed.value) {
-        return invalidFlags();
-      }
-
-      const resolved = resolveAccess(parsed.value);
+    const parsedAccess = parseOptionValue(args, index, "access");
+    if (parsedAccess.matched) {
+      const resolved = resolveAccess(parsedAccess.value ?? "");
       if (!resolved) {
-        return invalidFlags();
+        return invalid();
       }
-
       access = resolved;
-      index = parsed.nextIndex;
-      continue;
-    }
-
-    if (arg.startsWith("--access=")) {
-      const resolved = resolveAccess(arg.slice("--access=".length));
-      if (!resolved) {
-        return invalidFlags();
-      }
-
-      access = resolved;
+      index = parsedAccess.nextIndex;
       continue;
     }
 
@@ -129,45 +74,30 @@ export function parsePublishFlags(args: string[]): PublishFlags {
       continue;
     }
 
-    if (arg === "--agent-target") {
-      const parsed = parseValueArg(args, index);
-      if (!parsed.value) {
-        return invalidFlags();
-      }
-
-      const parsedTarget = normalizeAgentTarget(parsed.value);
+    const parsedTargetValue = parseOptionValue(args, index, "agent-target");
+    if (parsedTargetValue.matched) {
+      const parsedTarget = normalizeAgentTarget(parsedTargetValue.value ?? "");
       if (!parsedTarget) {
-        return invalidFlags();
+        return invalid();
       }
-
       agentTarget = parsedTarget;
-      index = parsed.nextIndex;
-      continue;
-    }
-
-    if (arg.startsWith("--agent-target=")) {
-      const parsedTarget = normalizeAgentTarget(arg.slice("--agent-target=".length));
-      if (!parsedTarget) {
-        return invalidFlags();
-      }
-
-      agentTarget = parsedTarget;
+      index = parsedTargetValue.nextIndex;
       continue;
     }
 
     if (arg.startsWith("-")) {
-      return invalidFlags();
+      return invalid();
     }
 
     if (pathArg) {
-      return invalidFlags();
+      return invalid();
     }
 
     pathArg = arg;
   }
 
-  if (!version || !isValidSemver(version)) {
-    return invalidFlags();
+  if (!version || !isCanonicalSemver(version)) {
+    return invalid();
   }
 
   return {

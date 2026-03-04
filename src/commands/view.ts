@@ -2,6 +2,7 @@ import { parseSkillId } from "../lib/registry/skill-id";
 import { readSearchSelectionCache, type SearchSelectionCache } from "../lib/search/selection-cache";
 import { failWithUsage } from "../lib/shared/command-output";
 import { VIEW_USAGE } from "../lib/shared/cli-text";
+import { printJson } from "../lib/shared/json-output";
 import { getSkillView } from "../lib/view/client";
 import { getRegistryEnvConfig, type RegistryEnvConfig } from "../lib/registry/config";
 import { isViewApiError } from "../lib/view/errors";
@@ -24,10 +25,6 @@ interface ViewCommandOptions {
 
 function shouldRetryWithReadToken(error: unknown): boolean {
   return isViewApiError(error) && isReadTokenRetryableStatus(error.status);
-}
-
-function printJson(payload: Record<string, unknown>): void {
-  console.log(JSON.stringify(payload, null, 2));
 }
 
 function printHumanResult(payload: ViewResponse): void {

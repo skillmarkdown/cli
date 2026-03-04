@@ -1,26 +1,13 @@
-import { valid as isValidSemver } from "semver";
-
 import { type ParsedUnpublishRequest, type UnpublishFlags } from "./types";
-
-const SEMVER_PATTERN = new RegExp(
-  "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)" +
-    "(?:-([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?" +
-    "(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$",
-);
+import { isCanonicalSemver } from "../shared/semver";
+import { splitSkillAndSelector } from "../shared/skill-selector";
 
 function splitSkillAndVersion(value: string): { skillId: string; version: string } | null {
-  const separator = value.lastIndexOf("@");
-  if (separator <= 0 || separator === value.length - 1) {
+  const split = splitSkillAndSelector(value);
+  if (!split || !isCanonicalSemver(split.selector)) {
     return null;
   }
-
-  const skillId = value.slice(0, separator);
-  const version = value.slice(separator + 1).trim();
-  if (!skillId || !version || !SEMVER_PATTERN.test(version) || !isValidSemver(version)) {
-    return null;
-  }
-
-  return { skillId, version };
+  return { skillId: split.skillId, version: split.selector };
 }
 
 export function parseUnpublishFlags(args: string[]): UnpublishFlags {

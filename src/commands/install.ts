@@ -12,15 +12,16 @@ import { getUseEnvConfig, type UseEnvConfig } from "../lib/use/config";
 import { DEFAULT_AGENT_TARGET, type AgentTarget } from "../lib/shared/agent-target";
 import { failWithUsage } from "../lib/shared/command-output";
 import { INSTALL_USAGE } from "../lib/shared/cli-text";
-import { renderTable } from "../lib/shared/table";
+import { printJson } from "../lib/shared/json-output";
+import { upsertInstalledLockEntry } from "../lib/shared/lock-entry";
 import { parseSkillId } from "../lib/registry/skill-id";
+import { createCachedReadTokenResolver } from "../lib/shared/read-token-cache";
 import {
   listSkillsLockEntries,
   loadSkillsLock as defaultLoadSkillsLock,
   removeSkillsLockEntry,
   resolveRegistryHost,
   saveSkillsLock as defaultSaveSkillsLock,
-  upsertSkillsLockEntry,
   type SkillsLockEntry,
   type SkillsLockFile,
 } from "../lib/workspace/skills-lock";
@@ -29,7 +30,12 @@ import {
   type SkillsManifestDependency,
   type SkillsManifestFile,
 } from "../lib/workspace/skills-manifest";
-import { resolveTableMaxWidth, toUseApiErrorReason } from "../lib/shared/install-update-output";
+import {
+  countByStatus,
+  printPruneTable,
+  printSkillStatusTable,
+  toUseApiErrorReason,
+} from "../lib/shared/install-update-output";
 import { resolveInstalledSkillPath } from "../lib/use/pathing";
 import { installFromRegistry as defaultInstallFromRegistry } from "../lib/use/workflow";
 
@@ -44,10 +50,6 @@ interface InstallCommandOptions {
   installFromRegistry?: typeof defaultInstallFromRegistry;
   resolveReadIdToken?: () => Promise<string | null>;
   removePath?: (path: string, options?: { recursive?: boolean; force?: boolean }) => Promise<void>;
-}
-
-function printJson(payload: InstallJsonResult): void {
-  console.log(JSON.stringify(payload, null, 2));
 }
 
 function toJsonResult(
@@ -69,107 +71,6 @@ function toJsonResult(
   return payload;
 }
 
-function printInstallTable(entries: InstallCommandEntry[]): void {
-  const maxWidth = resolveTableMaxWidth();
-  const lines = renderTable(
-    [
-      {
-        header: "SKILL",
-        minWidth: 26,
-        maxWidth: 48,
-        shrinkPriority: 0,
-        wrap: true,
-        maxLines: 2,
-        value: (row) => row.skillId,
-      },
-      {
-        header: "TARGET",
-        width: 10,
-        value: (row) => row.agentTarget,
-      },
-      {
-        header: "SPEC",
-        width: 14,
-        value: (row) => row.spec,
-      },
-      {
-        header: "FROM",
-        width: 14,
-        value: (row) => row.fromVersion ?? "-",
-      },
-      {
-        header: "TO",
-        width: 14,
-        value: (row) => row.toVersion ?? "-",
-      },
-      {
-        header: "STATUS",
-        width: 12,
-        value: (row) => row.status,
-      },
-      {
-        header: "DETAIL",
-        minWidth: 12,
-        maxWidth: 64,
-        shrinkPriority: 4,
-        value: (row) => row.reason ?? "",
-      },
-    ],
-    entries,
-    { maxWidth },
-  );
-
-  for (const line of lines) {
-    console.log(line);
-  }
-}
-
-function printPruneTable(entries: InstallPrunedEntry[]): void {
-  if (entries.length === 0) {
-    console.log("Prune: no entries removed.");
-    return;
-  }
-
-  const maxWidth = resolveTableMaxWidth();
-  const lines = renderTable(
-    [
-      {
-        header: "SKILL",
-        minWidth: 26,
-        maxWidth: 48,
-        shrinkPriority: 0,
-        wrap: true,
-        maxLines: 2,
-        value: (row) => row.skillId,
-      },
-      {
-        header: "TARGET",
-        width: 10,
-        value: (row) => row.agentTarget,
-      },
-      {
-        header: "STATUS",
-        width: 12,
-        value: (row) => row.status,
-      },
-      {
-        header: "DETAIL",
-        minWidth: 12,
-        maxWidth: 64,
-        shrinkPriority: 4,
-        value: (row) => row.reason ?? "",
-      },
-    ],
-    entries,
-    { maxWidth },
-  );
-
-  console.log("Prune results:");
-  for (const line of lines) {
-    console.log(line);
-  }
-}
-
 function printHuman(
   entries: InstallCommandEntry[],
   pruneEntries: InstallPrunedEntry[] | undefined,
@@ -177,20 +78,19 @@ function printHuman(
   if (entries.length === 0) {
     console.log("No skills were processed.");
   } else {
-    printInstallTable(entries);
+    printSkillStatusTable(entries, { includeSpec: true });
   }
-
-  const installed = entries.filter((entry) => entry.status === "installed").length;
-  const skipped = entries.filter((entry) => entry.status === "skipped").length;
-  const failed = entries.filter((entry) => entry.status === "failed").length;
+  const installed = countByStatus(entries, "installed");
+  const skipped = countByStatus(entries, "skipped");
+  const failed = countByStatus(entries, "failed");
   console.log(
     `Summary: total=${entries.length} installed=${installed} skipped=${skipped} failed=${failed}`,
   );
 
   if (pruneEntries) {
     printPruneTable(pruneEntries);
-    const pruned = pruneEntries.filter((entry) => entry.status === "pruned").length;
-    const pruneFailed = pruneEntries.filter((entry) => entry.status === "failed").length;
+    const pruned = countByStatus(pruneEntries, "pruned");
+    const pruneFailed = countByStatus(pruneEntries, "failed");
     console.log(
       `Prune summary: total=${pruneEntries.length} pruned=${pruned} failed=${pruneFailed}`,
     );
@@ -326,27 +226,7 @@ export async function runInstallCommand(
   const resolveReadIdTokenFn =
     options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }));
   const removePathFn = options.removePath ?? fs.rm.bind(fs);
-
-  let cachedReadIdToken: string | null = null;
-  let readTokenPromise: Promise<string | null> | null = null;
-  const resolveReadIdTokenCached = (): Promise<string | null> => {
-    if (cachedReadIdToken) {
-      return Promise.resolve(cachedReadIdToken);
-    }
-    if (!readTokenPromise) {
-      readTokenPromise = resolveReadIdTokenFn()
-        .then((token) => {
-          if (token) {
-            cachedReadIdToken = token;
-          }
-          return token;
-        })
-        .finally(() => {
-          readTokenPromise = null;
-        });
-    }
-    return readTokenPromise;
-  };
+  const resolveReadIdTokenCached = createCachedReadTokenResolver(resolveReadIdTokenFn);
 
   try {
     const config = getConfigFn(env);
@@ -400,26 +280,7 @@ export async function runInstallCommand(
         }
 
         const { lockEntry, result } = workflow;
-        lock = upsertSkillsLockEntry(
-          lock,
-          {
-            skillId: lockEntry.skillId,
-            ownerLogin: lockEntry.ownerLogin,
-            skill: lockEntry.skill,
-            agentTarget: lockEntry.agentTarget,
-            selectorSpec: dependency.spec,
-            resolvedVersion: lockEntry.version,
-            digest: lockEntry.digest,
-            sizeBytes: lockEntry.sizeBytes,
-            mediaType: lockEntry.mediaType,
-            installedPath: lockEntry.installedPath,
-            registryBaseUrl: lockEntry.registryBaseUrl,
-            installedAt: lockEntry.installedAt,
-            sourceCommand: lockEntry.sourceCommand,
-            downloadedFrom: lockEntry.downloadedFrom,
-          },
-          now(),
-        );
+        lock = upsertInstalledLockEntry(lock, lockEntry, now(), dependency.spec);
 
         entries.push({
           skillId: dependency.skillId,

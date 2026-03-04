@@ -2,6 +2,7 @@ import { parseSkillId } from "../lib/registry/skill-id";
 import { DEFAULT_AGENT_TARGET } from "../lib/shared/agent-target";
 import { failWithUsage } from "../lib/shared/command-output";
 import { USE_USAGE } from "../lib/shared/cli-text";
+import { printJson } from "../lib/shared/json-output";
 import { getUseEnvConfig, type UseEnvConfig } from "../lib/use/config";
 import { isUseApiError } from "../lib/use/errors";
 import { parseUseFlags } from "../lib/use/flags";
@@ -11,10 +12,10 @@ import {
   type UseWorkflowDependencies,
 } from "../lib/use/workflow";
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
+import { upsertInstalledLockEntry } from "../lib/shared/lock-entry";
 import {
   loadSkillsLock as defaultLoadSkillsLock,
   saveSkillsLock as defaultSaveSkillsLock,
-  upsertSkillsLockEntry,
 } from "../lib/workspace/skills-lock";
 
 interface UseCommandOptions {
@@ -30,10 +31,6 @@ interface UseCommandOptions {
   resolveReadIdToken?: () => Promise<string | null>;
   loadSkillsLock?: typeof defaultLoadSkillsLock;
   saveSkillsLock?: typeof defaultSaveSkillsLock;
-}
-
-function printJson(payload: Record<string, unknown>): void {
-  console.log(JSON.stringify(payload, null, 2));
 }
 
 function printHumanResult(result: UseCommandResult, warnings: string[]): void {
@@ -108,26 +105,7 @@ export async function runUseCommand(
     const { result, lockEntry } = workflow;
     const warnings = workflow.warnings ?? [];
     const lock = await loadSkillsLockFn(cwd);
-    const nextLock = upsertSkillsLockEntry(
-      lock,
-      {
-        skillId: lockEntry.skillId,
-        ownerLogin: lockEntry.ownerLogin,
-        skill: lockEntry.skill,
-        agentTarget: lockEntry.agentTarget,
-        selectorSpec: lockEntry.selectorSpec,
-        resolvedVersion: lockEntry.version,
-        digest: lockEntry.digest,
-        sizeBytes: lockEntry.sizeBytes,
-        mediaType: lockEntry.mediaType,
-        installedPath: lockEntry.installedPath,
-        registryBaseUrl: lockEntry.registryBaseUrl,
-        installedAt: lockEntry.installedAt,
-        sourceCommand: lockEntry.sourceCommand,
-        downloadedFrom: lockEntry.downloadedFrom,
-      },
-      now(),
-    );
+    const nextLock = upsertInstalledLockEntry(lock, lockEntry, now());
     await saveSkillsLockFn(cwd, nextLock);
 
     if (parsed.json) {

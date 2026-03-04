@@ -4,6 +4,7 @@ import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { failWithUsage } from "../lib/shared/command-output";
 import { TOKEN_USAGE } from "../lib/shared/cli-text";
 import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
+import { printJson } from "../lib/shared/json-output";
 import {
   createToken as defaultCreateToken,
   listTokens as defaultListTokens,
@@ -41,10 +42,6 @@ interface TokenCommandOptions {
     tokenId: string,
     options?: { timeoutMs?: number },
   ) => Promise<RevokeTokenResponse>;
-}
-
-function printJson(payload: Record<string, unknown>): void {
-  console.log(JSON.stringify(payload, null, 2));
 }
 
 async function resolveWriteToken(

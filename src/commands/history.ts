@@ -6,6 +6,7 @@ import { type HistoryResponse } from "../lib/history/types";
 import { parseSkillId } from "../lib/registry/skill-id";
 import { HISTORY_USAGE } from "../lib/shared/cli-text";
 import { failWithUsage } from "../lib/shared/command-output";
+import { printJson } from "../lib/shared/json-output";
 import { renderTable } from "../lib/shared/table";
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 import { callWithReadTokenRetry, isReadTokenRetryableStatus } from "../lib/auth/read-token-retry";
@@ -23,10 +24,6 @@ interface HistoryCommandOptions {
 
 function shouldRetryWithReadToken(error: unknown): boolean {
   return isHistoryApiError(error) && isReadTokenRetryableStatus(error.status);
-}
-
-function printJson(payload: Record<string, unknown>): void {
-  console.log(JSON.stringify(payload, null, 2));
 }
 
 function formatDigestForHuman(digest: string): string {

@@ -16,8 +16,14 @@ import {
 } from "../lib/update/types";
 import { failWithUsage } from "../lib/shared/command-output";
 import { UPDATE_USAGE } from "../lib/shared/cli-text";
-import { resolveTableMaxWidth, toUseApiErrorReason } from "../lib/shared/install-update-output";
-import { renderTable } from "../lib/shared/table";
+import { printJson } from "../lib/shared/json-output";
+import { upsertInstalledLockEntry } from "../lib/shared/lock-entry";
+import { createCachedReadTokenResolver } from "../lib/shared/read-token-cache";
+import {
+  countByStatus,
+  printSkillStatusTable,
+  toUseApiErrorReason,
+} from "../lib/shared/install-update-output";
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 import {
   listSkillsLockEntries,
@@ -25,7 +31,6 @@ import {
   removeSkillsLockEntry,
   resolveRegistryHost,
   saveSkillsLock as defaultSaveSkillsLock,
-  upsertSkillsLockEntry,
   type SkillsLockFile,
 } from "../lib/workspace/skills-lock";
 
@@ -44,10 +49,6 @@ interface UpdateCommandOptions {
 interface SelectedLockEntry {
   key: string;
   entry: SkillsLockEntry;
-}
-
-function printJson(payload: UpdateJsonResult): void {
-  console.log(JSON.stringify(payload, null, 2));
 }
 
 function toSelector(spec: string): InstallSelector {
@@ -98,58 +99,10 @@ function printHumanResults(entries: UpdateCommandEntry[]): void {
     console.log("No installed skills found.");
     return;
   }
-
-  const maxWidth = resolveTableMaxWidth();
-  const lines = renderTable(
-    [
-      {
-        header: "SKILL",
-        minWidth: 26,
-        maxWidth: 48,
-        shrinkPriority: 0,
-        wrap: true,
-        maxLines: 2,
-        value: (row) => row.skillId,
-      },
-      {
-        header: "TARGET",
-        width: 10,
-        value: (row) => row.agentTarget ?? "-",
-      },
-      {
-        header: "FROM",
-        width: 14,
-        value: (row) => row.fromVersion ?? "-",
-      },
-      {
-        header: "TO",
-        width: 14,
-        value: (row) => row.toVersion ?? "-",
-      },
-      {
-        header: "STATUS",
-        width: 14,
-        value: (row) => row.status,
-      },
-      {
-        header: "DETAIL",
-        minWidth: 12,
-        maxWidth: 64,
-        shrinkPriority: 4,
-        value: (row) => row.reason ?? "",
-      },
-    ],
-    entries,
-    { maxWidth },
-  );
-
-  for (const line of lines) {
-    console.log(line);
-  }
-
-  const updated = entries.filter((entry) => entry.status === "updated").length;
-  const skipped = entries.filter((entry) => entry.status === "skipped_pinned").length;
-  const failed = entries.filter((entry) => entry.status === "failed").length;
+  printSkillStatusTable(entries);
+  const updated = countByStatus(entries, "updated");
+  const skipped = countByStatus(entries, "skipped_pinned");
+  const failed = countByStatus(entries, "failed");
   console.log(
     `Summary: total=${entries.length} updated=${updated} skipped=${skipped} failed=${failed}`,
   );
@@ -243,28 +196,7 @@ export async function runUpdateCommand(
   const access = options.access ?? fs.access.bind(fs);
   const resolveReadIdTokenFn =
     options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }));
-  let cachedReadIdToken: string | null = null;
-  let readTokenPromise: Promise<string | null> | null = null;
-  const resolveReadIdTokenCached = (): Promise<string | null> => {
-    if (cachedReadIdToken) {
-      return Promise.resolve(cachedReadIdToken);
-    }
-
-    if (!readTokenPromise) {
-      readTokenPromise = resolveReadIdTokenFn()
-        .then((token) => {
-          if (token) {
-            cachedReadIdToken = token;
-          }
-          return token;
-        })
-        .finally(() => {
-          readTokenPromise = null;
-        });
-    }
-
-    return readTokenPromise;
-  };
+  const resolveReadIdTokenCached = createCachedReadTokenResolver(resolveReadIdTokenFn);
 
   try {
     const config = getConfigFn(env);
@@ -378,26 +310,7 @@ export async function runUpdateCommand(
           console.error(`Warning: ${entry.skillId}: ${warning}`);
         }
 
-        lock = upsertSkillsLockEntry(
-          lock,
-          {
-            skillId: lockEntry.skillId,
-            ownerLogin: lockEntry.ownerLogin,
-            skill: lockEntry.skill,
-            agentTarget: lockEntry.agentTarget,
-            selectorSpec: entry.selectorSpec,
-            resolvedVersion: lockEntry.version,
-            digest: lockEntry.digest,
-            sizeBytes: lockEntry.sizeBytes,
-            mediaType: lockEntry.mediaType,
-            installedPath: lockEntry.installedPath,
-            registryBaseUrl: lockEntry.registryBaseUrl,
-            installedAt: lockEntry.installedAt,
-            sourceCommand: lockEntry.sourceCommand,
-            downloadedFrom: lockEntry.downloadedFrom,
-          },
-          now(),
-        );
+        lock = upsertInstalledLockEntry(lock, lockEntry, now(), entry.selectorSpec);
 
         entries.push({
           skillId: result.skillId,

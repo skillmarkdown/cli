@@ -1,5 +1,6 @@
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
 import { resolveConfiguredAuthToken } from "../lib/auth/api-token";
+import { deriveOwnerFromSession } from "../lib/auth/owner";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { parseDeprecateFlags, parseDeprecateRequest } from "../lib/deprecate/flags";
 import { deprecateVersions as defaultDeprecateVersions } from "../lib/deprecate/client";
@@ -9,6 +10,7 @@ import { parseSkillId } from "../lib/registry/skill-id";
 import { failWithUsage } from "../lib/shared/command-output";
 import { DEPRECATE_USAGE } from "../lib/shared/cli-text";
 import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
+import { printJson } from "../lib/shared/json-output";
 
 interface DeprecateCommandOptions {
   env?: NodeJS.ProcessEnv;
@@ -26,25 +28,6 @@ interface DeprecateCommandOptions {
     },
     options?: { timeoutMs?: number },
   ) => Promise<DeprecateVersionsResponse>;
-}
-
-const GITHUB_USERNAME_PATTERN = /^[a-z0-9]+(?:-?[a-z0-9]+)*$/i;
-
-function printJson(payload: Record<string, unknown>): void {
-  console.log(JSON.stringify(payload, null, 2));
-}
-
-function deriveOwnerFromSession(session: AuthSession): string | null {
-  if (!session.githubUsername) {
-    return null;
-  }
-
-  const cleaned = session.githubUsername.trim().replace(/^@+/, "");
-  if (!cleaned || !GITHUB_USERNAME_PATTERN.test(cleaned)) {
-    return null;
-  }
-
-  return `@${cleaned.toLowerCase()}`;
 }
 
 export async function runDeprecateCommand(

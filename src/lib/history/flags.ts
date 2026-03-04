@@ -1,31 +1,8 @@
 import { type HistoryFlags } from "./types";
+import { parseIntInRange, parseOptionValue } from "../shared/flag-parse";
 
 const MIN_HISTORY_LIMIT = 1;
 const MAX_HISTORY_LIMIT = 50;
-
-function parseValueArg(
-  args: string[],
-  index: number,
-  options: {
-    allowHyphenPrefixedValue?: boolean;
-    rejectKnownFlagValues?: boolean;
-  } = {},
-): { value?: string; nextIndex: number } {
-  const value = args[index + 1];
-  if (!value) {
-    return { nextIndex: index };
-  }
-
-  if (options.rejectKnownFlagValues && isKnownFlagToken(value)) {
-    return { nextIndex: index };
-  }
-
-  if (!options.allowHyphenPrefixedValue && value.startsWith("-")) {
-    return { nextIndex: index };
-  }
-
-  return { value, nextIndex: index + 1 };
-}
 
 function isKnownFlagToken(value: string): boolean {
   return (
@@ -37,20 +14,8 @@ function isKnownFlagToken(value: string): boolean {
   );
 }
 
-function parseLimit(value: string): number | null {
-  if (!/^\d+$/.test(value)) {
-    return null;
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed < MIN_HISTORY_LIMIT || parsed > MAX_HISTORY_LIMIT) {
-    return null;
-  }
-
-  return parsed;
-}
-
 export function parseHistoryFlags(args: string[]): HistoryFlags {
+  const invalid = (): HistoryFlags => ({ json: false, valid: false });
   let skillId: string | undefined;
   let limit: number | undefined;
   let cursor: string | undefined;
@@ -64,67 +29,48 @@ export function parseHistoryFlags(args: string[]): HistoryFlags {
       continue;
     }
 
-    if (arg === "--limit") {
-      const parsedValue = parseValueArg(args, index);
-      if (!parsedValue.value) {
-        return { json: false, valid: false };
-      }
-
-      const parsedLimit = parseLimit(parsedValue.value);
+    const parsedLimitValue = parseOptionValue(args, index, "limit");
+    if (parsedLimitValue.matched) {
+      const parsedLimit = parseIntInRange(
+        parsedLimitValue.value ?? "",
+        MIN_HISTORY_LIMIT,
+        MAX_HISTORY_LIMIT,
+      );
       if (parsedLimit === null) {
-        return { json: false, valid: false };
+        return invalid();
       }
-
       limit = parsedLimit;
-      index = parsedValue.nextIndex;
+      index = parsedLimitValue.nextIndex;
       continue;
     }
 
-    if (arg.startsWith("--limit=")) {
-      const parsedLimit = parseLimit(arg.slice("--limit=".length));
-      if (parsedLimit === null) {
-        return { json: false, valid: false };
+    const parsedCursorValue = parseOptionValue(args, index, "cursor", {
+      allowHyphenPrefixedValue: true,
+      rejectKnownFlagValues: true,
+      isKnownFlagToken,
+    });
+    if (parsedCursorValue.matched) {
+      if (!parsedCursorValue.value) {
+        return invalid();
       }
-
-      limit = parsedLimit;
-      continue;
-    }
-
-    if (arg === "--cursor") {
-      const parsedValue = parseValueArg(args, index, {
-        allowHyphenPrefixedValue: true,
-        rejectKnownFlagValues: true,
-      });
-      if (!parsedValue.value) {
-        return { json: false, valid: false };
-      }
-
-      cursor = parsedValue.value;
-      index = parsedValue.nextIndex;
-      continue;
-    }
-
-    if (arg.startsWith("--cursor=")) {
-      cursor = arg.slice("--cursor=".length);
-      if (!cursor) {
-        return { json: false, valid: false };
-      }
+      cursor = parsedCursorValue.value;
+      index = parsedCursorValue.nextIndex;
       continue;
     }
 
     if (arg.startsWith("-")) {
-      return { json: false, valid: false };
+      return invalid();
     }
 
     if (skillId !== undefined) {
-      return { json: false, valid: false };
+      return invalid();
     }
 
     skillId = arg;
   }
 
   if (!skillId) {
-    return { json: false, valid: false };
+    return invalid();
   }
 
   return {

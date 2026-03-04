@@ -1,7 +1,9 @@
 import { type UpdateFlags } from "./types";
 import { normalizeAgentTarget } from "../shared/agent-target";
+import { parseOptionValue } from "../shared/flag-parse";
 
 export function parseUpdateFlags(args: string[]): UpdateFlags {
+  const invalid = (): UpdateFlags => ({ all: false, json: false, skillIds: [], valid: false });
   const skillIds: string[] = [];
   let all = false;
   let json = false;
@@ -19,63 +21,26 @@ export function parseUpdateFlags(args: string[]): UpdateFlags {
       continue;
     }
 
-    if (arg === "--agent-target") {
-      const value = args[index + 1];
-      if (!value || value.startsWith("-")) {
-        return {
-          all: false,
-          json: false,
-          skillIds: [],
-          valid: false,
-        };
-      }
-      const parsedTarget = normalizeAgentTarget(value);
+    const parsedTargetValue = parseOptionValue(args, index, "agent-target");
+    if (parsedTargetValue.matched) {
+      const parsedTarget = normalizeAgentTarget(parsedTargetValue.value ?? "");
       if (!parsedTarget) {
-        return {
-          all: false,
-          json: false,
-          skillIds: [],
-          valid: false,
-        };
+        return invalid();
       }
       agentTarget = parsedTarget;
-      index += 1;
-      continue;
-    }
-
-    if (arg.startsWith("--agent-target=")) {
-      const parsedTarget = normalizeAgentTarget(arg.slice("--agent-target=".length));
-      if (!parsedTarget) {
-        return {
-          all: false,
-          json: false,
-          skillIds: [],
-          valid: false,
-        };
-      }
-      agentTarget = parsedTarget;
+      index = parsedTargetValue.nextIndex;
       continue;
     }
 
     if (arg.startsWith("-")) {
-      return {
-        all: false,
-        json: false,
-        skillIds: [],
-        valid: false,
-      };
+      return invalid();
     }
 
     skillIds.push(arg);
   }
 
   if (all && skillIds.length > 0) {
-    return {
-      all: false,
-      json: false,
-      skillIds: [],
-      valid: false,
-    };
+    return invalid();
   }
 
   return {
