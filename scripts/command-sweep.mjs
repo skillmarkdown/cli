@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
+import { pickFirstNonEmpty, sanitizeStepForOutput } from "./command-sweep-utils.mjs";
 
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI_PATH = join(ROOT_DIR, "dist", "cli.js");
@@ -167,16 +168,17 @@ function runCli({ env, cwd, args }) {
 }
 
 function printStep(result, state) {
-  const statusLabel = result.status.toUpperCase();
-  const command = `skillmd ${result.args.join(" ")}`;
+  const safeResult = sanitizeStepForOutput(result);
+  const statusLabel = safeResult.status.toUpperCase();
+  const command = `skillmd ${safeResult.args.join(" ")}`;
   console.log(`\n[${statusLabel}] ${result.name}`);
-  console.log(`  cwd: ${result.cwd}`);
+  console.log(`  cwd: ${safeResult.cwd}`);
   console.log(`  cmd: ${command}`);
-  console.log(`  exit: ${result.exitCode} (${result.durationMs}ms)`);
+  console.log(`  exit: ${safeResult.exitCode} (${safeResult.durationMs}ms)`);
 
   const output =
-    result.stdout || result.stderr
-      ? `${result.stdout}${result.stderr ? `\n${result.stderr}` : ""}`
+    safeResult.stdout || safeResult.stderr
+      ? `${safeResult.stdout}${safeResult.stderr ? `\n${safeResult.stderr}` : ""}`
       : "";
   if (output.trim()) {
     console.log("  output:");
@@ -185,8 +187,8 @@ function printStep(result, state) {
     }
   }
 
-  state.counts[result.status] += 1;
-  state.steps.push(result);
+  state.counts[safeResult.status] += 1;
+  state.steps.push(safeResult);
 }
 
 function createProfileEnv(profileName) {
@@ -202,12 +204,18 @@ function createProfileEnv(profileName) {
   };
 
   if (profileName === "dev") {
-    const devKey = process.env.SKILLMD_DEV_FIREBASE_API_KEY ?? process.env.SKILLMD_FIREBASE_API_KEY;
-    if (devKey && devKey.trim()) {
-      env.SKILLMD_FIREBASE_API_KEY = devKey.trim();
+    const devKey = pickFirstNonEmpty(
+      process.env.SKILLMD_DEV_FIREBASE_API_KEY,
+      process.env.SKILLMD_FIREBASE_API_KEY,
+    );
+    if (devKey) {
+      env.SKILLMD_FIREBASE_API_KEY = devKey;
     }
   } else {
-    const prodKey = process.env.SKILLMD_PROD_FIREBASE_API_KEY ?? PROD_DEFAULT_API_KEY;
+    const prodKey = pickFirstNonEmpty(
+      process.env.SKILLMD_PROD_FIREBASE_API_KEY,
+      PROD_DEFAULT_API_KEY,
+    );
     env.SKILLMD_FIREBASE_API_KEY = prodKey;
   }
 
