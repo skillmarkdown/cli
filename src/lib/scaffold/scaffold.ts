@@ -9,6 +9,7 @@ import {
   buildFormsReference,
   buildGitignore,
   buildLookupTableCsv,
+  buildMitLicense,
   buildMinimalSkillMarkdown,
   buildReferenceGuide,
   buildReportTemplate,
@@ -101,6 +102,7 @@ export function scaffoldSkillInDirectory(
       }
 
       createFile(join(targetDir, ".gitignore"), buildGitignore(), createdPaths);
+      createFile(join(targetDir, "LICENSE"), buildMitLicense(), createdPaths);
       createFile(join(targetDir, "SKILL.md"), buildVerboseSkillMarkdown(skillName), createdPaths);
       createFile(join(targetDir, "scripts", "README.md"), buildScriptsReadme(), createdPaths);
       createFile(

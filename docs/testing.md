@@ -82,6 +82,7 @@ Expected files:
 
 - `./SKILL.md`
 - `./.gitignore`
+- `./LICENSE`
 - `./scripts/.gitkeep`
 - `./scripts/README.md`
 - `./scripts/extract.py`
