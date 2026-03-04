@@ -1,0 +1,46 @@
+# Contributing
+
+Thanks for contributing to `@skillmarkdown/cli`.
+
+## Local setup
+
+```bash
+npm ci
+npm run lint
+npm test
+npm run build
+```
+
+## Branch and PR expectations
+
+- Keep PRs scoped and atomic.
+- Base PRs on `development` unless maintainers request otherwise.
+- Include test updates with behavior changes.
+- Keep strict-v1 terminology and contracts in docs and tests.
+
+## Command sweep guidance
+
+Use command sweeps before merge when command behavior or auth flows change:
+
+```bash
+npm run sweep:commands:dev
+npm run sweep:commands:prod
+```
+
+Run environments sequentially (not concurrently) to avoid auth/session drift.
+
+## Commit quality bar
+
+- `npm run lint` passes.
+- `npm test` passes.
+- `npm run build` passes.
+- Docs are updated for user-facing changes.
+
+## Reporting issues in PRs
+
+Include:
+
+- exact command(s) run
+- expected vs actual behavior
+- relevant CLI output (redact tokens/secrets)
+- environment (`dev` or `prod`, Node version)

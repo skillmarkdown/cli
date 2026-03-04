@@ -56,3 +56,8 @@ Show locally installed skills (and optionally remote-owned skills in a future ex
 - `publish` references:
   - `docs/publish-api.md`
   - `docs/publish-registry.md`
+- project health references:
+  - `CONTRIBUTING.md`
+  - `SECURITY.md`
+  - `SUPPORT.md`
+  - `CODE_OF_CONDUCT.md`

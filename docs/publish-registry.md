@@ -33,7 +33,7 @@ This document defines the registry data and artifact model for `skillmd publish`
 - `ownerSlug`
 - `skillSlug`
 - `description`
-- `visibility` (`public`)
+- `access` (`public` default in API; persisted internally as `visibility`)
 - `distTags` (map tag -> semver)
 - `createdAt`
 - `updatedAt`
