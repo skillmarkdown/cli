@@ -8,6 +8,7 @@ import { runLogoutCommand } from "./commands/logout";
 import { runPublishCommand } from "./commands/publish";
 import { runSearchCommand } from "./commands/search";
 import { runTagCommand } from "./commands/tag";
+import { runTeamCommand } from "./commands/team";
 import { runDeprecateCommand } from "./commands/deprecate";
 import { runUnpublishCommand } from "./commands/unpublish";
 import { runTokenCommand } from "./commands/token";
@@ -34,6 +35,7 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   use: runUseCommand,
   update: runUpdateCommand,
   tag: runTagCommand,
+  team: runTeamCommand,
   deprecate: runDeprecateCommand,
   unpublish: runUnpublishCommand,
   whoami: runWhoamiCommand,

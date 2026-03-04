@@ -138,6 +138,15 @@ Token scope model:
 - `skillmd token add <name> [--scope <read|publish|admin>] [--days <1-365>] [--json]`
 - `skillmd token rm <token-id> [--json]`
 
+### Teams operations
+
+- `skillmd team create <team-slug> [--display-name <name>] [--json]`
+- `skillmd team view <team-slug> [--json]`
+- `skillmd team members ls <team-slug> [--json]`
+- `skillmd team members add <team-slug> <owner-login> [--role <admin|member>] [--json]`
+- `skillmd team members set-role <team-slug> <owner-login> <admin|member> [--json]`
+- `skillmd team members rm <team-slug> <owner-login> [--json]`
+
 ## Troubleshooting
 
 ### Scope errors with automation token
@@ -145,6 +154,12 @@ Token scope model:
 Symptom: `unauthorized` or `forbidden` on write commands.
 
 Fix: create/use a token with required scope (`publish` or `admin`) and pass it via `--auth-token` or `SKILLMD_AUTH_TOKEN`.
+
+### Teams endpoints unavailable
+
+Symptom: `skillmd team ...` fails with a `not_found` style response in some environments.
+
+Fix: target an environment where teams routes are enabled. Backend can disable `/v1/teams*` via `TEAMS_ENABLED=0`.
 
 ### Invalid lockfile schema
 

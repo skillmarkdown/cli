@@ -1,5 +1,5 @@
 export const ROOT_USAGE =
-  "Usage: skillmd [--auth-token <token>] [--version|-v] <init|validate|login|logout|publish|search|view|history|install|use|update|tag|deprecate|unpublish|whoami|token>";
+  "Usage: skillmd [--auth-token <token>] [--version|-v] <init|validate|login|logout|publish|search|view|history|install|use|update|tag|team|deprecate|unpublish|whoami|token>";
 export const INIT_USAGE = "Usage: skillmd init [--no-validate] [--template <minimal|verbose>]";
 export const INSTALL_USAGE =
   "Usage: skillmd install [--prune] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]";
@@ -26,6 +26,14 @@ export const DEPRECATE_USAGE =
   'Usage: skillmd deprecate <skill-id>@<version|range> --message "<text>" [--json]';
 export const UNPUBLISH_USAGE = "Usage: skillmd unpublish <skill-id>@<version> [--json]";
 export const WHOAMI_USAGE = "Usage: skillmd whoami [--json]";
+export const TEAM_USAGE =
+  "Usage: skillmd team <create|view|members> ... [--json]\n" +
+  "  skillmd team create <team-slug> [--display-name <name>] [--json]\n" +
+  "  skillmd team view <team-slug> [--json]\n" +
+  "  skillmd team members ls <team-slug> [--json]\n" +
+  "  skillmd team members add <team-slug> <owner-login> [--role <admin|member>] [--json]\n" +
+  "  skillmd team members set-role <team-slug> <owner-login> <admin|member> [--json]\n" +
+  "  skillmd team members rm <team-slug> <owner-login> [--json]";
 export const TOKEN_USAGE =
   "Usage: skillmd token <ls|add|rm> ... [--json]\n" +
   "  skillmd token ls [--json]\n" +

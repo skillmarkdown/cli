@@ -11,6 +11,12 @@ export interface WhoamiResponse {
   projectId: string | null;
   authType: "firebase" | "token";
   scope: "read" | "publish" | "admin";
+  plan?: "free" | "pro" | "teams";
+  entitlements?: Record<string, boolean | number | string | null>;
+  teams?: Array<{
+    team: string;
+    role: "owner" | "admin" | "member";
+  }>;
 }
 
 export interface ParsedWhoamiFlags {
