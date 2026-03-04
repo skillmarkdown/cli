@@ -1,17 +1,12 @@
-import { getLoginEnvConfig } from "../auth/config";
-import { getRegistryEnvConfig } from "../registry/config";
 import { resolveDefaultAgentTarget } from "../shared/agent-target";
+import { getAuthRegistryEnvConfig } from "../shared/env-config";
 import { type PublishEnvConfig } from "./types";
 
 export function getPublishEnvConfig(env: NodeJS.ProcessEnv = process.env): PublishEnvConfig {
-  const loginConfig = getLoginEnvConfig(env);
-  const registryConfig = getRegistryEnvConfig(env, {
-    firebaseProjectId: loginConfig.firebaseProjectId,
-  });
+  const config = getAuthRegistryEnvConfig(env);
 
   return {
-    firebaseApiKey: loginConfig.firebaseApiKey,
-    ...registryConfig,
+    ...config,
     defaultAgentTarget: resolveDefaultAgentTarget(env.SKILLMD_AGENT_TARGET),
   };
 }

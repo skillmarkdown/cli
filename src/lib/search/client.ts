@@ -2,7 +2,7 @@ import { fetchWithTimeout } from "../shared/http";
 import {
   authHeaders,
   extractApiErrorFields,
-  parseJsonOrThrow,
+  parseApiResponse,
   type ApiErrorPayload,
 } from "../shared/api-client";
 import { SearchApiError } from "./errors";
@@ -93,18 +93,12 @@ export async function searchSkills(
     },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<SearchSkillsResponse | ApiErrorPayload>(
-    response,
-    "Search API",
-  );
-
-  if (!response.ok) {
-    throw toSearchApiError(response.status, parsed as ApiErrorPayload);
-  }
-
-  if (!isSearchSkillsResponse(parsed)) {
-    throw new Error("Search API response was missing required fields");
-  }
+  const parsed = await parseApiResponse(response, {
+    label: "Search API",
+    isValid: isSearchSkillsResponse,
+    missingFieldsMessage: "Search API response was missing required fields",
+    toApiError: toSearchApiError,
+  });
 
   return normalizeSearchSkillsResponse(parsed);
 }

@@ -1,7 +1,7 @@
 import { fetchWithTimeout } from "../shared/http";
 import {
   extractApiErrorFields,
-  parseJsonOrThrow,
+  parseApiResponse,
   type ApiErrorPayload,
 } from "../shared/api-client";
 import { UnpublishApiError } from "./errors";
@@ -66,18 +66,12 @@ export async function unpublishVersion(
     },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<UnpublishVersionResponse | ApiErrorPayload>(
-    response,
-    "Unpublish API",
-  );
-
-  if (!response.ok) {
-    throw toUnpublishApiError(response.status, parsed as ApiErrorPayload);
-  }
-
-  if (!isUnpublishVersionResponse(parsed)) {
-    throw new Error("Unpublish API response was missing required fields");
-  }
+  const parsed = await parseApiResponse(response, {
+    label: "Unpublish API",
+    isValid: isUnpublishVersionResponse,
+    missingFieldsMessage: "Unpublish API response was missing required fields",
+    toApiError: toUnpublishApiError,
+  });
 
   return {
     ...parsed,

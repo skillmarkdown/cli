@@ -3,12 +3,12 @@ import { resolveConfiguredAuthToken } from "../lib/auth/api-token";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { parseDeprecateFlags, parseDeprecateRequest } from "../lib/deprecate/flags";
 import { deprecateVersions as defaultDeprecateVersions } from "../lib/deprecate/client";
-import { getDeprecateEnvConfig } from "../lib/deprecate/config";
 import { isDeprecateApiError } from "../lib/deprecate/errors";
 import { type DeprecateEnvConfig, type DeprecateVersionsResponse } from "../lib/deprecate/types";
 import { parseSkillId } from "../lib/registry/skill-id";
 import { failWithUsage } from "../lib/shared/command-output";
 import { DEPRECATE_USAGE } from "../lib/shared/cli-text";
+import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
 
 interface DeprecateCommandOptions {
   env?: NodeJS.ProcessEnv;
@@ -59,7 +59,7 @@ export async function runDeprecateCommand(
 
   try {
     const env = options.env ?? process.env;
-    const config = (options.getConfig ?? getDeprecateEnvConfig)(env);
+    const config = (options.getConfig ?? getAuthRegistryEnvConfig)(env);
     const parsedSkillId = parseSkillId(parsedRequest.skillId);
     const configuredAuthToken = resolveConfiguredAuthToken(env);
     const session = (options.readSession ?? readAuthSession)();

@@ -2,7 +2,7 @@ import { fetchWithTimeout } from "../shared/http";
 import {
   authHeaders,
   extractApiErrorFields,
-  parseJsonOrThrow,
+  parseApiResponse,
   type ApiErrorPayload,
 } from "../shared/api-client";
 import { WhoamiApiError } from "./errors";
@@ -48,15 +48,10 @@ export async function getWhoami(
     },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<WhoamiResponse | ApiErrorPayload>(response, "Whoami API");
-
-  if (!response.ok) {
-    throw toWhoamiApiError(response.status, parsed as ApiErrorPayload);
-  }
-
-  if (!isWhoamiResponse(parsed)) {
-    throw new Error("Whoami API response was missing required fields");
-  }
-
-  return parsed;
+  return parseApiResponse(response, {
+    label: "Whoami API",
+    isValid: isWhoamiResponse,
+    missingFieldsMessage: "Whoami API response was missing required fields",
+    toApiError: toWhoamiApiError,
+  });
 }

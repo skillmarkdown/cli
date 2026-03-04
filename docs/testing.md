@@ -35,7 +35,8 @@ Git pre-commit now runs through Husky + lint-staged:
 
 ## CI and smoke scripts
 
-- `npm run ci:check` runs format check, lint, and tests.
+- `npm run ci:check` runs format check, lint, tests, and pack size budget enforcement.
+- `npm run check:pack-size` enforces npm unpacked size budget (`<= 235,000` bytes).
 - `npm run smoke:pack` builds, packs, installs the tarball, and runs init/validate from the packed install.
 - `npm run smoke:link` (optional) runs an install-level check via `npm link`.
 

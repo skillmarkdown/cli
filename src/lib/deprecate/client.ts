@@ -1,7 +1,7 @@
 import { fetchWithTimeout } from "../shared/http";
 import {
   extractApiErrorFields,
-  parseJsonOrThrow,
+  parseApiResponse,
   type ApiErrorPayload,
 } from "../shared/api-client";
 import { DeprecateApiError } from "./errors";
@@ -54,18 +54,10 @@ export async function deprecateVersions(
     },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<DeprecateVersionsResponse | ApiErrorPayload>(
-    response,
-    "Deprecate API",
-  );
-
-  if (!response.ok) {
-    throw toDeprecateApiError(response.status, parsed as ApiErrorPayload);
-  }
-
-  if (!isDeprecateVersionsResponse(parsed)) {
-    throw new Error("Deprecate API response was missing required fields");
-  }
-
-  return parsed;
+  return parseApiResponse(response, {
+    label: "Deprecate API",
+    isValid: isDeprecateVersionsResponse,
+    missingFieldsMessage: "Deprecate API response was missing required fields",
+    toApiError: toDeprecateApiError,
+  });
 }

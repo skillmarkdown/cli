@@ -1,7 +1,7 @@
 import { fetchWithTimeout } from "../shared/http";
 import {
   extractApiErrorFields,
-  parseJsonOrThrow,
+  parseApiResponse,
   type ApiErrorPayload,
 } from "../shared/api-client";
 import { PublishApiError } from "./errors";
@@ -29,6 +29,47 @@ function parseHeaders(headers: Record<string, string> | undefined): HeadersInit 
   return Object.entries(headers);
 }
 
+function isPreparePublishResponse(value: unknown): value is PreparePublishResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const response = value as PreparePublishResponse & {
+    publishToken?: unknown;
+    uploadUrl?: unknown;
+  };
+
+  if (response.status !== "upload_required" && response.status !== "idempotent") {
+    return false;
+  }
+
+  if (typeof response.publishToken !== "string") {
+    return false;
+  }
+
+  if (response.status === "upload_required" && typeof response.uploadUrl !== "string") {
+    return false;
+  }
+
+  return true;
+}
+
+function isCommitPublishResponse(value: unknown): value is CommitPublishResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const response = value as CommitPublishResponse;
+  return (
+    (response.status === "published" || response.status === "idempotent") &&
+    typeof response.skillId === "string" &&
+    typeof response.version === "string" &&
+    typeof response.tag === "string" &&
+    !!response.distTags &&
+    typeof response.distTags === "object"
+  );
+}
+
 export async function preparePublish(
   baseUrl: string,
   idToken: string,
@@ -48,42 +89,12 @@ export async function preparePublish(
     { timeoutMs: options.timeoutMs },
   );
 
-  const parsed = await parseJsonOrThrow<PreparePublishResponse | ApiErrorPayload>(
-    response,
-    "Publish prepare API",
-  );
-
-  if (!response.ok) {
-    throw toPublishApiError(response.status, parsed as ApiErrorPayload);
-  }
-
-  if (
-    (parsed as PreparePublishResponse).status !== "upload_required" &&
-    (parsed as PreparePublishResponse).status !== "idempotent"
-  ) {
-    throw new Error("Publish prepare API response was missing required fields");
-  }
-
-  if ((parsed as PreparePublishResponse).status === "upload_required") {
-    const upload = parsed as PreparePublishResponse & {
-      publishToken?: unknown;
-      uploadUrl?: unknown;
-    };
-    if (typeof upload.publishToken !== "string" || typeof upload.uploadUrl !== "string") {
-      throw new Error("Publish prepare API response was missing required fields");
-    }
-  }
-
-  if ((parsed as PreparePublishResponse).status === "idempotent") {
-    const idempotent = parsed as PreparePublishResponse & {
-      publishToken?: unknown;
-    };
-    if (typeof idempotent.publishToken !== "string") {
-      throw new Error("Publish prepare API response was missing required fields");
-    }
-  }
-
-  return parsed as PreparePublishResponse;
+  return parseApiResponse(response, {
+    label: "Publish prepare API",
+    isValid: isPreparePublishResponse,
+    missingFieldsMessage: "Publish prepare API response was missing required fields",
+    toApiError: toPublishApiError,
+  });
 }
 
 export async function uploadArtifact(
@@ -133,26 +144,10 @@ export async function commitPublish(
     { timeoutMs: options.timeoutMs },
   );
 
-  const parsed = await parseJsonOrThrow<CommitPublishResponse | ApiErrorPayload>(
-    response,
-    "Publish commit API",
-  );
-
-  if (!response.ok) {
-    throw toPublishApiError(response.status, parsed as ApiErrorPayload);
-  }
-
-  const status = (parsed as CommitPublishResponse).status;
-  if (
-    (status !== "published" && status !== "idempotent") ||
-    !(parsed as CommitPublishResponse).skillId ||
-    !(parsed as CommitPublishResponse).version ||
-    typeof (parsed as CommitPublishResponse).tag !== "string" ||
-    !(parsed as CommitPublishResponse).distTags ||
-    typeof (parsed as CommitPublishResponse).distTags !== "object"
-  ) {
-    throw new Error("Publish commit API response was missing required fields");
-  }
-
-  return parsed as CommitPublishResponse;
+  return parseApiResponse(response, {
+    label: "Publish commit API",
+    isValid: isCommitPublishResponse,
+    missingFieldsMessage: "Publish commit API response was missing required fields",
+    toApiError: toPublishApiError,
+  });
 }

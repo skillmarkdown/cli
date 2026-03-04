@@ -1,14 +1,8 @@
-export class TagApiError extends Error {
-  readonly status: number;
-  readonly code: string;
-  readonly details?: unknown;
+import { CliApiError } from "../shared/api-errors";
 
+export class TagApiError extends CliApiError {
   constructor(status: number, code: string, message: string, details?: unknown) {
-    super(message);
-    this.name = "TagApiError";
-    this.status = status;
-    this.code = code;
-    this.details = details;
+    super("TagApiError", status, code, message, details);
   }
 }
 

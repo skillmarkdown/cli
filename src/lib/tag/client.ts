@@ -2,7 +2,7 @@ import { fetchWithTimeout } from "../shared/http";
 import {
   authHeaders,
   extractApiErrorFields,
-  parseJsonOrThrow,
+  parseApiResponse,
   type ApiErrorPayload,
 } from "../shared/api-client";
 import { TagApiError } from "./errors";
@@ -94,18 +94,12 @@ export async function listDistTags(
     { method: "GET", headers: authHeaders(options.idToken) },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<DistTagsListResponse | ApiErrorPayload>(
-    response,
-    "Tag API",
-  );
-
-  if (!response.ok) {
-    throw toTagApiError(response.status, parsed as ApiErrorPayload);
-  }
-
-  if (!isDistTagsListResponse(parsed)) {
-    throw new Error("Tag API response was missing required fields");
-  }
+  const parsed = await parseApiResponse(response, {
+    label: "Tag API",
+    isValid: isDistTagsListResponse,
+    missingFieldsMessage: "Tag API response was missing required fields",
+    toApiError: toTagApiError,
+  });
 
   return {
     ...parsed,
@@ -136,18 +130,12 @@ export async function setDistTag(
     },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<DistTagUpdateResponse | ApiErrorPayload>(
-    response,
-    "Tag API",
-  );
-
-  if (!response.ok) {
-    throw toTagApiError(response.status, parsed as ApiErrorPayload);
-  }
-
-  if (!isDistTagUpdateResponse(parsed)) {
-    throw new Error("Tag API response was missing required fields");
-  }
+  const parsed = await parseApiResponse(response, {
+    label: "Tag API",
+    isValid: isDistTagUpdateResponse,
+    missingFieldsMessage: "Tag API response was missing required fields",
+    toApiError: toTagApiError,
+  });
 
   return {
     ...parsed,
@@ -174,18 +162,12 @@ export async function removeDistTag(
     },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<DistTagDeleteResponse | ApiErrorPayload>(
-    response,
-    "Tag API",
-  );
-
-  if (!response.ok) {
-    throw toTagApiError(response.status, parsed as ApiErrorPayload);
-  }
-
-  if (!isDistTagDeleteResponse(parsed)) {
-    throw new Error("Tag API response was missing required fields");
-  }
+  const parsed = await parseApiResponse(response, {
+    label: "Tag API",
+    isValid: isDistTagDeleteResponse,
+    missingFieldsMessage: "Tag API response was missing required fields",
+    toApiError: toTagApiError,
+  });
 
   return {
     ...parsed,

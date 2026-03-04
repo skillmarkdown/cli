@@ -1,8 +1,8 @@
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 import { failWithUsage } from "../lib/shared/command-output";
 import { WHOAMI_USAGE } from "../lib/shared/cli-text";
+import { getLoginScopedRegistryEnvConfig } from "../lib/shared/env-config";
 import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
-import { getWhoamiEnvConfig } from "../lib/whoami/config";
 import { isWhoamiApiError } from "../lib/whoami/errors";
 import { parseWhoamiFlags } from "../lib/whoami/flags";
 import { type WhoamiEnvConfig, type WhoamiResponse } from "../lib/whoami/types";
@@ -33,7 +33,7 @@ export async function runWhoamiCommand(
 
   try {
     const env = options.env ?? process.env;
-    const config = (options.getConfig ?? getWhoamiEnvConfig)(env);
+    const config = (options.getConfig ?? getLoginScopedRegistryEnvConfig)(env);
     const idToken = await (
       options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }))
     )();

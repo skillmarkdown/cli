@@ -2,7 +2,7 @@ import { fetchWithTimeout } from "../shared/http";
 import {
   authHeaders,
   extractApiErrorFields,
-  parseJsonOrThrow,
+  parseApiResponse,
   type ApiErrorPayload,
 } from "../shared/api-client";
 import { TokenApiError } from "./errors";
@@ -98,17 +98,12 @@ export async function createToken(
     { timeoutMs: options.timeoutMs },
   );
 
-  const parsed = await parseJsonOrThrow<CreatedTokenResponse | ApiErrorPayload>(
-    response,
-    "Token API",
-  );
-  if (!response.ok) {
-    throw toTokenApiError(response.status, parsed as ApiErrorPayload);
-  }
-  if (!isCreatedTokenResponse(parsed)) {
-    throw new Error("Token API response was missing required fields");
-  }
-  return parsed;
+  return parseApiResponse(response, {
+    label: "Token API",
+    isValid: isCreatedTokenResponse,
+    missingFieldsMessage: "Token API response was missing required fields",
+    toApiError: toTokenApiError,
+  });
 }
 
 export async function listTokens(
@@ -126,17 +121,12 @@ export async function listTokens(
     { timeoutMs: options.timeoutMs },
   );
 
-  const parsed = await parseJsonOrThrow<ListTokensResponse | ApiErrorPayload>(
-    response,
-    "Token API",
-  );
-  if (!response.ok) {
-    throw toTokenApiError(response.status, parsed as ApiErrorPayload);
-  }
-  if (!isListTokensResponse(parsed)) {
-    throw new Error("Token API response was missing required fields");
-  }
-  return parsed;
+  return parseApiResponse(response, {
+    label: "Token API",
+    isValid: isListTokensResponse,
+    missingFieldsMessage: "Token API response was missing required fields",
+    toApiError: toTokenApiError,
+  });
 }
 
 export async function revokeToken(
@@ -155,15 +145,10 @@ export async function revokeToken(
     { timeoutMs: options.timeoutMs },
   );
 
-  const parsed = await parseJsonOrThrow<RevokeTokenResponse | ApiErrorPayload>(
-    response,
-    "Token API",
-  );
-  if (!response.ok) {
-    throw toTokenApiError(response.status, parsed as ApiErrorPayload);
-  }
-  if (!isRevokeTokenResponse(parsed)) {
-    throw new Error("Token API response was missing required fields");
-  }
-  return parsed;
+  return parseApiResponse(response, {
+    label: "Token API",
+    isValid: isRevokeTokenResponse,
+    missingFieldsMessage: "Token API response was missing required fields",
+    toApiError: toTokenApiError,
+  });
 }

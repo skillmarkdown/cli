@@ -15,6 +15,13 @@ export interface ApiErrorFields {
   details?: unknown;
 }
 
+interface ParseApiResponseOptions<TSuccess, TApiError extends Error> {
+  label: string;
+  isValid: (value: unknown) => value is TSuccess;
+  missingFieldsMessage: string;
+  toApiError: (status: number, payload: ApiErrorPayload) => TApiError;
+}
+
 export async function parseJsonOrThrow<T>(response: Response, label: string): Promise<T> {
   const text = await response.text();
 
@@ -46,4 +53,21 @@ export function authHeaders(idToken?: string): HeadersInit | undefined {
   return {
     Authorization: `Bearer ${idToken}`,
   };
+}
+
+export async function parseApiResponse<TSuccess, TApiError extends Error>(
+  response: Response,
+  options: ParseApiResponseOptions<TSuccess, TApiError>,
+): Promise<TSuccess> {
+  const parsed = await parseJsonOrThrow<TSuccess | ApiErrorPayload>(response, options.label);
+
+  if (!response.ok) {
+    throw options.toApiError(response.status, parsed as ApiErrorPayload);
+  }
+
+  if (!options.isValid(parsed)) {
+    throw new Error(options.missingFieldsMessage);
+  }
+
+  return parsed;
 }
