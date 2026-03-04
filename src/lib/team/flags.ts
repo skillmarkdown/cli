@@ -1,208 +1,119 @@
 import { parseOptionValue } from "../shared/flag-parse";
-import { type ParsedTeamFlags, type TeamRole } from "./types";
+import { type MutableTeamRole, type ParsedTeamFlags } from "./types";
 
+const INVALID: ParsedTeamFlags = { valid: false, json: false };
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/;
 
-function normalizeSlug(raw: string | undefined): string | null {
-  if (!raw) {
-    return null;
-  }
-  const normalized = raw.trim().toLowerCase().replace(/^@+/, "");
-  if (!SLUG_PATTERN.test(normalized)) {
-    return null;
-  }
-  return normalized;
+function normalizeSlug(raw?: string): string | null {
+  const normalized = raw?.trim().toLowerCase().replace(/^@+/, "") ?? "";
+  return SLUG_PATTERN.test(normalized) ? normalized : null;
 }
 
-function parseJsonFlag(args: string[], startIndex: number): boolean | null {
-  let json = false;
-  for (let index = startIndex; index < args.length; index += 1) {
+function parseTailJson(args: string[], start: number): boolean | null {
+  for (let index = start; index < args.length; index += 1) {
     if (args[index] !== "--json") {
       return null;
     }
-    json = true;
   }
-  return json;
+  return args.length > start;
 }
 
 function parseCreate(args: string[]): ParsedTeamFlags {
   const team = normalizeSlug(args[1]);
   if (!team) {
-    return { valid: false, json: false };
+    return INVALID;
   }
-
   let displayName: string | null = null;
   let json = false;
-
   for (let index = 2; index < args.length; index += 1) {
-    if (args[index] === "--json") {
+    const current = args[index];
+    if (current === "--json") {
       json = true;
       continue;
     }
-    const displayNameOption = parseOptionValue(args, index, "display-name");
-    if (displayNameOption.matched) {
-      const value = displayNameOption.value?.trim() ?? "";
-      if (!value) {
-        return { valid: false, json: false };
-      }
-      displayName = value;
-      index = displayNameOption.nextIndex;
-      continue;
+    const opt = parseOptionValue(args, index, "display-name");
+    const value = opt.value?.trim();
+    if (!opt.matched || !value) {
+      return INVALID;
     }
-    return { valid: false, json: false };
+    displayName = value;
+    index = opt.nextIndex;
   }
-
-  return {
-    valid: true,
-    action: "create",
-    team,
-    displayName,
-    json,
-  };
-}
-
-function parseView(args: string[]): ParsedTeamFlags {
-  const team = normalizeSlug(args[1]);
-  if (!team) {
-    return { valid: false, json: false };
-  }
-
-  const json = parseJsonFlag(args, 2);
-  if (json === null) {
-    return { valid: false, json: false };
-  }
-
-  return {
-    valid: true,
-    action: "view",
-    team,
-    json,
-  };
-}
-
-function parseMemberRole(value: string | undefined): Exclude<TeamRole, "owner"> | null {
-  if (!value) {
-    return null;
-  }
-  if (value === "admin" || value === "member") {
-    return value;
-  }
-  return null;
+  return { valid: true, action: "create", team, displayName, json };
 }
 
 function parseMembers(args: string[]): ParsedTeamFlags {
   const action = args[1];
+  const team = normalizeSlug(args[2]);
+  if (!team) {
+    return INVALID;
+  }
 
   if (action === "ls") {
-    const team = normalizeSlug(args[2]);
-    if (!team) {
-      return { valid: false, json: false };
-    }
-    const json = parseJsonFlag(args, 3);
-    if (json === null) {
-      return { valid: false, json: false };
-    }
-    return { valid: true, action: "members_ls", team, json };
+    const jsonTail = parseTailJson(args, 3);
+    return jsonTail === null
+      ? INVALID
+      : { valid: true, action: "members_ls", team, json: jsonTail };
   }
 
-  if (action === "add") {
-    const team = normalizeSlug(args[2]);
-    const ownerLogin = normalizeSlug(args[3]);
-    if (!team || !ownerLogin) {
-      return { valid: false, json: false };
-    }
-
-    let role: Exclude<TeamRole, "owner"> = "member";
-    let json = false;
-
-    for (let index = 4; index < args.length; index += 1) {
-      if (args[index] === "--json") {
-        json = true;
-        continue;
-      }
-      const roleOption = parseOptionValue(args, index, "role");
-      if (roleOption.matched) {
-        if (roleOption.value !== "admin" && roleOption.value !== "member") {
-          return { valid: false, json: false };
-        }
-        role = roleOption.value;
-        index = roleOption.nextIndex;
-        continue;
-      }
-      return { valid: false, json: false };
-    }
-
-    return {
-      valid: true,
-      action: "members_add",
-      team,
-      ownerLogin,
-      role,
-      json,
-    };
-  }
-
-  if (action === "set-role") {
-    const team = normalizeSlug(args[2]);
-    const ownerLogin = normalizeSlug(args[3]);
-    const role = parseMemberRole(args[4]);
-    if (!team || !ownerLogin || !role) {
-      return { valid: false, json: false };
-    }
-
-    const json = parseJsonFlag(args, 5);
-    if (json === null) {
-      return { valid: false, json: false };
-    }
-
-    return {
-      valid: true,
-      action: "members_set_role",
-      team,
-      ownerLogin,
-      role,
-      json,
-    };
+  const ownerLogin = normalizeSlug(args[3]);
+  if (!ownerLogin) {
+    return INVALID;
   }
 
   if (action === "rm") {
-    const team = normalizeSlug(args[2]);
-    const ownerLogin = normalizeSlug(args[3]);
-    if (!team || !ownerLogin) {
-      return { valid: false, json: false };
-    }
-
-    const json = parseJsonFlag(args, 4);
-    if (json === null) {
-      return { valid: false, json: false };
-    }
-
-    return {
-      valid: true,
-      action: "members_rm",
-      team,
-      ownerLogin,
-      json,
-    };
+    const jsonTail = parseTailJson(args, 4);
+    return jsonTail === null
+      ? INVALID
+      : { valid: true, action: "members_rm", team, ownerLogin, json: jsonTail };
   }
 
-  return { valid: false, json: false };
+  if (action === "set-role") {
+    const role = args[4] as MutableTeamRole;
+    if (role !== "admin" && role !== "member") {
+      return INVALID;
+    }
+    const jsonTail = parseTailJson(args, 5);
+    return jsonTail === null
+      ? INVALID
+      : { valid: true, action: "members_set_role", team, ownerLogin, role, json: jsonTail };
+  }
+
+  if (action === "add") {
+    let role: MutableTeamRole = "member";
+    let json = false;
+    for (let index = 4; index < args.length; index += 1) {
+      const current = args[index];
+      if (current === "--json") {
+        json = true;
+        continue;
+      }
+      const opt = parseOptionValue(args, index, "role");
+      if (!opt.matched || (opt.value !== "admin" && opt.value !== "member")) {
+        return INVALID;
+      }
+      role = opt.value;
+      index = opt.nextIndex;
+    }
+    return { valid: true, action: "members_add", team, ownerLogin, role, json };
+  }
+
+  return INVALID;
 }
 
 export function parseTeamFlags(args: string[]): ParsedTeamFlags {
   if (args.length < 2) {
-    return { valid: false, json: false };
+    return INVALID;
   }
-
-  const subcommand = args[0];
-  if (subcommand === "create") {
+  if (args[0] === "create") {
     return parseCreate(args);
   }
-  if (subcommand === "view") {
-    return parseView(args);
+  if (args[0] === "view") {
+    const team = normalizeSlug(args[1]);
+    const jsonTail = team ? parseTailJson(args, 2) : null;
+    return !team || jsonTail === null
+      ? INVALID
+      : { valid: true, action: "view", team, json: jsonTail };
   }
-  if (subcommand === "members") {
-    return parseMembers(args);
-  }
-  return { valid: false, json: false };
+  return args[0] === "members" ? parseMembers(args) : INVALID;
 }

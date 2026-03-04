@@ -1,4 +1,5 @@
 export type TeamRole = "owner" | "admin" | "member";
+export type MutableTeamRole = Exclude<TeamRole, "owner">;
 
 export interface TeamEnvConfig {
   registryBaseUrl: string;
@@ -33,11 +34,11 @@ export interface TeamCreateRequest {
 
 export interface TeamMemberAddRequest {
   ownerLogin: string;
-  role: Exclude<TeamRole, "owner">;
+  role: MutableTeamRole;
 }
 
 export interface TeamMemberUpdateRequest {
-  role: Exclude<TeamRole, "owner">;
+  role: MutableTeamRole;
 }
 
 export interface TeamMemberMutationResponse {
@@ -48,50 +49,20 @@ export interface TeamMemberMutationResponse {
   status: "added" | "updated" | "removed";
 }
 
-export type ParsedTeamFlags =
-  | {
-      valid: true;
-      action: "create";
-      team: string;
-      displayName: string | null;
-      json: boolean;
-    }
-  | {
-      valid: true;
-      action: "view";
-      team: string;
-      json: boolean;
-    }
-  | {
-      valid: true;
-      action: "members_ls";
-      team: string;
-      json: boolean;
-    }
-  | {
-      valid: true;
-      action: "members_add";
-      team: string;
-      ownerLogin: string;
-      role: Exclude<TeamRole, "owner">;
-      json: boolean;
-    }
-  | {
-      valid: true;
-      action: "members_set_role";
-      team: string;
-      ownerLogin: string;
-      role: Exclude<TeamRole, "owner">;
-      json: boolean;
-    }
-  | {
-      valid: true;
-      action: "members_rm";
-      team: string;
-      ownerLogin: string;
-      json: boolean;
-    }
-  | {
-      valid: false;
-      json: false;
-    };
+export type TeamAction =
+  | "create"
+  | "view"
+  | "members_ls"
+  | "members_add"
+  | "members_set_role"
+  | "members_rm";
+
+export interface ParsedTeamFlags {
+  valid: boolean;
+  json: boolean;
+  action?: TeamAction;
+  team?: string;
+  displayName?: string | null;
+  ownerLogin?: string;
+  role?: TeamRole;
+}
