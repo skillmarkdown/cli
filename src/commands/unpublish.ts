@@ -4,7 +4,7 @@ import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { parseSkillId } from "../lib/registry/skill-id";
 import { failWithUsage } from "../lib/shared/command-output";
 import { UNPUBLISH_USAGE } from "../lib/shared/cli-text";
-import { getUnpublishEnvConfig } from "../lib/unpublish/config";
+import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
 import { isUnpublishApiError } from "../lib/unpublish/errors";
 import { parseUnpublishFlags, parseUnpublishRequest } from "../lib/unpublish/flags";
 import { type UnpublishEnvConfig, type UnpublishVersionResponse } from "../lib/unpublish/types";
@@ -58,7 +58,7 @@ export async function runUnpublishCommand(
 
   try {
     const env = options.env ?? process.env;
-    const config = (options.getConfig ?? getUnpublishEnvConfig)(env);
+    const config = (options.getConfig ?? getAuthRegistryEnvConfig)(env);
     const parsedSkillId = parseSkillId(parsedRequest.skillId);
     const configuredAuthToken = resolveConfiguredAuthToken(env);
     const session = (options.readSession ?? readAuthSession)();

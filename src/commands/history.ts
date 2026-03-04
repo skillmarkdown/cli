@@ -1,5 +1,5 @@
 import { listSkillVersionHistory } from "../lib/history/client";
-import { getHistoryEnvConfig, type HistoryEnvConfig } from "../lib/history/config";
+import { getRegistryEnvConfig, type RegistryEnvConfig } from "../lib/registry/config";
 import { isHistoryApiError } from "../lib/history/errors";
 import { parseHistoryFlags } from "../lib/history/flags";
 import { type HistoryResponse } from "../lib/history/types";
@@ -12,7 +12,7 @@ import { callWithReadTokenRetry, isReadTokenRetryableStatus } from "../lib/auth/
 
 interface HistoryCommandOptions {
   env?: NodeJS.ProcessEnv;
-  getConfig?: (env: NodeJS.ProcessEnv) => HistoryEnvConfig;
+  getConfig?: (env: NodeJS.ProcessEnv) => RegistryEnvConfig;
   listHistory?: (
     baseUrl: string,
     request: { ownerSlug: string; skillSlug: string; limit?: number; cursor?: string },
@@ -122,7 +122,7 @@ export async function runHistoryCommand(
   try {
     const parsedSkillId = parseSkillId(parsed.skillId);
     const env = options.env ?? process.env;
-    const getConfigFn = options.getConfig ?? getHistoryEnvConfig;
+    const getConfigFn = options.getConfig ?? getRegistryEnvConfig;
     const config = getConfigFn(env);
     const listHistoryFn = options.listHistory ?? listSkillVersionHistory;
     const resolveReadIdTokenFn =

@@ -39,6 +39,7 @@ function parseArgs(argv) {
   const parsed = {
     env: "dev",
     write: false,
+    extended: false,
     allowAuthBlocked: false,
     keepWorkspace: false,
     reportFile: null,
@@ -64,6 +65,11 @@ function parseArgs(argv) {
 
     if (arg === "--write") {
       parsed.write = true;
+      continue;
+    }
+
+    if (arg === "--extended") {
+      parsed.extended = true;
       continue;
     }
 
@@ -128,6 +134,7 @@ function printUsageAndExit(code) {
     "Options:",
     "  --env <dev|prod|both>     Target environment profile(s). Default: dev",
     "  --write                   Include write-path commands (publish real, tag add/rm, deprecate, unpublish)",
+    "  --extended                Include additional edge-case scenarios (recommended with --write)",
     "  --allow-auth-blocked      Do not fail process on auth-blocked write steps",
     "  --workspace <path>        Reuse a fixed workspace path (default: new temp dir)",
     "  --keep-workspace          Keep temp workspace after run",
@@ -272,6 +279,40 @@ function runExpectedErrorStep({ state, name, args, cwd, env, expectedPattern, sk
   return finalized;
 }
 
+function runExpectedSuccessStep({
+  state,
+  name,
+  args,
+  cwd,
+  env,
+  expectedPattern,
+  skipReason = null,
+}) {
+  if (skipReason) {
+    const skipped = {
+      name,
+      args,
+      cwd,
+      exitCode: -1,
+      stdout: "",
+      stderr: skipReason,
+      combined: skipReason,
+      durationMs: 0,
+      status: "skipped",
+    };
+    printStep(skipped, state);
+    return skipped;
+  }
+
+  const raw = runCli({ env, cwd, args });
+  const matchedExpectedPattern = expectedPattern ? expectedPattern.test(raw.combined) : true;
+  const expectedSuccessMatched = raw.exitCode === 0 && matchedExpectedPattern;
+  const status = expectedSuccessMatched ? "pass" : isAuthBlocked(raw.combined) ? "blocked" : "fail";
+  const finalized = { ...raw, name, status };
+  printStep(finalized, state);
+  return finalized;
+}
+
 function parseSearchResult(stdout) {
   let payload;
   try {
@@ -307,6 +348,26 @@ function parseSearchResult(stdout) {
   };
 }
 
+function parseJsonPayload(stdout) {
+  try {
+    return JSON.parse(stdout);
+  } catch {
+    return null;
+  }
+}
+
+function parseTokenCreateResult(stdout) {
+  const payload = parseJsonPayload(stdout);
+  if (!payload || typeof payload !== "object") {
+    return { tokenId: null, token: null };
+  }
+
+  return {
+    tokenId: typeof payload.tokenId === "string" ? payload.tokenId : null,
+    token: typeof payload.token === "string" ? payload.token : null,
+  };
+}
+
 function summarizeOutcome(state, allowAuthBlocked) {
   const hasFail = state.counts.fail > 0;
   const hasBlocked = state.counts.blocked > 0;
@@ -322,6 +383,7 @@ function summarizeOutcome(state, allowAuthBlocked) {
 function runProfileSweep({
   profileName,
   writeEnabled,
+  extendedEnabled,
   allowAuthBlocked,
   workspaceOverride,
   keepWorkspace,
@@ -335,6 +397,7 @@ function runProfileSweep({
   const state = {
     profile: profileName,
     writeEnabled,
+    extendedEnabled,
     workspace,
     counts: {
       pass: 0,
@@ -355,11 +418,13 @@ function runProfileSweep({
 
   const initDir = join(workspace, "init-verbose");
   const publishDir = join(workspace, `publish-skill-${Date.now()}`);
+  const fallbackDir = join(workspace, `fallback-skill-${Date.now()}`);
   const workDir = join(workspace, "work");
   const edgeDir = join(workspace, "edge-cases");
   const isolatedHomeDir = join(workspace, "isolated-home");
   mkdirSync(initDir, { recursive: true });
   mkdirSync(publishDir, { recursive: true });
+  mkdirSync(fallbackDir, { recursive: true });
   mkdirSync(workDir, { recursive: true });
   mkdirSync(edgeDir, { recursive: true });
   mkdirSync(isolatedHomeDir, { recursive: true });
@@ -640,6 +705,10 @@ function runProfileSweep({
 
   let ownedSkillId = null;
   const ownedVersion = "1.0.0";
+  const notFoundPattern = /(not_found|status 404|not found)/i;
+  const scopeDeniedPattern = /(forbidden|unauthorized|status (401|403))/i;
+  const unpublishDenySpec = pickFirstNonEmpty(env.SKILLMD_SWEEP_UNPUBLISH_DENY_SPEC);
+  let fallbackSkillId = null;
 
   if (writeEnabled) {
     const publishRealStep = runStep({
@@ -681,6 +750,112 @@ function runProfileSweep({
         : null;
     const writeSkipReason = prereqBlockedReason ?? prereqFailedReason;
 
+    if (extendedEnabled) {
+      runExpectedSuccessStep({
+        state,
+        name: "extended-publish-idempotent",
+        args: [
+          "publish",
+          publishDir,
+          "--version",
+          ownedVersion,
+          "--tag",
+          "latest",
+          "--access",
+          "public",
+          "--agent-target",
+          "skillmd",
+          "--json",
+        ],
+        cwd: ROOT_DIR,
+        env,
+        expectedPattern: /"status"\s*:\s*"idempotent"/i,
+        skipReason: writeSkipReason,
+      });
+
+      if (!writeSkipReason) {
+        writeFileSync(join(publishDir, "SKILL.md"), "\n<!-- sweep-conflict-check -->\n", {
+          encoding: "utf8",
+          flag: "a",
+        });
+      }
+
+      runExpectedErrorStep({
+        state,
+        name: "extended-publish-version-conflict",
+        args: [
+          "publish",
+          publishDir,
+          "--version",
+          ownedVersion,
+          "--tag",
+          "latest",
+          "--access",
+          "public",
+          "--agent-target",
+          "skillmd",
+          "--json",
+        ],
+        cwd: ROOT_DIR,
+        env,
+        expectedPattern: /(version conflict|version_conflict|status 409)/i,
+        skipReason: writeSkipReason,
+      });
+
+      runStep({
+        state,
+        name: "extended-init-fallback-no-latest",
+        args: ["init", "--template", "verbose"],
+        cwd: fallbackDir,
+        env,
+        skipReason: writeSkipReason,
+      });
+
+      const publishFallbackStep = runStep({
+        state,
+        name: "extended-publish-fallback-no-latest",
+        args: [
+          "publish",
+          fallbackDir,
+          "--version",
+          "1.0.0",
+          "--tag",
+          "beta",
+          "--access",
+          "public",
+          "--agent-target",
+          "skillmd",
+          "--json",
+        ],
+        cwd: ROOT_DIR,
+        env,
+        skipReason: writeSkipReason,
+      });
+
+      if (publishFallbackStep.status === "pass") {
+        const payload = parseJsonPayload(publishFallbackStep.stdout);
+        if (payload && typeof payload.skillId === "string") {
+          fallbackSkillId = payload.skillId;
+        }
+      }
+
+      runExpectedSuccessStep({
+        state,
+        name: "extended-use-fallback-no-latest",
+        args: fallbackSkillId ? ["use", fallbackSkillId, "--json"] : ["use"],
+        cwd: workDir,
+        env,
+        expectedPattern: /"version"\s*:\s*"1\.0\.0"/i,
+        skipReason:
+          writeSkipReason ||
+          (publishFallbackStep.status !== "pass"
+            ? "fallback publish failed; skipping latest-fallback use test"
+            : !fallbackSkillId
+              ? "fallback publish did not return skillId"
+              : null),
+      });
+    }
+
     runStep({
       state,
       name: "tag-add",
@@ -701,7 +876,254 @@ function runProfileSweep({
       skipReason: writeSkipReason,
     });
 
-    runStep({
+    if (extendedEnabled) {
+      runExpectedSuccessStep({
+        state,
+        name: "extended-tag-rm-missing",
+        args: ownedSkillId
+          ? ["tag", "rm", ownedSkillId, "missing-tag-sweep", "--json"]
+          : ["tag", "rm"],
+        cwd: ROOT_DIR,
+        env,
+        expectedPattern: /"status"\s*:\s*"deleted"/i,
+        skipReason: writeSkipReason,
+      });
+
+      runExpectedErrorStep({
+        state,
+        name: "extended-tag-add-missing-version",
+        args: ownedSkillId
+          ? ["tag", "add", `${ownedSkillId}@9.9.9`, "missing-version", "--json"]
+          : ["tag", "add"],
+        cwd: ROOT_DIR,
+        env,
+        expectedPattern: notFoundPattern,
+        skipReason: writeSkipReason,
+      });
+
+      const readTokenStep = runStep({
+        state,
+        name: "extended-token-read-add",
+        args: ["token", "add", "sweep-read", "--scope", "read", "--days", "1", "--json"],
+        cwd: ROOT_DIR,
+        env,
+        skipReason: writeSkipReason,
+      });
+
+      const { tokenId: readTokenId, token: readToken } = parseTokenCreateResult(
+        readTokenStep.stdout,
+      );
+
+      runStep({
+        state,
+        name: "extended-token-read-search",
+        args: readToken ? ["search", "--json", "--auth-token", readToken] : ["search", "--json"],
+        cwd: ROOT_DIR,
+        env,
+        skipReason:
+          writeSkipReason ||
+          (readTokenStep.status !== "pass"
+            ? "read token was not created"
+            : !readToken
+              ? "read token add did not return token secret"
+              : null),
+      });
+
+      runExpectedErrorStep({
+        state,
+        name: "extended-token-read-deny-tag-add",
+        args:
+          readToken && ownedSkillId
+            ? [
+                "tag",
+                "add",
+                `${ownedSkillId}@${ownedVersion}`,
+                "read-deny",
+                "--json",
+                "--auth-token",
+                readToken,
+              ]
+            : ["tag", "add"],
+        cwd: ROOT_DIR,
+        env,
+        expectedPattern: scopeDeniedPattern,
+        skipReason:
+          writeSkipReason ||
+          (readTokenStep.status !== "pass"
+            ? "read token was not created"
+            : !readToken
+              ? "read token add did not return token secret"
+              : !ownedSkillId
+                ? "owned skill id missing"
+                : null),
+      });
+
+      runStep({
+        state,
+        name: "extended-token-read-rm",
+        args: readTokenId ? ["token", "rm", readTokenId, "--json"] : ["token", "rm"],
+        cwd: ROOT_DIR,
+        env,
+        skipReason:
+          writeSkipReason ||
+          (readTokenStep.status !== "pass"
+            ? "read token was not created"
+            : !readTokenId
+              ? "read token add did not return tokenId"
+              : null),
+      });
+
+      const publishTokenStep = runStep({
+        state,
+        name: "extended-token-publish-add",
+        args: ["token", "add", "sweep-publish", "--scope", "publish", "--days", "1", "--json"],
+        cwd: ROOT_DIR,
+        env,
+        skipReason: writeSkipReason,
+      });
+
+      const { tokenId: publishTokenId, token: publishToken } = parseTokenCreateResult(
+        publishTokenStep.stdout,
+      );
+
+      runStep({
+        state,
+        name: "extended-token-publish-tag-add",
+        args:
+          publishToken && ownedSkillId
+            ? [
+                "tag",
+                "add",
+                `${ownedSkillId}@${ownedVersion}`,
+                "publish-token",
+                "--json",
+                "--auth-token",
+                publishToken,
+              ]
+            : ["tag", "add"],
+        cwd: ROOT_DIR,
+        env,
+        skipReason:
+          writeSkipReason ||
+          (publishTokenStep.status !== "pass"
+            ? "publish token was not created"
+            : !publishToken
+              ? "publish token add did not return token secret"
+              : !ownedSkillId
+                ? "owned skill id missing"
+                : null),
+      });
+
+      runStep({
+        state,
+        name: "extended-token-publish-tag-rm",
+        args:
+          publishToken && ownedSkillId
+            ? ["tag", "rm", ownedSkillId, "publish-token", "--json", "--auth-token", publishToken]
+            : ["tag", "rm"],
+        cwd: ROOT_DIR,
+        env,
+        skipReason:
+          writeSkipReason ||
+          (publishTokenStep.status !== "pass"
+            ? "publish token was not created"
+            : !publishToken
+              ? "publish token add did not return token secret"
+              : !ownedSkillId
+                ? "owned skill id missing"
+                : null),
+      });
+
+      runExpectedErrorStep({
+        state,
+        name: "extended-token-publish-deny-deprecate",
+        args:
+          publishToken && ownedSkillId
+            ? [
+                "deprecate",
+                `${ownedSkillId}@${ownedVersion}`,
+                "--message",
+                "publish-scope-deny",
+                "--json",
+                "--auth-token",
+                publishToken,
+              ]
+            : ["deprecate"],
+        cwd: ROOT_DIR,
+        env,
+        expectedPattern: scopeDeniedPattern,
+        skipReason:
+          writeSkipReason ||
+          (publishTokenStep.status !== "pass"
+            ? "publish token was not created"
+            : !publishToken
+              ? "publish token add did not return token secret"
+              : !ownedSkillId
+                ? "owned skill id missing"
+                : null),
+      });
+
+      runStep({
+        state,
+        name: "extended-token-publish-rm",
+        args: publishTokenId ? ["token", "rm", publishTokenId, "--json"] : ["token", "rm"],
+        cwd: ROOT_DIR,
+        env,
+        skipReason:
+          writeSkipReason ||
+          (publishTokenStep.status !== "pass"
+            ? "publish token was not created"
+            : !publishTokenId
+              ? "publish token add did not return tokenId"
+              : null),
+      });
+
+      const adminTokenStep = runStep({
+        state,
+        name: "extended-token-admin-add",
+        args: ["token", "add", "sweep-admin", "--scope", "admin", "--days", "1", "--json"],
+        cwd: ROOT_DIR,
+        env,
+        skipReason: writeSkipReason,
+      });
+
+      const { tokenId: adminTokenId, token: adminToken } = parseTokenCreateResult(
+        adminTokenStep.stdout,
+      );
+
+      runExpectedSuccessStep({
+        state,
+        name: "extended-token-admin-whoami",
+        args: adminToken ? ["whoami", "--json", "--auth-token", adminToken] : ["whoami", "--json"],
+        cwd: ROOT_DIR,
+        env,
+        expectedPattern: /"scope"\s*:\s*"admin"/i,
+        skipReason:
+          writeSkipReason ||
+          (adminTokenStep.status !== "pass"
+            ? "admin token was not created"
+            : !adminToken
+              ? "admin token add did not return token secret"
+              : null),
+      });
+
+      runStep({
+        state,
+        name: "extended-token-admin-rm",
+        args: adminTokenId ? ["token", "rm", adminTokenId, "--json"] : ["token", "rm"],
+        cwd: ROOT_DIR,
+        env,
+        skipReason:
+          writeSkipReason ||
+          (adminTokenStep.status !== "pass"
+            ? "admin token was not created"
+            : !adminTokenId
+              ? "admin token add did not return tokenId"
+              : null),
+      });
+    }
+
+    const deprecateStep = runStep({
       state,
       name: "deprecate",
       args: ownedSkillId
@@ -712,7 +1134,26 @@ function runProfileSweep({
       skipReason: writeSkipReason,
     });
 
-    runStep({
+    if (extendedEnabled) {
+      runExpectedSuccessStep({
+        state,
+        name: "extended-use-deprecated-warning",
+        args:
+          ownedSkillId && ownedVersion
+            ? ["use", ownedSkillId, "--version", ownedVersion, "--json"]
+            : ["use"],
+        cwd: workDir,
+        env,
+        expectedPattern: /"warnings"\s*:\s*\[\s*".*deprecated/i,
+        skipReason:
+          writeSkipReason ||
+          (deprecateStep.status !== "pass"
+            ? "deprecate failed; skipping deprecated warning check"
+            : null),
+      });
+    }
+
+    const unpublishStep = runStep({
       state,
       name: "unpublish",
       args: ownedSkillId
@@ -722,6 +1163,68 @@ function runProfileSweep({
       env,
       skipReason: writeSkipReason,
     });
+
+    if (extendedEnabled) {
+      runExpectedErrorStep({
+        state,
+        name: "extended-use-unpublished-version",
+        args:
+          ownedSkillId && ownedVersion
+            ? ["use", ownedSkillId, "--version", ownedVersion, "--json"]
+            : ["use"],
+        cwd: workDir,
+        env,
+        expectedPattern: notFoundPattern,
+        skipReason:
+          writeSkipReason ||
+          (unpublishStep.status !== "pass"
+            ? "unpublish failed; skipping unpublished-version checks"
+            : null),
+      });
+
+      runExpectedErrorStep({
+        state,
+        name: "extended-tag-add-unpublished-version",
+        args:
+          ownedSkillId && ownedVersion
+            ? ["tag", "add", `${ownedSkillId}@${ownedVersion}`, "after-unpublish", "--json"]
+            : ["tag", "add"],
+        cwd: ROOT_DIR,
+        env,
+        expectedPattern: notFoundPattern,
+        skipReason:
+          writeSkipReason ||
+          (unpublishStep.status !== "pass"
+            ? "unpublish failed; skipping unpublished-version checks"
+            : null),
+      });
+
+      runExpectedSuccessStep({
+        state,
+        name: "extended-history-excludes-unpublished",
+        args: ownedSkillId ? ["history", ownedSkillId, "--limit", "5", "--json"] : ["history"],
+        cwd: ROOT_DIR,
+        env,
+        expectedPattern: /"results"\s*:\s*\[\s*\]/i,
+        skipReason:
+          writeSkipReason ||
+          (unpublishStep.status !== "pass"
+            ? "unpublish failed; skipping unpublished-version checks"
+            : null),
+      });
+
+      runExpectedErrorStep({
+        state,
+        name: "extended-unpublish-window-denied",
+        args: unpublishDenySpec ? ["unpublish", unpublishDenySpec, "--json"] : ["unpublish"],
+        cwd: ROOT_DIR,
+        env,
+        expectedPattern: /(unpublish_denied|status 409)/i,
+        skipReason: !unpublishDenySpec
+          ? "set SKILLMD_SWEEP_UNPUBLISH_DENY_SPEC='@owner/skill@version' to enable this policy-window check"
+          : writeSkipReason,
+      });
+    }
 
     const tokenCreateStep = runStep({
       state,
@@ -734,14 +1237,7 @@ function runProfileSweep({
 
     let createdTokenId = null;
     if (tokenCreateStep.status === "pass") {
-      try {
-        const payload = JSON.parse(tokenCreateStep.stdout);
-        if (payload && typeof payload.tokenId === "string") {
-          createdTokenId = payload.tokenId;
-        }
-      } catch {
-        createdTokenId = null;
-      }
+      createdTokenId = parseTokenCreateResult(tokenCreateStep.stdout).tokenId;
     }
 
     runStep({
@@ -764,6 +1260,7 @@ function runProfileSweep({
   state.meta = {
     readSkill,
     ownedSkillId,
+    fallbackSkillId,
     dryRunStatus: dryRun.status,
   };
 
@@ -802,6 +1299,7 @@ function main() {
     const sweep = runProfileSweep({
       profileName: target,
       writeEnabled,
+      extendedEnabled: options.extended,
       allowAuthBlocked: options.allowAuthBlocked,
       workspaceOverride: options.workspace,
       keepWorkspace: options.keepWorkspace,
@@ -817,6 +1315,7 @@ function main() {
     options: {
       env: options.env,
       write: options.write,
+      extended: options.extended,
       allowAuthBlocked: options.allowAuthBlocked,
       keepWorkspace: options.keepWorkspace,
       workspace: options.workspace,

@@ -2,13 +2,13 @@ import { promises as fs } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
-import { getInstallEnvConfig, type InstallEnvConfig } from "../lib/install/config";
 import { parseInstallFlags } from "../lib/install/flags";
 import {
   type InstallCommandEntry,
   type InstallJsonResult,
   type InstallPrunedEntry,
 } from "../lib/install/types";
+import { getUseEnvConfig, type UseEnvConfig } from "../lib/use/config";
 import { DEFAULT_AGENT_TARGET, type AgentTarget } from "../lib/shared/agent-target";
 import { failWithUsage } from "../lib/shared/command-output";
 import { INSTALL_USAGE } from "../lib/shared/cli-text";
@@ -29,7 +29,7 @@ import {
   type SkillsManifestDependency,
   type SkillsManifestFile,
 } from "../lib/workspace/skills-manifest";
-import { isUseApiError } from "../lib/use/errors";
+import { resolveTableMaxWidth, toUseApiErrorReason } from "../lib/shared/install-update-output";
 import { resolveInstalledSkillPath } from "../lib/use/pathing";
 import { installFromRegistry as defaultInstallFromRegistry } from "../lib/use/workflow";
 
@@ -37,7 +37,7 @@ interface InstallCommandOptions {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   now?: () => Date;
-  getConfig?: (env: NodeJS.ProcessEnv) => InstallEnvConfig;
+  getConfig?: (env: NodeJS.ProcessEnv) => UseEnvConfig;
   loadSkillsManifest?: typeof defaultLoadSkillsManifest;
   loadSkillsLock?: typeof defaultLoadSkillsLock;
   saveSkillsLock?: typeof defaultSaveSkillsLock;
@@ -48,14 +48,6 @@ interface InstallCommandOptions {
 
 function printJson(payload: InstallJsonResult): void {
   console.log(JSON.stringify(payload, null, 2));
-}
-
-function toErrorReason(error: unknown): string {
-  if (isUseApiError(error)) {
-    return `${error.message} (${error.code}, status ${error.status})`;
-  }
-
-  return error instanceof Error ? error.message : "Unknown error";
 }
 
 function toJsonResult(
@@ -78,7 +70,7 @@ function toJsonResult(
 }
 
 function printInstallTable(entries: InstallCommandEntry[]): void {
-  const maxWidth = process.stdout.isTTY ? (process.stdout.columns ?? 120) : undefined;
+  const maxWidth = resolveTableMaxWidth();
   const lines = renderTable(
     [
       {
@@ -138,7 +130,7 @@ function printPruneTable(entries: InstallPrunedEntry[]): void {
     return;
   }
 
-  const maxWidth = process.stdout.isTTY ? (process.stdout.columns ?? 120) : undefined;
+  const maxWidth = resolveTableMaxWidth();
   const lines = renderTable(
     [
       {
@@ -326,7 +318,7 @@ export async function runInstallCommand(
   const env = options.env ?? process.env;
   const cwd = options.cwd ?? process.cwd();
   const now = options.now ?? (() => new Date());
-  const getConfigFn = options.getConfig ?? getInstallEnvConfig;
+  const getConfigFn = options.getConfig ?? getUseEnvConfig;
   const loadSkillsManifestFn = options.loadSkillsManifest ?? defaultLoadSkillsManifest;
   const loadSkillsLockFn = options.loadSkillsLock ?? defaultLoadSkillsLock;
   const saveSkillsLockFn = options.saveSkillsLock ?? defaultSaveSkillsLock;
@@ -446,7 +438,7 @@ export async function runInstallCommand(
           spec: dependency.spec,
           fromVersion: existingEntry?.resolvedVersion,
           status: "failed",
-          reason: toErrorReason(error),
+          reason: toUseApiErrorReason(error),
         });
       }
     }

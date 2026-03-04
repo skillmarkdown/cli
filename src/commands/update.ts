@@ -2,7 +2,6 @@ import { promises as fs } from "node:fs";
 
 import { parseSkillId } from "../lib/registry/skill-id";
 import { getUseEnvConfig, type UseEnvConfig } from "../lib/use/config";
-import { isUseApiError } from "../lib/use/errors";
 import { type InstallSelector } from "../lib/use/types";
 import { installFromRegistry as defaultInstallFromRegistry } from "../lib/use/workflow";
 import { DEFAULT_AGENT_TARGET, type AgentTarget } from "../lib/shared/agent-target";
@@ -17,6 +16,7 @@ import {
 } from "../lib/update/types";
 import { failWithUsage } from "../lib/shared/command-output";
 import { UPDATE_USAGE } from "../lib/shared/cli-text";
+import { resolveTableMaxWidth, toUseApiErrorReason } from "../lib/shared/install-update-output";
 import { renderTable } from "../lib/shared/table";
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 import {
@@ -55,14 +55,6 @@ function toSelector(spec: string): InstallSelector {
     strategy: "spec",
     spec,
   };
-}
-
-function toErrorReason(error: unknown): string {
-  if (isUseApiError(error)) {
-    return `${error.message} (${error.code}, status ${error.status})`;
-  }
-
-  return error instanceof Error ? error.message : "Unknown error";
 }
 
 function toJsonResult(mode: UpdateMode, entries: UpdateCommandEntry[]): UpdateJsonResult {
@@ -107,7 +99,7 @@ function printHumanResults(entries: UpdateCommandEntry[]): void {
     return;
   }
 
-  const maxWidth = process.stdout.isTTY ? (process.stdout.columns ?? 120) : undefined;
+  const maxWidth = resolveTableMaxWidth();
   const lines = renderTable(
     [
       {
@@ -423,7 +415,7 @@ export async function runUpdateCommand(
           installedPath: entry.installedPath,
           fromVersion: entry.resolvedVersion,
           status: "failed",
-          reason: toErrorReason(error),
+          reason: toUseApiErrorReason(error),
         });
       }
     }

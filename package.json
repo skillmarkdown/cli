@@ -8,14 +8,16 @@
     "skillmd": "dist/cli.js"
   },
   "files": [
-    "dist",
+    "dist/cli.js",
     "README.md",
     "LICENSE"
   ],
   "main": "dist/cli.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/ensure-cli-executable.mjs",
-    "ci:check": "npm run format:check && npm run lint && npm test",
+    "build": "npm run clean && npm run typecheck && node scripts/build-bundle.mjs && node scripts/ensure-cli-executable.mjs",
+    "build:test": "npm run clean && tsc -p tsconfig.json && node scripts/build-bundle.mjs && node scripts/ensure-cli-executable.mjs",
+    "check:pack-size": "node scripts/check-pack-size.mjs",
+    "ci:check": "npm run format:check && npm run lint && npm test && npm run check:pack-size",
     "clean": "rm -rf dist",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -26,9 +28,13 @@
     "smoke:link": "bash ./scripts/smoke-link.sh",
     "smoke:pack": "bash ./scripts/smoke-pack.sh",
     "sweep:commands:dev": "npm run build && node scripts/command-sweep.mjs --env dev --write --allow-auth-blocked",
+    "sweep:commands:dev:extended": "npm run build && node scripts/command-sweep.mjs --env dev --write --extended --allow-auth-blocked",
     "sweep:commands:prod": "npm run build && node scripts/command-sweep.mjs --env prod --allow-auth-blocked",
+    "sweep:commands:prod:extended": "npm run build && node scripts/command-sweep.mjs --env prod --write --extended --allow-auth-blocked",
     "sweep:commands:both": "npm run build && node scripts/command-sweep.mjs --env both --allow-auth-blocked",
-    "test": "npm run build && node --test"
+    "sweep:commands:both:extended": "npm run build && node scripts/command-sweep.mjs --env both --write --extended --allow-auth-blocked",
+    "test": "npm run build:test && node --test",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "engines": {
     "node": ">=18"
@@ -52,6 +58,7 @@
     "@types/semver": "^7.7.1",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
+    "esbuild": "^0.27.3",
     "eslint": "^10.0.2",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.3.0",

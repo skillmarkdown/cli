@@ -1,5 +1,5 @@
 import { searchSkills } from "../lib/search/client";
-import { getSearchEnvConfig, type SearchEnvConfig } from "../lib/search/config";
+import { getRegistryEnvConfig, type RegistryEnvConfig } from "../lib/registry/config";
 import { isSearchApiError } from "../lib/search/errors";
 import { parseSearchFlags } from "../lib/search/flags";
 import {
@@ -24,7 +24,7 @@ interface IndexedSearchResult {
 
 interface SearchCommandOptions {
   env?: NodeJS.ProcessEnv;
-  getConfig?: (env: NodeJS.ProcessEnv) => SearchEnvConfig;
+  getConfig?: (env: NodeJS.ProcessEnv) => RegistryEnvConfig;
   searchSkills?: (
     baseUrl: string,
     request: { query?: string; limit?: number; cursor?: string; scope?: "public" | "private" },
@@ -212,7 +212,7 @@ export async function runSearchCommand(
 
   try {
     const env = options.env ?? process.env;
-    const getConfigFn = options.getConfig ?? getSearchEnvConfig;
+    const getConfigFn = options.getConfig ?? getRegistryEnvConfig;
     const config = getConfigFn(env);
     const searchSkillsFn = options.searchSkills ?? searchSkills;
     const readSelectionCacheFn = options.readSelectionCache ?? readSearchSelectionCache;

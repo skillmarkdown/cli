@@ -3,12 +3,12 @@ import { resolveConfiguredAuthToken } from "../lib/auth/api-token";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { failWithUsage } from "../lib/shared/command-output";
 import { TOKEN_USAGE } from "../lib/shared/cli-text";
+import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
 import {
   createToken as defaultCreateToken,
   listTokens as defaultListTokens,
   revokeToken as defaultRevokeToken,
 } from "../lib/token/client";
-import { getTokenEnvConfig } from "../lib/token/config";
 import { isTokenApiError } from "../lib/token/errors";
 import { parseTokenFlags } from "../lib/token/flags";
 import {
@@ -102,7 +102,7 @@ export async function runTokenCommand(
 
   try {
     const env = options.env ?? process.env;
-    const config = (options.getConfig ?? getTokenEnvConfig)(env);
+    const config = (options.getConfig ?? getAuthRegistryEnvConfig)(env);
     const idToken = await resolveWriteToken(env, config, options);
     if (!idToken) {
       console.error("skillmd token: not logged in. Run 'skillmd login' first.");

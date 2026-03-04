@@ -2,7 +2,7 @@ import { fetchWithTimeout } from "../shared/http";
 import {
   authHeaders,
   extractApiErrorFields,
-  parseJsonOrThrow,
+  parseApiResponse,
   type ApiErrorPayload,
 } from "../shared/api-client";
 import { HistoryApiError } from "./errors";
@@ -53,15 +53,10 @@ export async function listSkillVersionHistory(
     { method: "GET", headers: authHeaders(options.idToken) },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<HistoryResponse | ApiErrorPayload>(response, "History API");
-
-  if (!response.ok) {
-    throw toHistoryApiError(response.status, parsed as ApiErrorPayload);
-  }
-
-  if (!isHistoryResponse(parsed)) {
-    throw new Error("History API response was missing required fields");
-  }
-
-  return parsed;
+  return parseApiResponse(response, {
+    label: "History API",
+    isValid: isHistoryResponse,
+    missingFieldsMessage: "History API response was missing required fields",
+    toApiError: toHistoryApiError,
+  });
 }

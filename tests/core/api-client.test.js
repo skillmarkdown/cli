@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 
 const { requireDist } = require("../helpers/dist-imports.js");
 
-const { authHeaders, extractApiErrorFields, parseJsonOrThrow } = requireDist(
+const { authHeaders, extractApiErrorFields, parseApiResponse, parseJsonOrThrow } = requireDist(
   "lib/shared/api-client.js",
 );
 
@@ -57,4 +57,48 @@ test("authHeaders only returns authorization header when token is provided", () 
   assert.deepEqual(authHeaders("token_123"), {
     Authorization: "Bearer token_123",
   });
+});
+
+test("parseApiResponse returns validated payload for successful responses", async () => {
+  const response = new Response(JSON.stringify({ ok: true }), { status: 200 });
+
+  const parsed = await parseApiResponse(response, {
+    label: "Test API",
+    isValid: (value) => !!value && typeof value === "object" && value.ok === true,
+    missingFieldsMessage: "missing fields",
+    toApiError: () => new Error("not expected"),
+  });
+
+  assert.deepEqual(parsed, { ok: true });
+});
+
+test("parseApiResponse maps non-2xx payload to provided API error", async () => {
+  class MockApiError extends Error {
+    constructor(status, code, message) {
+      super(message);
+      this.status = status;
+      this.code = code;
+    }
+  }
+
+  const response = new Response(
+    JSON.stringify({ error: { code: "invalid_request", message: "bad request" } }),
+    { status: 400 },
+  );
+
+  await assert.rejects(
+    parseApiResponse(response, {
+      label: "Test API",
+      isValid: () => true,
+      missingFieldsMessage: "missing fields",
+      toApiError: (status, payload) =>
+        new MockApiError(status, payload.error?.code ?? "unknown_error", "mapped error"),
+    }),
+    (error) => {
+      assert.equal(error instanceof MockApiError, true);
+      assert.equal(error.status, 400);
+      assert.equal(error.code, "invalid_request");
+      return true;
+    },
+  );
 });

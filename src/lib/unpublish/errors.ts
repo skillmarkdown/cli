@@ -1,14 +1,8 @@
-export class UnpublishApiError extends Error {
-  readonly status: number;
-  readonly code: string;
-  readonly details?: unknown;
+import { CliApiError } from "../shared/api-errors";
 
+export class UnpublishApiError extends CliApiError {
   constructor(status: number, code: string, message: string, details?: unknown) {
-    super(message);
-    this.name = "UnpublishApiError";
-    this.status = status;
-    this.code = code;
-    this.details = details;
+    super("UnpublishApiError", status, code, message, details);
   }
 }
 

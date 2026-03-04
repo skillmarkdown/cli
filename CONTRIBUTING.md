@@ -9,6 +9,7 @@ npm ci
 npm run lint
 npm test
 npm run build
+npm run check:pack-size
 ```
 
 ## Branch and PR expectations
@@ -40,6 +41,7 @@ skillmd login --reauth
 - `npm run lint` passes.
 - `npm test` passes.
 - `npm run build` passes.
+- `npm run check:pack-size` passes (`<= 235,000` unpacked bytes).
 - Docs are updated for user-facing changes.
 
 ## Reporting issues in PRs

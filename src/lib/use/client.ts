@@ -2,7 +2,7 @@ import { fetchWithTimeout } from "../shared/http";
 import {
   authHeaders,
   extractApiErrorFields,
-  parseJsonOrThrow,
+  parseApiResponse,
   type ApiErrorPayload,
 } from "../shared/api-client";
 import { isAgentTarget } from "../shared/agent-target";
@@ -85,20 +85,12 @@ export async function resolveSkillVersion(
     { method: "GET", headers: authHeaders(options.idToken) },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<ResolveSkillVersionResponse | ApiErrorPayload>(
-    response,
-    "Resolve API",
-  );
-
-  if (!response.ok) {
-    throw toUseApiError(response.status, parsed as ApiErrorPayload);
-  }
-
-  if (!isResolveResponse(parsed)) {
-    throw new Error("Resolve API response was missing required fields");
-  }
-
-  return parsed;
+  return parseApiResponse(response, {
+    label: "Resolve API",
+    isValid: isResolveResponse,
+    missingFieldsMessage: "Resolve API response was missing required fields",
+    toApiError: toUseApiError,
+  });
 }
 
 export async function getArtifactDescriptor(
@@ -114,20 +106,12 @@ export async function getArtifactDescriptor(
     { method: "GET", headers: authHeaders(options.idToken) },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<ArtifactDescriptorResponse | ApiErrorPayload>(
-    response,
-    "Artifact descriptor API",
-  );
-
-  if (!response.ok) {
-    throw toUseApiError(response.status, parsed as ApiErrorPayload);
-  }
-
-  if (!isArtifactDescriptorResponse(parsed)) {
-    throw new Error("Artifact descriptor API response was missing required fields");
-  }
-
-  return parsed;
+  return parseApiResponse(response, {
+    label: "Artifact descriptor API",
+    isValid: isArtifactDescriptorResponse,
+    missingFieldsMessage: "Artifact descriptor API response was missing required fields",
+    toApiError: toUseApiError,
+  });
 }
 
 export async function downloadArtifact(

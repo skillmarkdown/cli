@@ -2,7 +2,7 @@ import { fetchWithTimeout } from "../shared/http";
 import {
   authHeaders,
   extractApiErrorFields,
-  parseJsonOrThrow,
+  parseApiResponse,
   type ApiErrorPayload,
 } from "../shared/api-client";
 import { ViewApiError } from "./errors";
@@ -47,15 +47,10 @@ export async function getSkillView(
     { method: "GET", headers: authHeaders(options.idToken) },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<ViewResponse | ApiErrorPayload>(response, "View API");
-
-  if (!response.ok) {
-    throw toViewApiError(response.status, parsed as ApiErrorPayload);
-  }
-
-  if (!isViewResponse(parsed)) {
-    throw new Error("View API response was missing required fields");
-  }
-
-  return parsed;
+  return parseApiResponse(response, {
+    label: "View API",
+    isValid: isViewResponse,
+    missingFieldsMessage: "View API response was missing required fields",
+    toApiError: toViewApiError,
+  });
 }

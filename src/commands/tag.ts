@@ -6,8 +6,8 @@ import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { parseSkillId } from "../lib/registry/skill-id";
 import { failWithUsage } from "../lib/shared/command-output";
 import { TAG_USAGE } from "../lib/shared/cli-text";
+import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
 import { listDistTags, removeDistTag, setDistTag } from "../lib/tag/client";
-import { getTagEnvConfig } from "../lib/tag/config";
 import { isTagApiError } from "../lib/tag/errors";
 import { parseTagFlags } from "../lib/tag/flags";
 import {
@@ -99,7 +99,7 @@ export async function runTagCommand(
   try {
     const env = options.env ?? process.env;
     const parsedSkillId = parseSkillId(parsed.skillId);
-    const getConfigFn = options.getConfig ?? getTagEnvConfig;
+    const getConfigFn = options.getConfig ?? getAuthRegistryEnvConfig;
     const config = getConfigFn(env);
 
     if (parsed.action === "ls") {

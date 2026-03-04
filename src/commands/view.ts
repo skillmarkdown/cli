@@ -3,7 +3,7 @@ import { readSearchSelectionCache, type SearchSelectionCache } from "../lib/sear
 import { failWithUsage } from "../lib/shared/command-output";
 import { VIEW_USAGE } from "../lib/shared/cli-text";
 import { getSkillView } from "../lib/view/client";
-import { getViewEnvConfig, type ViewEnvConfig } from "../lib/view/config";
+import { getRegistryEnvConfig, type RegistryEnvConfig } from "../lib/registry/config";
 import { isViewApiError } from "../lib/view/errors";
 import { parseViewFlags } from "../lib/view/flags";
 import { type ViewResponse } from "../lib/view/types";
@@ -12,7 +12,7 @@ import { callWithReadTokenRetry, isReadTokenRetryableStatus } from "../lib/auth/
 
 interface ViewCommandOptions {
   env?: NodeJS.ProcessEnv;
-  getConfig?: (env: NodeJS.ProcessEnv) => ViewEnvConfig;
+  getConfig?: (env: NodeJS.ProcessEnv) => RegistryEnvConfig;
   readSelectionCache?: () => SearchSelectionCache | null;
   getSkillView?: (
     baseUrl: string,
@@ -113,7 +113,7 @@ export async function runViewCommand(
 
   try {
     const env = options.env ?? process.env;
-    const getConfigFn = options.getConfig ?? getViewEnvConfig;
+    const getConfigFn = options.getConfig ?? getRegistryEnvConfig;
     const config = getConfigFn(env);
     const readSelectionCacheFn = options.readSelectionCache ?? readSearchSelectionCache;
     const resolvedSkillId = resolveRequestedSkillId(
