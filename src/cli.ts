@@ -10,11 +10,14 @@ import { runSearchCommand } from "./commands/search";
 import { runTagCommand } from "./commands/tag";
 import { runDeprecateCommand } from "./commands/deprecate";
 import { runUnpublishCommand } from "./commands/unpublish";
+import { runTokenCommand } from "./commands/token";
 import { runUpdateCommand } from "./commands/update";
 import { runUseCommand } from "./commands/use";
 import { runValidateCommand } from "./commands/validate";
 import { runViewCommand } from "./commands/view";
+import { runWhoamiCommand } from "./commands/whoami";
 import { ROOT_USAGE } from "./lib/shared/cli-text";
+import { AUTH_TOKEN_ENV_VAR } from "./lib/auth/api-token";
 
 type CommandHandler = (args: string[]) => number | Promise<number>;
 
@@ -33,10 +36,61 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   tag: runTagCommand,
   deprecate: runDeprecateCommand,
   unpublish: runUnpublishCommand,
+  whoami: runWhoamiCommand,
+  token: runTokenCommand,
 };
 
+interface ParsedGlobalFlags {
+  args: string[];
+  authToken: string | null;
+  error?: string;
+}
+
+function parseGlobalFlags(rawArgs: string[]): ParsedGlobalFlags {
+  const args: string[] = [];
+  let authToken: string | null = null;
+
+  for (let index = 0; index < rawArgs.length; index += 1) {
+    const current = rawArgs[index];
+    if (current === "--auth-token") {
+      const value = rawArgs[index + 1];
+      if (!value) {
+        return { args: [], authToken: null, error: "missing value for --auth-token" };
+      }
+      authToken = value;
+      index += 1;
+      continue;
+    }
+
+    if (current.startsWith("--auth-token=")) {
+      const value = current.slice("--auth-token=".length).trim();
+      if (!value) {
+        return { args: [], authToken: null, error: "missing value for --auth-token" };
+      }
+      authToken = value;
+      continue;
+    }
+
+    args.push(current);
+  }
+
+  return { args, authToken };
+}
+
 async function main(): Promise<void> {
-  const args = process.argv.slice(2);
+  const parsedGlobals = parseGlobalFlags(process.argv.slice(2));
+  if (parsedGlobals.error) {
+    console.error(`skillmd: ${parsedGlobals.error}`);
+    console.error(ROOT_USAGE);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (parsedGlobals.authToken) {
+    process.env[AUTH_TOKEN_ENV_VAR] = parsedGlobals.authToken;
+  }
+
+  const args = parsedGlobals.args;
   const command = args[0];
 
   if (args.length === 0) {

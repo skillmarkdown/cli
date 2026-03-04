@@ -663,3 +663,105 @@ test("spawned CLI: install reads skills.json and writes skills-lock.json", async
     cleanupDirectory(root);
   }
 });
+
+test("spawned CLI: global --auth-token works with whoami", async () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  let seenAuthHeader = null;
+
+  const mockRegistry = await startMockRegistry((request, response) => {
+    const url = new URL(request.url, "http://127.0.0.1");
+    if (request.method === "GET" && url.pathname === "/v1/auth/whoami") {
+      seenAuthHeader = request.headers.authorization ?? null;
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          uid: "uid-1",
+          owner: "@core",
+          ownerLogin: "core",
+          email: "core@example.com",
+          projectId: "skillmarkdown-development",
+          authType: "token",
+          scope: "admin",
+        }),
+      );
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: { code: "not_found", message: "not found" } }));
+  });
+
+  try {
+    const result = await runCliAsync(
+      ["--auth-token", "skmd_dev_tok_abc123abc123abc123abc123.secret", "whoami", "--json"],
+      root,
+      {
+        SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+        SKILLMD_FIREBASE_API_KEY: "api-key",
+        SKILLMD_GITHUB_CLIENT_ID: "github-client-id",
+        SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
+      },
+    );
+
+    assert.equal(result.status, 0);
+    assert.equal(seenAuthHeader, "Bearer skmd_dev_tok_abc123abc123abc123abc123.secret");
+    const payload = JSON.parse(result.stdout);
+    assert.equal(payload.authType, "token");
+    assert.equal(payload.scope, "admin");
+  } finally {
+    await mockRegistry.close();
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: token ls works with command-position --auth-token", async () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  let seenAuthHeader = null;
+
+  const mockRegistry = await startMockRegistry((request, response) => {
+    const url = new URL(request.url, "http://127.0.0.1");
+    if (request.method === "GET" && url.pathname === "/v1/auth/tokens") {
+      seenAuthHeader = request.headers.authorization ?? null;
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          tokens: [
+            {
+              tokenId: "tok_abc123abc123abc123abc123",
+              name: "ci",
+              scope: "publish",
+              createdAt: "2026-03-03T00:00:00.000Z",
+              expiresAt: "2026-04-02T00:00:00.000Z",
+            },
+          ],
+        }),
+      );
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: { code: "not_found", message: "not found" } }));
+  });
+
+  try {
+    const result = await runCliAsync(
+      ["token", "ls", "--json", "--auth-token", "skmd_dev_tok_abc123abc123abc123abc123.secret"],
+      root,
+      {
+        SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+        SKILLMD_FIREBASE_API_KEY: "api-key",
+        SKILLMD_GITHUB_CLIENT_ID: "github-client-id",
+        SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
+      },
+    );
+
+    assert.equal(result.status, 0);
+    assert.equal(seenAuthHeader, "Bearer skmd_dev_tok_abc123abc123abc123abc123.secret");
+    const payload = JSON.parse(result.stdout);
+    assert.equal(payload.tokens.length, 1);
+    assert.equal(payload.tokens[0].name, "ci");
+  } finally {
+    await mockRegistry.close();
+    cleanupDirectory(root);
+  }
+});

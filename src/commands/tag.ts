@@ -1,4 +1,5 @@
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
+import { resolveConfiguredAuthToken } from "../lib/auth/api-token";
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 import { callWithReadTokenRetry, isReadTokenRetryableStatus } from "../lib/auth/read-token-retry";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
@@ -130,22 +131,28 @@ export async function runTagCommand(
       return 0;
     }
 
+    const configuredAuthToken = resolveConfiguredAuthToken(env);
     const readSessionFn = options.readSession ?? readAuthSession;
     const session = readSessionFn();
-    if (!session) {
+    if (!configuredAuthToken && !session) {
       console.error("skillmd tag: not logged in. Run 'skillmd login' first.");
       return 1;
     }
 
-    const owner = deriveOwnerFromSession(session);
-    if (!owner) {
+    const owner = session ? deriveOwnerFromSession(session) : null;
+    if (!configuredAuthToken && !owner) {
       console.error(
         "skillmd tag: missing GitHub username in session. Run 'skillmd login --reauth' first.",
       );
       return 1;
     }
 
-    if (session.projectId && session.projectId !== config.firebaseProjectId) {
+    if (
+      !configuredAuthToken &&
+      session &&
+      session.projectId &&
+      session.projectId !== config.firebaseProjectId
+    ) {
       console.error(
         `skillmd tag: session project '${session.projectId}' does not match current config ` +
           `'${config.firebaseProjectId}'. Run 'skillmd login --reauth' to switch projects.`,
@@ -153,22 +160,26 @@ export async function runTagCommand(
       return 1;
     }
 
-    if (`@${parsedSkillId.ownerSlug}` !== owner) {
+    if (!configuredAuthToken && `@${parsedSkillId.ownerSlug}` !== owner) {
       console.error(`skillmd tag: can only update tags for skills owned by ${owner}.`);
       return 1;
     }
 
-    const exchangeRefreshTokenFn = options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken;
-    const idTokenSession = await exchangeRefreshTokenFn(
-      config.firebaseApiKey,
-      session.refreshToken,
-    );
+    let idToken = configuredAuthToken;
+    if (!idToken) {
+      const exchangeRefreshTokenFn = options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken;
+      const idTokenSession = await exchangeRefreshTokenFn(
+        config.firebaseApiKey,
+        session!.refreshToken,
+      );
+      idToken = idTokenSession.idToken;
+    }
 
     if (parsed.action === "add") {
       const setDistTagFn = options.setDistTag ?? setDistTag;
       const result = await setDistTagFn(
         config.registryBaseUrl,
-        idTokenSession.idToken,
+        idToken,
         {
           ownerSlug: parsedSkillId.ownerSlug,
           skillSlug: parsedSkillId.skillSlug,
@@ -190,7 +201,7 @@ export async function runTagCommand(
     const removeDistTagFn = options.removeDistTag ?? removeDistTag;
     const result = await removeDistTagFn(
       config.registryBaseUrl,
-      idTokenSession.idToken,
+      idToken,
       {
         ownerSlug: parsedSkillId.ownerSlug,
         skillSlug: parsedSkillId.skillSlug,

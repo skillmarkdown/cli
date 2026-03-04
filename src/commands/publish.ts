@@ -2,6 +2,7 @@ import { basename, resolve } from "node:path";
 
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
+import { resolveConfiguredAuthToken } from "../lib/auth/api-token";
 import { getPublishEnvConfig } from "../lib/publish/config";
 import { isPublishApiError } from "../lib/publish/errors";
 import { parsePublishFlags } from "../lib/publish/flags";
@@ -190,30 +191,13 @@ export async function runPublishCommand(
 
   const readSessionFn = options.readSession ?? readAuthSession;
   const session = readSessionFn();
-  if (!session) {
-    console.error("skillmd publish: not logged in. Run 'skillmd login' first.");
-    return 1;
-  }
-  const owner = deriveOwnerFromSession(session);
-  if (!owner) {
-    console.error(
-      "skillmd publish: missing GitHub username in session. Run 'skillmd login --reauth' first.",
-    );
-    return 1;
-  }
+  let owner = session ? deriveOwnerFromSession(session) : null;
 
   try {
     const getConfigFn = options.getConfig ?? getPublishEnvConfig;
     const config = getConfigFn(env);
     const agentTarget = parsed.agentTarget ?? config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET;
-
-    if (session.projectId && session.projectId !== config.firebaseProjectId) {
-      console.error(
-        `skillmd publish: session project '${session.projectId}' does not match current config ` +
-          `'${config.firebaseProjectId}'. Run 'skillmd login --reauth' to switch projects.`,
-      );
-      return 1;
-    }
+    const configuredAuthToken = resolveConfiguredAuthToken(env);
 
     const packArtifactFn = options.packArtifact ?? packSkillArtifact;
     const artifact = packArtifactFn(targetDir);
@@ -227,7 +211,7 @@ export async function runPublishCommand(
     }
 
     const skill = basename(targetDir);
-    const skillId = `${owner}/${skill}`;
+    const skillId = `${owner ?? "@unknown"}/${skill}`;
 
     const buildManifestFn = options.buildManifest ?? buildPublishManifest;
     const manifest = buildManifestFn({
@@ -268,16 +252,45 @@ export async function runPublishCommand(
       return 0;
     }
 
-    const exchangeRefreshTokenFn = options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken;
-    const idTokenSession = await exchangeRefreshTokenFn(
-      config.firebaseApiKey,
-      session.refreshToken,
-    );
+    if (!configuredAuthToken && !session) {
+      console.error("skillmd publish: not logged in. Run 'skillmd login' first.");
+      return 1;
+    }
+
+    if (!configuredAuthToken && !owner) {
+      console.error(
+        "skillmd publish: missing GitHub username in session. Run 'skillmd login --reauth' first.",
+      );
+      return 1;
+    }
+
+    if (
+      !configuredAuthToken &&
+      session &&
+      session.projectId &&
+      session.projectId !== config.firebaseProjectId
+    ) {
+      console.error(
+        `skillmd publish: session project '${session.projectId}' does not match current config ` +
+          `'${config.firebaseProjectId}'. Run 'skillmd login --reauth' to switch projects.`,
+      );
+      return 1;
+    }
+
+    let idToken = configuredAuthToken;
+    if (!idToken) {
+      const exchangeRefreshTokenFn = options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken;
+      const idTokenSession = await exchangeRefreshTokenFn(
+        config.firebaseApiKey,
+        session!.refreshToken,
+      );
+      idToken = idTokenSession.idToken;
+    }
 
     const preparePublishFn = options.preparePublish ?? preparePublish;
     const prepared = await preparePublishFn(
       config.registryBaseUrl,
-      idTokenSession.idToken,
+      idToken,
       {
         skill,
         version: parsed.version,
@@ -309,7 +322,7 @@ export async function runPublishCommand(
     const commitPublishFn = options.commitPublish ?? commitPublish;
     const committed = await commitPublishFn(
       config.registryBaseUrl,
-      idTokenSession.idToken,
+      idToken,
       { publishToken: prepared.publishToken },
       { timeoutMs: config.requestTimeoutMs },
     );
@@ -326,8 +339,11 @@ export async function runPublishCommand(
   } catch (error) {
     if (isPublishApiError(error)) {
       if (error.status === 409 && error.code === "version_conflict") {
+        if (!owner && session) {
+          owner = deriveOwnerFromSession(session);
+        }
         console.error(
-          `skillmd publish: version conflict for ${owner}/${basename(targetDir)}@${parsed.version}. ` +
+          `skillmd publish: version conflict for ${owner ?? "@unknown"}/${basename(targetDir)}@${parsed.version}. ` +
             "Use a new version number.",
         );
         return 1;

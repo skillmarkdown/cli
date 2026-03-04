@@ -104,7 +104,9 @@ test("fails when strict validation fails", async () => {
 
 test("fails when not logged in", async () => {
   const options = baseOptions({ readSession: () => null });
-  const { result, errors } = await captureConsole(() => runPublishCommand(validArgs(), options));
+  const { result, errors } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0"], options),
+  );
 
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /not logged in/i);
@@ -119,10 +121,49 @@ test("fails when session has no github username", async () => {
       projectId: "skillmarkdown-development",
     }),
   });
-  const { result, errors } = await captureConsole(() => runPublishCommand(validArgs(), options));
+  const { result, errors } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0"], options),
+  );
 
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /login --reauth/i);
+});
+
+test("uses configured auth token for publish without session", async () => {
+  let exchangeCalled = false;
+  let prepareToken = null;
+  const options = baseOptions({
+    env: {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_FIREBASE_API_KEY: "apikey",
+      SKILLMD_GITHUB_CLIENT_ID: "gh",
+      SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
+      SKILLMD_AUTH_TOKEN: "skmd_dev_tok_abc123abc123abc123abc123.secret",
+    },
+    readSession: () => null,
+    exchangeRefreshToken: async () => {
+      exchangeCalled = true;
+      return {
+        idToken: "id-token",
+        userId: "uid-1",
+        expiresInSeconds: 3600,
+      };
+    },
+    preparePublish: async (_baseUrl, idToken) => {
+      prepareToken = idToken;
+      return {
+        status: "idempotent",
+        publishToken: "pit-token",
+        expiresAt: "2026-03-02T00:00:00Z",
+      };
+    },
+  });
+
+  const { result } = await captureConsole(() => runPublishCommand(["--version", "1.0.0"], options));
+
+  assert.equal(result, 0);
+  assert.equal(exchangeCalled, false);
+  assert.equal(prepareToken, "skmd_dev_tok_abc123abc123abc123abc123.secret");
 });
 
 test("fails on project mismatch with reauth guidance", async () => {
@@ -136,7 +177,9 @@ test("fails on project mismatch with reauth guidance", async () => {
     }),
   });
 
-  const { result, errors } = await captureConsole(() => runPublishCommand(validArgs(), options));
+  const { result, errors } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0"], options),
+  );
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /login --reauth/);
 });
@@ -165,6 +208,41 @@ test("dry-run performs local checks only", async () => {
   assert.equal(exchanged, false);
   assert.equal(prepared, false);
   assert.match(logs.join("\n"), /dry-run/i);
+});
+
+test("dry-run succeeds without session or auth token", async () => {
+  const options = baseOptions({
+    readSession: () => null,
+    exchangeRefreshToken: async () => {
+      throw new Error("should not exchange refresh token for dry-run");
+    },
+    preparePublish: async () => {
+      throw new Error("should not call publish API for dry-run");
+    },
+  });
+
+  const { result, logs } = await captureConsole(() => runPublishCommand(validArgs(), options));
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /dry-run/i);
+});
+
+test("dry-run ignores session project mismatch", async () => {
+  const options = baseOptions({
+    readSession: () => ({
+      provider: "github",
+      uid: "uid-1",
+      githubUsername: "core",
+      refreshToken: "refresh-token",
+      projectId: "skillmarkdown",
+    }),
+  });
+
+  const { result, logs, errors } = await captureConsole(() =>
+    runPublishCommand(validArgs(), options),
+  );
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /dry-run/i);
+  assert.equal(errors.length, 0);
 });
 
 test("publishes successfully", async () => {

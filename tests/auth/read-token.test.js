@@ -5,6 +5,23 @@ const { requireDist } = require("../helpers/dist-imports.js");
 
 const { resolveReadIdToken } = requireDist("lib/auth/read-token.js");
 
+test("resolveReadIdToken returns configured auth token before session resolution", async () => {
+  const token = await resolveReadIdToken({
+    env: {
+      SKILLMD_AUTH_TOKEN: "skmd_dev_tok_abc123abc123abc123abc123.secret",
+      SKILLMD_GITHUB_CLIENT_ID: "client-id",
+      SKILLMD_FIREBASE_API_KEY: "api-key",
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+    },
+    readSession: () => null,
+    exchangeRefreshToken: async () => {
+      throw new Error("should not be called when auth token env is set");
+    },
+  });
+
+  assert.equal(token, "skmd_dev_tok_abc123abc123abc123abc123.secret");
+});
+
 test("resolveReadIdToken returns null when no session exists", async () => {
   const token = await resolveReadIdToken({
     env: {

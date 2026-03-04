@@ -4,8 +4,8 @@ const assert = require("node:assert/strict");
 const { requireDist } = require("../helpers/dist-imports.js");
 const { captureConsole } = require("../helpers/console-test-utils.js");
 
-const { runDeprecateCommand } = requireDist("commands/deprecate.js");
-const { DeprecateApiError } = requireDist("lib/deprecate/errors.js");
+const { runTokenCommand } = requireDist("commands/token.js");
+const { TokenApiError } = requireDist("lib/token/errors.js");
 
 function baseOptions(overrides = {}) {
   return {
@@ -34,68 +34,66 @@ function baseOptions(overrides = {}) {
       userId: "uid-1",
       expiresInSeconds: 3600,
     }),
-    deprecateVersions: async () => ({
-      status: "updated",
-      range: "^1.2.0",
-      affectedVersions: ["1.2.0", "1.2.1"],
-      message: "Use 2.x",
+    createToken: async () => ({
+      tokenId: "tok_abc123abc123abc123abc123",
+      token: "skmd_dev_tok_abc123abc123abc123abc123.secret",
+      name: "ci",
+      scope: "publish",
+      createdAt: "2026-03-03T00:00:00.000Z",
+      expiresAt: "2026-04-02T00:00:00.000Z",
+    }),
+    listTokens: async () => ({
+      tokens: [
+        {
+          tokenId: "tok_abc123abc123abc123abc123",
+          name: "ci",
+          scope: "publish",
+          createdAt: "2026-03-03T00:00:00.000Z",
+          expiresAt: "2026-04-02T00:00:00.000Z",
+        },
+      ],
+    }),
+    revokeToken: async () => ({
+      status: "revoked",
+      tokenId: "tok_abc123abc123abc123abc123",
     }),
     ...overrides,
   };
 }
 
 test("fails with usage on invalid args", async () => {
-  const { result } = await captureConsole(() => runDeprecateCommand(["@core/test-skill@1.2.3"]));
+  const { result } = await captureConsole(() => runTokenCommand(["bad"]));
   assert.equal(result, 1);
 });
 
-test("fails when not logged in", async () => {
+test("fails when no auth path is available", async () => {
   const { result, errors } = await captureConsole(() =>
-    runDeprecateCommand(
-      ["@core/test-skill@^1.2.0", "--message", "Use 2.x"],
-      baseOptions({ readSession: () => null }),
+    runTokenCommand(
+      ["ls"],
+      baseOptions({
+        readSession: () => null,
+      }),
     ),
   );
-
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /not logged in/i);
 });
 
-test("deprecates versions for owner skill", async () => {
-  let capturedRequest = null;
+test("lists tokens in json", async () => {
   const { result, logs } = await captureConsole(() =>
-    runDeprecateCommand(
-      ["@core/test-skill@^1.2.0", "--message", "Use 2.x"],
-      baseOptions({
-        deprecateVersions: async (_baseUrl, _idToken, request) => {
-          capturedRequest = request;
-          return {
-            status: "updated",
-            range: "^1.2.0",
-            affectedVersions: ["1.2.0", "1.2.1"],
-            message: "Use 2.x",
-          };
-        },
-      }),
-    ),
+    runTokenCommand(["ls", "--json"], baseOptions()),
   );
-
   assert.equal(result, 0);
-  assert.deepEqual(capturedRequest, {
-    ownerSlug: "core",
-    skillSlug: "test-skill",
-    range: "^1.2.0",
-    message: "Use 2.x",
-  });
-  assert.match(logs.join("\n"), /Deprecated 2 version\(s\) for @core\/test-skill/i);
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.tokens.length, 1);
 });
 
-test("uses configured auth token without session", async () => {
+test("adds token using configured auth token and no session", async () => {
   let exchangeCalled = false;
   let capturedToken = null;
-  const { result } = await captureConsole(() =>
-    runDeprecateCommand(
-      ["@core/test-skill@^1.2.0", "--message", "Use 2.x"],
+  const { result, logs } = await captureConsole(() =>
+    runTokenCommand(
+      ["add", "ci", "--scope", "admin", "--days", "7"],
       baseOptions({
         env: {
           SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
@@ -114,13 +112,15 @@ test("uses configured auth token without session", async () => {
             expiresInSeconds: 3600,
           };
         },
-        deprecateVersions: async (_baseUrl, idToken) => {
+        createToken: async (_baseUrl, idToken) => {
           capturedToken = idToken;
           return {
-            status: "updated",
-            range: "^1.2.0",
-            affectedVersions: ["1.2.0"],
-            message: "Use 2.x",
+            tokenId: "tok_abc123abc123abc123abc123",
+            token: "skmd_dev_tok_abc123abc123abc123abc123.secret",
+            name: "ci",
+            scope: "admin",
+            createdAt: "2026-03-03T00:00:00.000Z",
+            expiresAt: "2026-03-10T00:00:00.000Z",
           };
         },
       }),
@@ -130,33 +130,30 @@ test("uses configured auth token without session", async () => {
   assert.equal(result, 0);
   assert.equal(exchangeCalled, false);
   assert.equal(capturedToken, "skmd_dev_tok_abc123abc123abc123abc123.secret");
+  assert.match(logs.join("\n"), /Created token tok_abc123abc123abc123abc123/);
 });
 
-test("prints json output with --json", async () => {
+test("revokes token", async () => {
   const { result, logs } = await captureConsole(() =>
-    runDeprecateCommand(
-      ["@core/test-skill@^1.2.0", "--message", "Use 2.x", "--json"],
-      baseOptions(),
-    ),
+    runTokenCommand(["rm", "tok_abc123abc123abc123abc123"], baseOptions()),
   );
 
   assert.equal(result, 0);
-  const payload = JSON.parse(logs.join("\n"));
-  assert.equal(payload.status, "updated");
+  assert.match(logs.join("\n"), /Revoked token tok_abc123abc123abc123abc123/);
 });
 
-test("maps deprecate API errors", async () => {
+test("maps token API errors", async () => {
   const { result, errors } = await captureConsole(() =>
-    runDeprecateCommand(
-      ["@core/test-skill@^1.2.0", "--message", "Use 2.x"],
+    runTokenCommand(
+      ["ls"],
       baseOptions({
-        deprecateVersions: async () => {
-          throw new DeprecateApiError(400, "invalid_request", "range invalid");
+        listTokens: async () => {
+          throw new TokenApiError(403, "forbidden", "insufficient token scope");
         },
       }),
     ),
   );
 
   assert.equal(result, 1);
-  assert.match(errors.join("\n"), /range invalid/);
+  assert.match(errors.join("\n"), /insufficient token scope/);
 });

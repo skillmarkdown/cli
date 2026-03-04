@@ -327,6 +327,8 @@ function runProfileSweep({
   mkdirSync(workDir, { recursive: true });
 
   runStep({ state, name: "login-status", args: ["login", "--status"], cwd: ROOT_DIR, env });
+  runStep({ state, name: "whoami", args: ["whoami", "--json"], cwd: ROOT_DIR, env });
+  runStep({ state, name: "token-ls", args: ["token", "ls", "--json"], cwd: ROOT_DIR, env });
 
   runStep({
     state,
@@ -425,7 +427,7 @@ function runProfileSweep({
     skipReason: missingReadSkillReason,
   });
 
-  if (readSkill.skillId) {
+  if (readSkill.skillId && readSkill.latestVersion) {
     writeFileSync(
       join(workDir, "skills.json"),
       `${JSON.stringify(
@@ -450,10 +452,10 @@ function runProfileSweep({
   runStep({
     state,
     name: "install-workspace",
-    args: readSkill.skillId ? ["install", "--json"] : ["install"],
+    args: readSkill.skillId && readSkill.latestVersion ? ["install", "--json"] : ["install"],
     cwd: workDir,
     env,
-    skipReason: missingReadSkillReason,
+    skipReason: missingUseSkillReason,
   });
 
   const useDefaultStep = runStep({
@@ -594,6 +596,42 @@ function runProfileSweep({
       cwd: ROOT_DIR,
       env,
       skipReason: writeSkipReason,
+    });
+
+    const tokenCreateStep = runStep({
+      state,
+      name: "token-add",
+      args: ["token", "add", "sweep-token", "--scope", "admin", "--days", "7", "--json"],
+      cwd: ROOT_DIR,
+      env,
+      skipReason: prereqBlockedReason,
+    });
+
+    let createdTokenId = null;
+    if (tokenCreateStep.status === "pass") {
+      try {
+        const payload = JSON.parse(tokenCreateStep.stdout);
+        if (payload && typeof payload.tokenId === "string") {
+          createdTokenId = payload.tokenId;
+        }
+      } catch {
+        createdTokenId = null;
+      }
+    }
+
+    runStep({
+      state,
+      name: "token-rm",
+      args: createdTokenId ? ["token", "rm", createdTokenId, "--json"] : ["token", "rm"],
+      cwd: ROOT_DIR,
+      env,
+      skipReason:
+        prereqBlockedReason ||
+        (tokenCreateStep.status !== "pass"
+          ? "token-add failed; skipping token-rm"
+          : !createdTokenId
+            ? "token-add did not return tokenId"
+            : null),
     });
   }
 

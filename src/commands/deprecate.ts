@@ -1,4 +1,5 @@
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
+import { resolveConfiguredAuthToken } from "../lib/auth/api-token";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { parseDeprecateFlags, parseDeprecateRequest } from "../lib/deprecate/flags";
 import { deprecateVersions as defaultDeprecateVersions } from "../lib/deprecate/client";
@@ -60,21 +61,27 @@ export async function runDeprecateCommand(
     const env = options.env ?? process.env;
     const config = (options.getConfig ?? getDeprecateEnvConfig)(env);
     const parsedSkillId = parseSkillId(parsedRequest.skillId);
+    const configuredAuthToken = resolveConfiguredAuthToken(env);
     const session = (options.readSession ?? readAuthSession)();
-    if (!session) {
+    if (!configuredAuthToken && !session) {
       console.error("skillmd deprecate: not logged in. Run 'skillmd login' first.");
       return 1;
     }
 
-    const owner = deriveOwnerFromSession(session);
-    if (!owner) {
+    const owner = session ? deriveOwnerFromSession(session) : null;
+    if (!configuredAuthToken && !owner) {
       console.error(
         "skillmd deprecate: missing GitHub username in session. Run 'skillmd login --reauth' first.",
       );
       return 1;
     }
 
-    if (session.projectId && session.projectId !== config.firebaseProjectId) {
+    if (
+      !configuredAuthToken &&
+      session &&
+      session.projectId &&
+      session.projectId !== config.firebaseProjectId
+    ) {
       console.error(
         `skillmd deprecate: session project '${session.projectId}' does not match current config ` +
           `'${config.firebaseProjectId}'. Run 'skillmd login --reauth' to switch projects.`,
@@ -82,18 +89,22 @@ export async function runDeprecateCommand(
       return 1;
     }
 
-    if (`@${parsedSkillId.ownerSlug}` !== owner) {
+    if (!configuredAuthToken && `@${parsedSkillId.ownerSlug}` !== owner) {
       console.error(`skillmd deprecate: can only update skills owned by ${owner}.`);
       return 1;
     }
 
-    const idTokenSession = await (options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken)(
-      config.firebaseApiKey,
-      session.refreshToken,
-    );
+    let idToken = configuredAuthToken;
+    if (!idToken) {
+      const idTokenSession = await (options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken)(
+        config.firebaseApiKey,
+        session!.refreshToken,
+      );
+      idToken = idTokenSession.idToken;
+    }
     const result = await (options.deprecateVersions ?? defaultDeprecateVersions)(
       config.registryBaseUrl,
-      idTokenSession.idToken,
+      idToken,
       {
         ownerSlug: parsedSkillId.ownerSlug,
         skillSlug: parsedSkillId.skillSlug,
