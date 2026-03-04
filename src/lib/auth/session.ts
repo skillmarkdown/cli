@@ -59,7 +59,7 @@ export function readAuthSession(sessionPath: string = SESSION_PATH): AuthSession
 
 export function writeAuthSession(session: AuthSession, sessionPath: string = SESSION_PATH): void {
   const parentDir = dirname(sessionPath);
-  mkdirSync(parentDir, { recursive: true });
+  mkdirSync(parentDir, { recursive: true, mode: 0o700 });
   writeFileSync(sessionPath, JSON.stringify(session, null, 2), { encoding: "utf8", mode: 0o600 });
   chmodSync(sessionPath, 0o600);
 }

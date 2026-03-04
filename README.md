@@ -175,6 +175,7 @@ Then retry with explicit selector, for example `--spec 1.2.3` or `--spec beta`.
 
 - Support: [SUPPORT.md](SUPPORT.md)
 - Security policy: [SECURITY.md](SECURITY.md)
+- Security model: [docs/security.md](docs/security.md)
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md)
