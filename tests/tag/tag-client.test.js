@@ -31,44 +31,31 @@ test("listDistTags returns parsed payload", async () => {
   assert.equal(payload.distTags.latest, "1.2.3");
 });
 
-test("listDistTags falls back to skill view when dist-tags route is unavailable", async () => {
-  let fetchCount = 0;
-  const payload = await withMockedFetch(
-    async (input) => {
-      fetchCount += 1;
-      const url = new URL(String(input));
-      if (fetchCount === 1) {
-        assert.equal(url.pathname, "/v1/skills/owner/test-skill/dist-tags");
-        return mockJsonResponse(404, {
-          error: {
-            code: "invalid_request",
-            message: "route not found",
-          },
-        });
-      }
-
-      assert.equal(url.pathname, "/v1/skills/owner/test-skill");
-      return mockJsonResponse(200, {
-        owner: "@owner",
-        ownerLogin: "owner",
-        skill: "test-skill",
-        description: "desc",
-        access: "public",
-        distTags: { latest: "2.0.0", beta: "2.1.0-beta.1" },
-        updatedAt: "2026-03-03T12:30:00.000Z",
-      });
-    },
-    () =>
-      listDistTags("https://registry.example.com", {
-        ownerSlug: "owner",
-        skillSlug: "test-skill",
+test("listDistTags surfaces strict route errors without fallback", async () => {
+  await withMockedFetch(
+    async () =>
+      mockJsonResponse(404, {
+        error: {
+          code: "invalid_request",
+          message: "route not found",
+        },
       }),
+    async () => {
+      await assert.rejects(
+        listDistTags("https://registry.example.com", {
+          ownerSlug: "owner",
+          skillSlug: "test-skill",
+        }),
+        (error) => {
+          assert.ok(error instanceof TagApiError);
+          assert.equal(error.status, 404);
+          assert.equal(error.code, "invalid_request");
+          assert.match(error.message, /route not found/i);
+          return true;
+        },
+      );
+    },
   );
-
-  assert.equal(fetchCount, 2);
-  assert.equal(payload.ownerLogin, "owner");
-  assert.equal(payload.distTags.latest, "2.0.0");
-  assert.equal(payload.distTags.beta, "2.1.0-beta.1");
 });
 
 test("setDistTag sends PUT payload and parses response", async () => {

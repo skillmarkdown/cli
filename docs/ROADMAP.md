@@ -54,5 +54,5 @@ Show locally installed skills (and optionally remote-owned skills in a future ex
 - Each command should get its own design and acceptance checklist before implementation.
 - This roadmap is ordered by dependency and user flow, not by implementation complexity.
 - `publish` references:
-  - `docs/publish-registry.md`
   - `docs/publish-api.md`
+  - `docs/publish-registry.md`
