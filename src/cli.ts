@@ -1,8 +1,5 @@
 #!/usr/bin/env node
 
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-
 import { runInitCommand } from "./commands/init";
 import { runInstallCommand } from "./commands/install";
 import { runHistoryCommand } from "./commands/history";
@@ -49,6 +46,8 @@ interface ParsedGlobalFlags {
   error?: string;
 }
 
+declare const __SKILLMD_CLI_VERSION__: string;
+
 function isRootVersionRequest(args: string[]): boolean {
   if (args.length === 0) {
     return false;
@@ -58,18 +57,7 @@ function isRootVersionRequest(args: string[]): boolean {
 }
 
 function readCliVersion(): string {
-  try {
-    const packageJsonPath = resolve(__dirname, "..", "package.json");
-    const raw = readFileSync(packageJsonPath, "utf8");
-    const parsed = JSON.parse(raw) as { version?: unknown };
-    if (typeof parsed.version === "string" && parsed.version.trim().length > 0) {
-      return parsed.version;
-    }
-  } catch {
-    // Fall through to deterministic fallback.
-  }
-
-  return "0.0.0";
+  return __SKILLMD_CLI_VERSION__;
 }
 
 function parseGlobalFlags(rawArgs: string[]): ParsedGlobalFlags {

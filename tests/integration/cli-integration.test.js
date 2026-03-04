@@ -170,6 +170,7 @@ test("spawned CLI: root --version prints package version", () => {
     const result = runCli(["--version"], root);
     assert.equal(result.status, 0);
     assert.equal(result.stdout.trim(), CLI_PACKAGE_VERSION);
+    assert.notEqual(result.stdout.trim(), "0.0.0");
     assert.equal(result.stderr.trim(), "");
   } finally {
     cleanupDirectory(root);
@@ -183,6 +184,7 @@ test("spawned CLI: root -v prints package version", () => {
     const result = runCli(["-v"], root);
     assert.equal(result.status, 0);
     assert.equal(result.stdout.trim(), CLI_PACKAGE_VERSION);
+    assert.notEqual(result.stdout.trim(), "0.0.0");
     assert.equal(result.stderr.trim(), "");
   } finally {
     cleanupDirectory(root);
