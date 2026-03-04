@@ -430,8 +430,8 @@ Expected:
   - `Skill: @owner/skill`
   - `Owner: ...`
   - `Updated: ...`
-  - `Visibility: ...`
-  - `Channels:` with `latest` and `beta`
+  - `Access: ...`
+  - `Dist tags:` with at least `latest` when present
 - `view <n>` resolves from the visible `#` column on the latest `search` page in the same registry environment
 
 JSON mode:
@@ -443,7 +443,7 @@ node "$REPO_DIR/dist/cli.js" view @owner/skill --json
 
 Expected:
 
-- valid JSON payload with owner/skill/description/channels/updatedAt fields.
+- valid JSON payload with owner/skill/description/access/distTags/updatedAt fields.
 
 ## 13) Manual installed-skill refresh smoke (`update`)
 

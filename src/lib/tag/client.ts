@@ -5,8 +5,6 @@ import {
   parseJsonOrThrow,
   type ApiErrorPayload,
 } from "../shared/api-client";
-import { isViewApiError } from "../view/errors";
-import { getSkillView } from "../view/client";
 import { TagApiError } from "./errors";
 import {
   type DeleteDistTagRequest,
@@ -24,16 +22,6 @@ interface TagClientOptions {
 function toTagApiError(status: number, payload: ApiErrorPayload): TagApiError {
   const parsed = extractApiErrorFields(status, payload, `tag API request failed (${status})`);
   return new TagApiError(status, parsed.code, parsed.message, parsed.details);
-}
-
-function shouldFallbackToSkillView(status: number, payload: ApiErrorPayload): boolean {
-  const parsed = extractApiErrorFields(status, payload, `tag API request failed (${status})`);
-  return (
-    status === 404 &&
-    parsed.code === "invalid_request" &&
-    typeof parsed.message === "string" &&
-    /route not found/i.test(parsed.message)
-  );
 }
 
 function normalizeStringMap(value: unknown): Record<string, string> {
@@ -112,28 +100,6 @@ export async function listDistTags(
   );
 
   if (!response.ok) {
-    if (shouldFallbackToSkillView(response.status, parsed as ApiErrorPayload)) {
-      try {
-        const view = await getSkillView(baseUrl, request, {
-          timeoutMs: options.timeoutMs,
-          idToken: options.idToken,
-        });
-        return {
-          owner: view.owner,
-          ownerLogin: view.ownerLogin,
-          skill: view.skill,
-          distTags: normalizeStringMap(view.distTags),
-          updatedAt: view.updatedAt,
-        };
-      } catch (error) {
-        if (isViewApiError(error)) {
-          throw new TagApiError(error.status, error.code, error.message, error.details);
-        }
-
-        throw error;
-      }
-    }
-
     throw toTagApiError(response.status, parsed as ApiErrorPayload);
   }
 

@@ -5,7 +5,7 @@ This document defines the registry data and artifact model for `skillmd publish`
 ## Scope
 
 - Public-read registry metadata/artifacts
-- Authenticated writes via Firebase ID token
+- Authenticated writes via `Authorization: Bearer <token>` (Firebase ID token or scoped automation token)
 - Immutable semver versions backed by content digests
 - No hard delete; versions are tombstoned on unpublish in backend policy
 
@@ -73,4 +73,4 @@ This document defines the registry data and artifact model for `skillmd publish`
 ## Visibility
 
 - Read endpoints are public.
-- Write endpoints require authenticated Firebase ID token.
+- Write endpoints require authenticated owner bearer token with sufficient scope.

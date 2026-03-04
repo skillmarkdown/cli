@@ -371,7 +371,7 @@ test("spawned CLI: tag ls/add/rm manages dist-tags via strict v1 endpoints", asy
   }
 });
 
-test("spawned CLI: tag ls falls back to skill view when dist-tags route is unavailable", async () => {
+test("spawned CLI: tag ls surfaces strict dist-tags route errors", async () => {
   const root = makeTempDirectory(CLI_TEST_PREFIX);
 
   const mockRegistry = await startMockRegistry((request, response) => {
@@ -384,24 +384,6 @@ test("spawned CLI: tag ls falls back to skill view when dist-tags route is unava
             code: "invalid_request",
             message: "route not found",
           },
-        }),
-      );
-      return;
-    }
-
-    if (request.method === "GET" && url.pathname === "/v1/skills/core/fallback-skill") {
-      response.writeHead(200, { "content-type": "application/json" });
-      response.end(
-        JSON.stringify({
-          owner: "@core",
-          ownerLogin: "core",
-          skill: "fallback-skill",
-          description: "fallback",
-          access: "public",
-          distTags: {
-            latest: "3.0.0",
-          },
-          updatedAt: "2026-03-03T12:00:00.000Z",
         }),
       );
       return;
@@ -424,10 +406,8 @@ test("spawned CLI: tag ls falls back to skill view when dist-tags route is unava
       root,
       env,
     );
-    assert.equal(listResult.status, 0);
-    const listed = JSON.parse(listResult.stdout);
-    assert.equal(listed.skill, "fallback-skill");
-    assert.equal(listed.distTags.latest, "3.0.0");
+    assert.equal(listResult.status, 1);
+    assert.match(listResult.stderr, /route not found/i);
   } finally {
     await mockRegistry.close();
     cleanupDirectory(root);
