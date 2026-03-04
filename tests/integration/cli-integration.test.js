@@ -11,6 +11,7 @@ const { makeTempDirectory, cleanupDirectory } = require("../helpers/fs-test-util
 
 const CLI_PATH = path.resolve(process.cwd(), "dist/cli.js");
 const CLI_TEST_PREFIX = "skillmd-cli-integration-";
+const CLI_PACKAGE_VERSION = require("../../package.json").version;
 
 function writeAuthSession(homeDir, overrides = {}) {
   const sessionPath = path.join(homeDir, ".skillmd", "auth.json");
@@ -157,6 +158,56 @@ test("spawned CLI: use fails with usage when skill-id is missing", () => {
       result.stderr,
       /Usage: skillmd use <skill-id> \[--version <semver> \| --spec <tag\|version\|range>\]/,
     );
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: root --version prints package version", () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+
+  try {
+    const result = runCli(["--version"], root);
+    assert.equal(result.status, 0);
+    assert.equal(result.stdout.trim(), CLI_PACKAGE_VERSION);
+    assert.equal(result.stderr.trim(), "");
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: root -v prints package version", () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+
+  try {
+    const result = runCli(["-v"], root);
+    assert.equal(result.status, 0);
+    assert.equal(result.stdout.trim(), CLI_PACKAGE_VERSION);
+    assert.equal(result.stderr.trim(), "");
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: root --version works with global auth token in any order", () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+
+  try {
+    const first = runCli(
+      ["--auth-token", "skmd_dev_tok_abc123abc123abc123abc123.secret", "--version"],
+      root,
+    );
+    assert.equal(first.status, 0);
+    assert.equal(first.stdout.trim(), CLI_PACKAGE_VERSION);
+    assert.equal(first.stderr.trim(), "");
+
+    const second = runCli(
+      ["--version", "--auth-token", "skmd_dev_tok_abc123abc123abc123abc123.secret"],
+      root,
+    );
+    assert.equal(second.status, 0);
+    assert.equal(second.stdout.trim(), CLI_PACKAGE_VERSION);
+    assert.equal(second.stderr.trim(), "");
   } finally {
     cleanupDirectory(root);
   }

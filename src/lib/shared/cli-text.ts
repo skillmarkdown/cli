@@ -1,5 +1,5 @@
 export const ROOT_USAGE =
-  "Usage: skillmd [--auth-token <token>] <init|validate|login|logout|publish|search|view|history|install|use|update|tag|deprecate|unpublish|whoami|token>";
+  "Usage: skillmd [--auth-token <token>] [--version|-v] <init|validate|login|logout|publish|search|view|history|install|use|update|tag|deprecate|unpublish|whoami|token>";
 export const INIT_USAGE = "Usage: skillmd init [--no-validate] [--template <minimal|verbose>]";
 export const INSTALL_USAGE =
   "Usage: skillmd install [--prune] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]";
