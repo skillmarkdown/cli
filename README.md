@@ -9,8 +9,6 @@ npm-like lifecycle for agent skills: create, publish, install, tag, deprecate, a
 
 ![skillmd CLI command sweep demo](public/assets/images/cli-readme-sweep.png)
 
-_Real command-sweep output from the CLI test flow._
-
 ## Why skillmd
 
 - Strict v1 registry contracts (`tag`, `access`, `spec`, `distTags`, lifecycle metadata).
