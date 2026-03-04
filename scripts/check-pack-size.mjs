@@ -9,7 +9,7 @@ function formatBytes(value) {
   return `${value.toLocaleString("en-US")} B`;
 }
 
-const raw = execFileSync("npm", ["pack", "--dry-run", "--json"], {
+const raw = execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
   encoding: "utf8",
   stdio: ["ignore", "pipe", "pipe"],
 });
