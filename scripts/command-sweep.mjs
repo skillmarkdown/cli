@@ -430,6 +430,8 @@ function runProfileSweep({
   mkdirSync(isolatedHomeDir, { recursive: true });
 
   runStep({ state, name: "login-status", args: ["login", "--status"], cwd: ROOT_DIR, env });
+  runStep({ state, name: "root-version", args: ["--version"], cwd: ROOT_DIR, env });
+  runStep({ state, name: "root-version-short", args: ["-v"], cwd: ROOT_DIR, env });
   runStep({ state, name: "whoami", args: ["whoami", "--json"], cwd: ROOT_DIR, env });
   runStep({ state, name: "token-ls", args: ["token", "ls", "--json"], cwd: ROOT_DIR, env });
 
