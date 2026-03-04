@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "./http";
+
 export interface ApiErrorPayload {
   error?: {
     code?: string;
@@ -20,6 +22,17 @@ interface ParseApiResponseOptions<TSuccess, TApiError extends Error> {
   isValid: (value: unknown) => value is TSuccess;
   missingFieldsMessage: string;
   toApiError: (status: number, payload: ApiErrorPayload) => TApiError;
+}
+
+interface RequestJsonOptions<TSuccess, TApiError extends Error> extends ParseApiResponseOptions<
+  TSuccess,
+  TApiError
+> {
+  url: URL | string;
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  timeoutMs?: number;
+  idToken?: string;
+  body?: unknown;
 }
 
 export async function parseJsonOrThrow<T>(response: Response, label: string): Promise<T> {
@@ -70,4 +83,23 @@ export async function parseApiResponse<TSuccess, TApiError extends Error>(
   }
 
   return parsed;
+}
+
+export async function requestJson<TSuccess, TApiError extends Error>(
+  options: RequestJsonOptions<TSuccess, TApiError>,
+): Promise<TSuccess> {
+  const headers = {
+    ...(authHeaders(options.idToken) ?? {}),
+    ...(options.body !== undefined ? { "Content-Type": "application/json" } : {}),
+  };
+  const response = await fetchWithTimeout(
+    options.url,
+    {
+      method: options.method,
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
+      ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
+    },
+    { timeoutMs: options.timeoutMs },
+  );
+  return parseApiResponse(response, options);
 }

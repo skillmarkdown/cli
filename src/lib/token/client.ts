@@ -1,10 +1,4 @@
-import { fetchWithTimeout } from "../shared/http";
-import {
-  authHeaders,
-  extractApiErrorFields,
-  parseApiResponse,
-  type ApiErrorPayload,
-} from "../shared/api-client";
+import { extractApiErrorFields, requestJson, type ApiErrorPayload } from "../shared/api-client";
 import { TokenApiError } from "./errors";
 import {
   type CreatedTokenResponse,
@@ -84,21 +78,12 @@ export async function createToken(
   request: { name: string; scope?: TokenScope; expiresDays?: number },
   options: TokenClientOptions = {},
 ): Promise<CreatedTokenResponse> {
-  const url = new URL(`${baseUrl}/v1/auth/tokens`);
-  const response = await fetchWithTimeout(
-    url,
-    {
-      method: "POST",
-      headers: {
-        ...(authHeaders(idToken) ?? {}),
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-    },
-    { timeoutMs: options.timeoutMs },
-  );
-
-  return parseApiResponse(response, {
+  return requestJson({
+    url: new URL(`${baseUrl}/v1/auth/tokens`),
+    method: "POST",
+    idToken,
+    body: request,
+    timeoutMs: options.timeoutMs,
     label: "Token API",
     isValid: isCreatedTokenResponse,
     missingFieldsMessage: "Token API response was missing required fields",
@@ -111,17 +96,11 @@ export async function listTokens(
   idToken: string,
   options: TokenClientOptions = {},
 ): Promise<ListTokensResponse> {
-  const url = new URL(`${baseUrl}/v1/auth/tokens`);
-  const response = await fetchWithTimeout(
-    url,
-    {
-      method: "GET",
-      headers: authHeaders(idToken),
-    },
-    { timeoutMs: options.timeoutMs },
-  );
-
-  return parseApiResponse(response, {
+  return requestJson({
+    url: new URL(`${baseUrl}/v1/auth/tokens`),
+    method: "GET",
+    idToken,
+    timeoutMs: options.timeoutMs,
     label: "Token API",
     isValid: isListTokensResponse,
     missingFieldsMessage: "Token API response was missing required fields",
@@ -135,17 +114,11 @@ export async function revokeToken(
   tokenId: string,
   options: TokenClientOptions = {},
 ): Promise<RevokeTokenResponse> {
-  const url = new URL(`${baseUrl}/v1/auth/tokens/${tokenId}`);
-  const response = await fetchWithTimeout(
-    url,
-    {
-      method: "DELETE",
-      headers: authHeaders(idToken),
-    },
-    { timeoutMs: options.timeoutMs },
-  );
-
-  return parseApiResponse(response, {
+  return requestJson({
+    url: new URL(`${baseUrl}/v1/auth/tokens/${tokenId}`),
+    method: "DELETE",
+    idToken,
+    timeoutMs: options.timeoutMs,
     label: "Token API",
     isValid: isRevokeTokenResponse,
     missingFieldsMessage: "Token API response was missing required fields",

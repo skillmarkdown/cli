@@ -1,9 +1,4 @@
-import { fetchWithTimeout } from "../shared/http";
-import {
-  extractApiErrorFields,
-  parseApiResponse,
-  type ApiErrorPayload,
-} from "../shared/api-client";
+import { extractApiErrorFields, requestJson, type ApiErrorPayload } from "../shared/api-client";
 import { UnpublishApiError } from "./errors";
 import { type UnpublishVersionRequest, type UnpublishVersionResponse } from "./types";
 
@@ -53,20 +48,13 @@ export async function unpublishVersion(
   request: UnpublishVersionRequest,
   options: UnpublishClientOptions = {},
 ): Promise<UnpublishVersionResponse> {
-  const url = new URL(
-    `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/versions/${request.version}`,
-  );
-  const response = await fetchWithTimeout(
-    url,
-    {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${idToken}`,
-      },
-    },
-    { timeoutMs: options.timeoutMs },
-  );
-  const parsed = await parseApiResponse(response, {
+  const parsed = await requestJson({
+    url: new URL(
+      `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/versions/${request.version}`,
+    ),
+    method: "DELETE",
+    idToken,
+    timeoutMs: options.timeoutMs,
     label: "Unpublish API",
     isValid: isUnpublishVersionResponse,
     missingFieldsMessage: "Unpublish API response was missing required fields",

@@ -1,4 +1,5 @@
 import { type ValidationResult } from "../validation/validator";
+import { printJson } from "./json-output";
 
 export function failWithUsage(message: string, usage: string): number {
   console.error(message);
@@ -13,4 +14,12 @@ export function printValidationResult(validation: ValidationResult): void {
   }
 
   console.error(`Validation failed: ${validation.message}`);
+}
+
+export function printCommandResult(json: boolean, payload: unknown, human: () => void): void {
+  if (json) {
+    printJson(payload);
+    return;
+  }
+  human();
 }

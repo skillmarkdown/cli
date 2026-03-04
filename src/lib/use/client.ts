@@ -1,10 +1,5 @@
 import { fetchWithTimeout } from "../shared/http";
-import {
-  authHeaders,
-  extractApiErrorFields,
-  parseApiResponse,
-  type ApiErrorPayload,
-} from "../shared/api-client";
+import { extractApiErrorFields, requestJson, type ApiErrorPayload } from "../shared/api-client";
 import { isAgentTarget } from "../shared/agent-target";
 import { UseApiError } from "./errors";
 import {
@@ -80,12 +75,11 @@ export async function resolveSkillVersion(
 ): Promise<ResolveSkillVersionResponse> {
   const url = new URL(`${baseUrl}/v1/skills/${ownerSlug}/${skillSlug}/resolve`);
   url.searchParams.set("spec", spec);
-  const response = await fetchWithTimeout(
+  return requestJson({
     url,
-    { method: "GET", headers: authHeaders(options.idToken) },
-    { timeoutMs: options.timeoutMs },
-  );
-  return parseApiResponse(response, {
+    method: "GET",
+    idToken: options.idToken,
+    timeoutMs: options.timeoutMs,
     label: "Resolve API",
     isValid: isResolveResponse,
     missingFieldsMessage: "Resolve API response was missing required fields",
@@ -98,15 +92,13 @@ export async function getArtifactDescriptor(
   request: ArtifactDescriptorRequest,
   options: UseClientOptions = {},
 ): Promise<ArtifactDescriptorResponse> {
-  const url = new URL(
-    `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/versions/${request.version}/artifact`,
-  );
-  const response = await fetchWithTimeout(
-    url,
-    { method: "GET", headers: authHeaders(options.idToken) },
-    { timeoutMs: options.timeoutMs },
-  );
-  return parseApiResponse(response, {
+  return requestJson({
+    url: new URL(
+      `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/versions/${request.version}/artifact`,
+    ),
+    method: "GET",
+    idToken: options.idToken,
+    timeoutMs: options.timeoutMs,
     label: "Artifact descriptor API",
     isValid: isArtifactDescriptorResponse,
     missingFieldsMessage: "Artifact descriptor API response was missing required fields",

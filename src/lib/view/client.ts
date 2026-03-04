@@ -1,10 +1,4 @@
-import { fetchWithTimeout } from "../shared/http";
-import {
-  authHeaders,
-  extractApiErrorFields,
-  parseApiResponse,
-  type ApiErrorPayload,
-} from "../shared/api-client";
+import { extractApiErrorFields, requestJson, type ApiErrorPayload } from "../shared/api-client";
 import { ViewApiError } from "./errors";
 import { type ViewResponse } from "./types";
 
@@ -41,13 +35,11 @@ export async function getSkillView(
   request: { ownerSlug: string; skillSlug: string },
   options: ViewClientOptions = {},
 ): Promise<ViewResponse> {
-  const url = new URL(`${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}`);
-  const response = await fetchWithTimeout(
-    url,
-    { method: "GET", headers: authHeaders(options.idToken) },
-    { timeoutMs: options.timeoutMs },
-  );
-  return parseApiResponse(response, {
+  return requestJson({
+    url: new URL(`${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}`),
+    method: "GET",
+    idToken: options.idToken,
+    timeoutMs: options.timeoutMs,
     label: "View API",
     isValid: isViewResponse,
     missingFieldsMessage: "View API response was missing required fields",

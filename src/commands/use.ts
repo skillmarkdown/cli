@@ -123,7 +123,6 @@ export async function runUseCommand(
       console.error(`skillmd use: ${error.message} (${error.code}, status ${error.status})`);
       return 1;
     }
-
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd use: ${message}`);
     return 1;

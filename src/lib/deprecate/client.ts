@@ -1,9 +1,4 @@
-import { fetchWithTimeout } from "../shared/http";
-import {
-  extractApiErrorFields,
-  parseApiResponse,
-  type ApiErrorPayload,
-} from "../shared/api-client";
+import { extractApiErrorFields, requestJson, type ApiErrorPayload } from "../shared/api-client";
 import { DeprecateApiError } from "./errors";
 import { type DeprecateVersionsRequest, type DeprecateVersionsResponse } from "./types";
 
@@ -36,25 +31,15 @@ export async function deprecateVersions(
   request: DeprecateVersionsRequest,
   options: DeprecateClientOptions = {},
 ): Promise<DeprecateVersionsResponse> {
-  const url = new URL(
-    `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/deprecations`,
-  );
-  const response = await fetchWithTimeout(
-    url,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${idToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        range: request.range,
-        message: request.message,
-      }),
+  return requestJson({
+    url: new URL(`${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/deprecations`),
+    method: "POST",
+    idToken,
+    body: {
+      range: request.range,
+      message: request.message,
     },
-    { timeoutMs: options.timeoutMs },
-  );
-  return parseApiResponse(response, {
+    timeoutMs: options.timeoutMs,
     label: "Deprecate API",
     isValid: isDeprecateVersionsResponse,
     missingFieldsMessage: "Deprecate API response was missing required fields",

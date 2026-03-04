@@ -1,8 +1,7 @@
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
-import { failWithUsage } from "../lib/shared/command-output";
+import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
 import { TEAM_USAGE } from "../lib/shared/cli-text";
 import { getLoginScopedRegistryEnvConfig } from "../lib/shared/env-config";
-import { printJson } from "../lib/shared/json-output";
 import {
   addTeamMember as defaultAddTeamMember,
   createTeam as defaultCreateTeam,
@@ -73,11 +72,6 @@ function hintForReason(reason?: string): string | null {
   return null;
 }
 
-function printOutput(json: boolean, payload: Record<string, unknown>, human: () => void): void {
-  if (json) printJson(payload);
-  else human();
-}
-
 export async function runTeamCommand(
   args: string[],
   options: TeamCommandOptions = {},
@@ -102,9 +96,7 @@ export async function runTeamCommand(
         { team: parsed.team, displayName: parsed.displayName ?? titleizeTeamSlug(parsed.team) },
         { timeoutMs: config.requestTimeoutMs },
       );
-      printOutput(parsed.json, result as unknown as Record<string, unknown>, () =>
-        printTeamRecord(result),
-      );
+      printCommandResult(parsed.json, result, () => printTeamRecord(result));
       return 0;
     }
 
@@ -117,9 +109,7 @@ export async function runTeamCommand(
           timeoutMs: config.requestTimeoutMs,
         },
       );
-      printOutput(parsed.json, result as unknown as Record<string, unknown>, () =>
-        printTeamRecord(result),
-      );
+      printCommandResult(parsed.json, result, () => printTeamRecord(result));
       return 0;
     }
 
@@ -130,9 +120,7 @@ export async function runTeamCommand(
         parsed.team,
         { timeoutMs: config.requestTimeoutMs },
       );
-      printOutput(parsed.json, result as unknown as Record<string, unknown>, () =>
-        printTeamMembers(result),
-      );
+      printCommandResult(parsed.json, result, () => printTeamMembers(result));
       return 0;
     }
 
@@ -144,9 +132,7 @@ export async function runTeamCommand(
         { ownerLogin: parsed.ownerLogin, role: parsed.role as MutableTeamRole },
         { timeoutMs: config.requestTimeoutMs },
       );
-      printOutput(parsed.json, result as unknown as Record<string, unknown>, () =>
-        printMutation(result),
-      );
+      printCommandResult(parsed.json, result, () => printMutation(result));
       return 0;
     }
 
@@ -159,9 +145,7 @@ export async function runTeamCommand(
         { role: parsed.role as MutableTeamRole },
         { timeoutMs: config.requestTimeoutMs },
       );
-      printOutput(parsed.json, result as unknown as Record<string, unknown>, () =>
-        printMutation(result),
-      );
+      printCommandResult(parsed.json, result, () => printMutation(result));
       return 0;
     }
 
@@ -173,9 +157,7 @@ export async function runTeamCommand(
         parsed.ownerLogin,
         { timeoutMs: config.requestTimeoutMs },
       );
-      printOutput(parsed.json, result as unknown as Record<string, unknown>, () =>
-        printMutation(result),
-      );
+      printCommandResult(parsed.json, result, () => printMutation(result));
       return 0;
     }
 
@@ -199,7 +181,6 @@ export async function runTeamCommand(
       if (hint && !parsed.json) console.error(hint);
       return 1;
     }
-
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd team: ${message}`);
     return 1;

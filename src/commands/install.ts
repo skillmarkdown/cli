@@ -365,7 +365,6 @@ export async function runInstallCommand(
       );
       return 1;
     }
-
     console.error(`skillmd install: ${message}`);
     return 1;
   }

@@ -5,8 +5,7 @@ import { parseHistoryFlags } from "../lib/history/flags";
 import { type HistoryResponse } from "../lib/history/types";
 import { parseSkillId } from "../lib/registry/skill-id";
 import { HISTORY_USAGE } from "../lib/shared/cli-text";
-import { failWithUsage } from "../lib/shared/command-output";
-import { printJson } from "../lib/shared/json-output";
+import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
 import { renderTable } from "../lib/shared/table";
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 import { callWithReadTokenRetry, isReadTokenRetryableStatus } from "../lib/auth/read-token-retry";
@@ -140,19 +139,15 @@ export async function runHistoryCommand(
       shouldRetry: shouldRetryWithReadToken,
     });
 
-    if (parsed.json) {
-      printJson(response as unknown as Record<string, unknown>);
-      return 0;
-    }
-
-    printHumanResults(parsedSkillId.skillId, parsed.limit, response);
+    printCommandResult(parsed.json, response, () =>
+      printHumanResults(parsedSkillId.skillId, parsed.limit, response),
+    );
     return 0;
   } catch (error) {
     if (isHistoryApiError(error)) {
       console.error(`skillmd history: ${error.message} (${error.code}, status ${error.status})`);
       return 1;
     }
-
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd history: ${message}`);
     return 1;

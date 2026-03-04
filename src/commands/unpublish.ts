@@ -1,12 +1,10 @@
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
-import { resolveConfiguredAuthToken } from "../lib/auth/api-token";
-import { deriveOwnerFromSession } from "../lib/auth/owner";
+import { resolveWriteAuth } from "../lib/auth/write-auth";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { parseSkillId } from "../lib/registry/skill-id";
-import { failWithUsage } from "../lib/shared/command-output";
+import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
 import { UNPUBLISH_USAGE } from "../lib/shared/cli-text";
 import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
-import { printJson } from "../lib/shared/json-output";
 import { isUnpublishApiError } from "../lib/unpublish/errors";
 import { parseUnpublishFlags, parseUnpublishRequest } from "../lib/unpublish/flags";
 import { type UnpublishEnvConfig, type UnpublishVersionResponse } from "../lib/unpublish/types";
@@ -43,50 +41,23 @@ export async function runUnpublishCommand(
     const env = options.env ?? process.env;
     const config = (options.getConfig ?? getAuthRegistryEnvConfig)(env);
     const parsedSkillId = parseSkillId(parsedRequest.skillId);
-    const configuredAuthToken = resolveConfiguredAuthToken(env);
-    const session = (options.readSession ?? readAuthSession)();
-    if (!configuredAuthToken && !session) {
-      console.error("skillmd unpublish: not logged in. Run 'skillmd login' first.");
+    const auth = await resolveWriteAuth({
+      command: "skillmd unpublish",
+      env,
+      config,
+      readSession: options.readSession ?? readAuthSession,
+      exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
+      requireOwner: true,
+      targetOwnerSlug: parsedSkillId.ownerSlug,
+    });
+    if (!auth.ok) {
+      console.error(auth.message);
       return 1;
     }
 
-    const owner = session ? deriveOwnerFromSession(session) : null;
-    if (!configuredAuthToken && !owner) {
-      console.error(
-        "skillmd unpublish: missing GitHub username in session. Run 'skillmd login --reauth' first.",
-      );
-      return 1;
-    }
-
-    if (
-      !configuredAuthToken &&
-      session &&
-      session.projectId &&
-      session.projectId !== config.firebaseProjectId
-    ) {
-      console.error(
-        `skillmd unpublish: session project '${session.projectId}' does not match current config ` +
-          `'${config.firebaseProjectId}'. Run 'skillmd login --reauth' to switch projects.`,
-      );
-      return 1;
-    }
-
-    if (!configuredAuthToken && `@${parsedSkillId.ownerSlug}` !== owner) {
-      console.error(`skillmd unpublish: can only update skills owned by ${owner}.`);
-      return 1;
-    }
-
-    let idToken = configuredAuthToken;
-    if (!idToken) {
-      const idTokenSession = await (options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken)(
-        config.firebaseApiKey,
-        session!.refreshToken,
-      );
-      idToken = idTokenSession.idToken;
-    }
     const result = await (options.unpublishVersion ?? defaultUnpublishVersion)(
       config.registryBaseUrl,
-      idToken,
+      auth.value.idToken,
       {
         ownerSlug: parsedSkillId.ownerSlug,
         skillSlug: parsedSkillId.skillSlug,
@@ -95,21 +66,18 @@ export async function runUnpublishCommand(
       { timeoutMs: config.requestTimeoutMs },
     );
 
-    if (parsedRequest.json) {
-      printJson(result as unknown as Record<string, unknown>);
-    } else {
+    printCommandResult(parsedRequest.json, result, () => {
       const removedTags = result.removedTags.length > 0 ? result.removedTags.join(",") : "none";
       console.log(
         `Unpublished ${parsedSkillId.skillId}@${result.version}. Removed tags: ${removedTags}.`,
       );
-    }
+    });
     return 0;
   } catch (error) {
     if (isUnpublishApiError(error)) {
       console.error(`skillmd unpublish: ${error.message} (${error.code}, status ${error.status})`);
       return 1;
     }
-
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd unpublish: ${message}`);
     return 1;

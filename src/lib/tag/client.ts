@@ -1,10 +1,4 @@
-import { fetchWithTimeout } from "../shared/http";
-import {
-  authHeaders,
-  extractApiErrorFields,
-  parseApiResponse,
-  type ApiErrorPayload,
-} from "../shared/api-client";
+import { extractApiErrorFields, requestJson, type ApiErrorPayload } from "../shared/api-client";
 import { TagApiError } from "./errors";
 import {
   type DeleteDistTagRequest,
@@ -88,13 +82,11 @@ export async function listDistTags(
   request: { ownerSlug: string; skillSlug: string },
   options: TagClientOptions = {},
 ): Promise<DistTagsListResponse> {
-  const url = new URL(`${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/dist-tags`);
-  const response = await fetchWithTimeout(
-    url,
-    { method: "GET", headers: authHeaders(options.idToken) },
-    { timeoutMs: options.timeoutMs },
-  );
-  const parsed = await parseApiResponse(response, {
+  const parsed = await requestJson({
+    url: new URL(`${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/dist-tags`),
+    method: "GET",
+    idToken: options.idToken,
+    timeoutMs: options.timeoutMs,
     label: "Tag API",
     isValid: isDistTagsListResponse,
     missingFieldsMessage: "Tag API response was missing required fields",
@@ -113,24 +105,14 @@ export async function setDistTag(
   request: SetDistTagRequest,
   options: TagClientOptions = {},
 ): Promise<DistTagUpdateResponse> {
-  const url = new URL(
-    `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/dist-tags/${request.tag}`,
-  );
-  const response = await fetchWithTimeout(
-    url,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${idToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        version: request.version,
-      }),
-    },
-    { timeoutMs: options.timeoutMs },
-  );
-  const parsed = await parseApiResponse(response, {
+  const parsed = await requestJson({
+    url: new URL(
+      `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/dist-tags/${request.tag}`,
+    ),
+    method: "PUT",
+    idToken,
+    body: { version: request.version },
+    timeoutMs: options.timeoutMs,
     label: "Tag API",
     isValid: isDistTagUpdateResponse,
     missingFieldsMessage: "Tag API response was missing required fields",
@@ -149,20 +131,13 @@ export async function removeDistTag(
   request: DeleteDistTagRequest,
   options: TagClientOptions = {},
 ): Promise<DistTagDeleteResponse> {
-  const url = new URL(
-    `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/dist-tags/${request.tag}`,
-  );
-  const response = await fetchWithTimeout(
-    url,
-    {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${idToken}`,
-      },
-    },
-    { timeoutMs: options.timeoutMs },
-  );
-  const parsed = await parseApiResponse(response, {
+  const parsed = await requestJson({
+    url: new URL(
+      `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/dist-tags/${request.tag}`,
+    ),
+    method: "DELETE",
+    idToken,
+    timeoutMs: options.timeoutMs,
     label: "Tag API",
     isValid: isDistTagDeleteResponse,
     missingFieldsMessage: "Tag API response was missing required fields",

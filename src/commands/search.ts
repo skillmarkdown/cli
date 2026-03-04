@@ -11,8 +11,7 @@ import {
 } from "../lib/search/selection-cache";
 import { type SearchSkillsResponse } from "../lib/search/types";
 import { SEARCH_USAGE } from "../lib/shared/cli-text";
-import { failWithUsage } from "../lib/shared/command-output";
-import { printJson } from "../lib/shared/json-output";
+import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
 import { renderTable } from "../lib/shared/table";
 
 interface SearchCommandOptions {
@@ -235,20 +234,17 @@ export async function runSearchCommand(
       // Cache persistence is best-effort and must not fail command execution.
     }
 
-    if (parsed.json) {
-      printJson(response as unknown as Record<string, unknown>);
-      return 0;
-    }
-
-    renderSearchResults(pageStartIndex, response);
-    if (response.nextCursor) {
-      printNextPageHint({
-        query: parsed.query,
-        limit: parsed.limit,
-        scope: parsed.scope,
-        nextCursor: response.nextCursor,
-      });
-    }
+    printCommandResult(parsed.json, response, () => {
+      renderSearchResults(pageStartIndex, response);
+      if (response.nextCursor) {
+        printNextPageHint({
+          query: parsed.query,
+          limit: parsed.limit,
+          scope: parsed.scope,
+          nextCursor: response.nextCursor,
+        });
+      }
+    });
     return 0;
   } catch (error) {
     if (isSearchApiError(error)) {

@@ -1,16 +1,14 @@
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
-import { resolveConfiguredAuthToken } from "../lib/auth/api-token";
-import { deriveOwnerFromSession } from "../lib/auth/owner";
+import { resolveWriteAuth } from "../lib/auth/write-auth";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { parseDeprecateFlags, parseDeprecateRequest } from "../lib/deprecate/flags";
 import { deprecateVersions as defaultDeprecateVersions } from "../lib/deprecate/client";
 import { isDeprecateApiError } from "../lib/deprecate/errors";
 import { type DeprecateEnvConfig, type DeprecateVersionsResponse } from "../lib/deprecate/types";
 import { parseSkillId } from "../lib/registry/skill-id";
-import { failWithUsage } from "../lib/shared/command-output";
+import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
 import { DEPRECATE_USAGE } from "../lib/shared/cli-text";
 import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
-import { printJson } from "../lib/shared/json-output";
 
 interface DeprecateCommandOptions {
   env?: NodeJS.ProcessEnv;
@@ -44,50 +42,23 @@ export async function runDeprecateCommand(
     const env = options.env ?? process.env;
     const config = (options.getConfig ?? getAuthRegistryEnvConfig)(env);
     const parsedSkillId = parseSkillId(parsedRequest.skillId);
-    const configuredAuthToken = resolveConfiguredAuthToken(env);
-    const session = (options.readSession ?? readAuthSession)();
-    if (!configuredAuthToken && !session) {
-      console.error("skillmd deprecate: not logged in. Run 'skillmd login' first.");
+    const auth = await resolveWriteAuth({
+      command: "skillmd deprecate",
+      env,
+      config,
+      readSession: options.readSession ?? readAuthSession,
+      exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
+      requireOwner: true,
+      targetOwnerSlug: parsedSkillId.ownerSlug,
+    });
+    if (!auth.ok) {
+      console.error(auth.message);
       return 1;
     }
 
-    const owner = session ? deriveOwnerFromSession(session) : null;
-    if (!configuredAuthToken && !owner) {
-      console.error(
-        "skillmd deprecate: missing GitHub username in session. Run 'skillmd login --reauth' first.",
-      );
-      return 1;
-    }
-
-    if (
-      !configuredAuthToken &&
-      session &&
-      session.projectId &&
-      session.projectId !== config.firebaseProjectId
-    ) {
-      console.error(
-        `skillmd deprecate: session project '${session.projectId}' does not match current config ` +
-          `'${config.firebaseProjectId}'. Run 'skillmd login --reauth' to switch projects.`,
-      );
-      return 1;
-    }
-
-    if (!configuredAuthToken && `@${parsedSkillId.ownerSlug}` !== owner) {
-      console.error(`skillmd deprecate: can only update skills owned by ${owner}.`);
-      return 1;
-    }
-
-    let idToken = configuredAuthToken;
-    if (!idToken) {
-      const idTokenSession = await (options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken)(
-        config.firebaseApiKey,
-        session!.refreshToken,
-      );
-      idToken = idTokenSession.idToken;
-    }
     const result = await (options.deprecateVersions ?? defaultDeprecateVersions)(
       config.registryBaseUrl,
-      idToken,
+      auth.value.idToken,
       {
         ownerSlug: parsedSkillId.ownerSlug,
         skillSlug: parsedSkillId.skillSlug,
@@ -97,20 +68,17 @@ export async function runDeprecateCommand(
       { timeoutMs: config.requestTimeoutMs },
     );
 
-    if (parsedRequest.json) {
-      printJson(result as unknown as Record<string, unknown>);
-    } else {
+    printCommandResult(parsedRequest.json, result, () => {
       console.log(
         `Deprecated ${result.affectedVersions.length} version(s) for ${parsedSkillId.skillId} using range ${result.range}.`,
       );
-    }
+    });
     return 0;
   } catch (error) {
     if (isDeprecateApiError(error)) {
       console.error(`skillmd deprecate: ${error.message} (${error.code}, status ${error.status})`);
       return 1;
     }
-
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd deprecate: ${message}`);
     return 1;

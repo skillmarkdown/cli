@@ -1,8 +1,7 @@
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
-import { failWithUsage } from "../lib/shared/command-output";
+import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
 import { WHOAMI_USAGE } from "../lib/shared/cli-text";
 import { getLoginScopedRegistryEnvConfig } from "../lib/shared/env-config";
-import { printJson } from "../lib/shared/json-output";
 import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
 import { isWhoamiApiError } from "../lib/whoami/errors";
 import { parseWhoamiFlags } from "../lib/whoami/flags";
@@ -73,18 +72,13 @@ export async function runWhoamiCommand(
       timeoutMs: config.requestTimeoutMs,
     });
 
-    if (parsed.json) {
-      printJson(result as unknown as Record<string, unknown>);
-    } else {
-      printWhoamiHuman(result);
-    }
+    printCommandResult(parsed.json, result, () => printWhoamiHuman(result));
     return 0;
   } catch (error) {
     if (isWhoamiApiError(error)) {
       console.error(`skillmd whoami: ${error.message} (${error.code}, status ${error.status})`);
       return 1;
     }
-
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd whoami: ${message}`);
     return 1;

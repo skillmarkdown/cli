@@ -1,14 +1,12 @@
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
-import { resolveConfiguredAuthToken } from "../lib/auth/api-token";
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 import { callWithReadTokenRetry, isReadTokenRetryableStatus } from "../lib/auth/read-token-retry";
-import { deriveOwnerFromSession } from "../lib/auth/owner";
+import { resolveWriteAuth } from "../lib/auth/write-auth";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { parseSkillId } from "../lib/registry/skill-id";
-import { failWithUsage } from "../lib/shared/command-output";
+import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
 import { TAG_USAGE } from "../lib/shared/cli-text";
 import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
-import { printJson } from "../lib/shared/json-output";
 import { listDistTags, removeDistTag, setDistTag } from "../lib/tag/client";
 import { isTagApiError } from "../lib/tag/errors";
 import { parseTagFlags } from "../lib/tag/flags";
@@ -106,63 +104,31 @@ export async function runTagCommand(
         shouldRetry: shouldRetryWithReadToken,
       });
 
-      if (parsed.json) {
-        printJson(result as unknown as Record<string, unknown>);
-      } else {
-        printDistTagsHuman(result);
-      }
+      printCommandResult(parsed.json, result, () => printDistTagsHuman(result));
       return 0;
     }
 
-    const configuredAuthToken = resolveConfiguredAuthToken(env);
-    const readSessionFn = options.readSession ?? readAuthSession;
-    const session = readSessionFn();
-    if (!configuredAuthToken && !session) {
-      console.error("skillmd tag: not logged in. Run 'skillmd login' first.");
+    const auth = await resolveWriteAuth({
+      command: "skillmd tag",
+      env,
+      config,
+      readSession: options.readSession ?? readAuthSession,
+      exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
+      requireOwner: true,
+      targetOwnerSlug: parsedSkillId.ownerSlug,
+      ownerMismatchMessage: (owner) =>
+        `skillmd tag: can only update tags for skills owned by ${owner}.`,
+    });
+    if (!auth.ok) {
+      console.error(auth.message);
       return 1;
-    }
-
-    const owner = session ? deriveOwnerFromSession(session) : null;
-    if (!configuredAuthToken && !owner) {
-      console.error(
-        "skillmd tag: missing GitHub username in session. Run 'skillmd login --reauth' first.",
-      );
-      return 1;
-    }
-
-    if (
-      !configuredAuthToken &&
-      session &&
-      session.projectId &&
-      session.projectId !== config.firebaseProjectId
-    ) {
-      console.error(
-        `skillmd tag: session project '${session.projectId}' does not match current config ` +
-          `'${config.firebaseProjectId}'. Run 'skillmd login --reauth' to switch projects.`,
-      );
-      return 1;
-    }
-
-    if (!configuredAuthToken && `@${parsedSkillId.ownerSlug}` !== owner) {
-      console.error(`skillmd tag: can only update tags for skills owned by ${owner}.`);
-      return 1;
-    }
-
-    let idToken = configuredAuthToken;
-    if (!idToken) {
-      const exchangeRefreshTokenFn = options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken;
-      const idTokenSession = await exchangeRefreshTokenFn(
-        config.firebaseApiKey,
-        session!.refreshToken,
-      );
-      idToken = idTokenSession.idToken;
     }
 
     if (parsed.action === "add") {
       const setDistTagFn = options.setDistTag ?? setDistTag;
       const result = await setDistTagFn(
         config.registryBaseUrl,
-        idToken,
+        auth.value.idToken,
         {
           ownerSlug: parsedSkillId.ownerSlug,
           skillSlug: parsedSkillId.skillSlug,
@@ -171,20 +137,18 @@ export async function runTagCommand(
         },
         { timeoutMs: config.requestTimeoutMs },
       );
-      if (parsed.json) {
-        printJson(result as unknown as Record<string, unknown>);
-      } else {
+      printCommandResult(parsed.json, result, () => {
         console.log(
           `Updated dist-tag ${result.tag} -> ${result.version} for ${parsedSkillId.skillId}.`,
         );
-      }
+      });
       return 0;
     }
 
     const removeDistTagFn = options.removeDistTag ?? removeDistTag;
     const result = await removeDistTagFn(
       config.registryBaseUrl,
-      idToken,
+      auth.value.idToken,
       {
         ownerSlug: parsedSkillId.ownerSlug,
         skillSlug: parsedSkillId.skillSlug,
@@ -192,18 +156,15 @@ export async function runTagCommand(
       },
       { timeoutMs: config.requestTimeoutMs },
     );
-    if (parsed.json) {
-      printJson(result as unknown as Record<string, unknown>);
-    } else {
+    printCommandResult(parsed.json, result, () => {
       console.log(`Removed dist-tag ${result.tag} from ${parsedSkillId.skillId}.`);
-    }
+    });
     return 0;
   } catch (error) {
     if (isTagApiError(error)) {
       console.error(`skillmd tag: ${error.message} (${error.code}, status ${error.status})`);
       return 1;
     }
-
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd tag: ${message}`);
     return 1;

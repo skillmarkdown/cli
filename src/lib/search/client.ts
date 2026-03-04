@@ -1,10 +1,4 @@
-import { fetchWithTimeout } from "../shared/http";
-import {
-  authHeaders,
-  extractApiErrorFields,
-  parseApiResponse,
-  type ApiErrorPayload,
-} from "../shared/api-client";
+import { extractApiErrorFields, requestJson, type ApiErrorPayload } from "../shared/api-client";
 import { SearchApiError } from "./errors";
 import { type SearchSkillsRequest, type SearchSkillsResponse } from "./types";
 
@@ -85,15 +79,11 @@ export async function searchSkills(
     url.searchParams.set("scope", request.scope);
   }
 
-  const response = await fetchWithTimeout(
+  const parsed = await requestJson({
     url,
-    {
-      method: "GET",
-      headers: authHeaders(options.idToken),
-    },
-    { timeoutMs: options.timeoutMs },
-  );
-  const parsed = await parseApiResponse(response, {
+    method: "GET",
+    idToken: options.idToken,
+    timeoutMs: options.timeoutMs,
     label: "Search API",
     isValid: isSearchSkillsResponse,
     missingFieldsMessage: "Search API response was missing required fields",

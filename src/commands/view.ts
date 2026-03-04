@@ -1,8 +1,7 @@
 import { parseSkillId } from "../lib/registry/skill-id";
 import { readSearchSelectionCache, type SearchSelectionCache } from "../lib/search/selection-cache";
-import { failWithUsage } from "../lib/shared/command-output";
+import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
 import { VIEW_USAGE } from "../lib/shared/cli-text";
-import { printJson } from "../lib/shared/json-output";
 import { getSkillView } from "../lib/view/client";
 import { getRegistryEnvConfig, type RegistryEnvConfig } from "../lib/registry/config";
 import { isViewApiError } from "../lib/view/errors";
@@ -136,19 +135,13 @@ export async function runViewCommand(
       shouldRetry: shouldRetryWithReadToken,
     });
 
-    if (parsed.json) {
-      printJson(response as unknown as Record<string, unknown>);
-      return 0;
-    }
-
-    printHumanResult(response);
+    printCommandResult(parsed.json, response, () => printHumanResult(response));
     return 0;
   } catch (error) {
     if (isViewApiError(error)) {
       console.error(`skillmd view: ${error.message} (${error.code}, status ${error.status})`);
       return 1;
     }
-
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd view: ${message}`);
     return 1;

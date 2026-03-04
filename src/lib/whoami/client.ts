@@ -1,10 +1,4 @@
-import { fetchWithTimeout } from "../shared/http";
-import {
-  authHeaders,
-  extractApiErrorFields,
-  parseApiResponse,
-  type ApiErrorPayload,
-} from "../shared/api-client";
+import { extractApiErrorFields, requestJson, type ApiErrorPayload } from "../shared/api-client";
 import { WhoamiApiError } from "./errors";
 import { type WhoamiResponse } from "./types";
 
@@ -66,16 +60,11 @@ export async function getWhoami(
   idToken: string,
   options: WhoamiClientOptions = {},
 ): Promise<WhoamiResponse> {
-  const url = new URL(`${baseUrl}/v1/auth/whoami`);
-  const response = await fetchWithTimeout(
-    url,
-    {
-      method: "GET",
-      headers: authHeaders(idToken),
-    },
-    { timeoutMs: options.timeoutMs },
-  );
-  return parseApiResponse(response, {
+  return requestJson({
+    url: new URL(`${baseUrl}/v1/auth/whoami`),
+    method: "GET",
+    idToken,
+    timeoutMs: options.timeoutMs,
     label: "Whoami API",
     isValid: isWhoamiResponse,
     missingFieldsMessage: "Whoami API response was missing required fields",

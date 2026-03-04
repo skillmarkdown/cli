@@ -1,10 +1,9 @@
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
-import { resolveConfiguredAuthToken } from "../lib/auth/api-token";
+import { resolveWriteAuth } from "../lib/auth/write-auth";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
-import { failWithUsage } from "../lib/shared/command-output";
+import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
 import { TOKEN_USAGE } from "../lib/shared/cli-text";
 import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
-import { printJson } from "../lib/shared/json-output";
 import {
   createToken as defaultCreateToken,
   listTokens as defaultListTokens,
@@ -44,35 +43,6 @@ interface TokenCommandOptions {
   ) => Promise<RevokeTokenResponse>;
 }
 
-async function resolveWriteToken(
-  env: NodeJS.ProcessEnv,
-  config: TokenEnvConfig,
-  options: TokenCommandOptions,
-): Promise<string | null> {
-  const configured = resolveConfiguredAuthToken(env);
-  if (configured) {
-    return configured;
-  }
-
-  const session = (options.readSession ?? readAuthSession)();
-  if (!session) {
-    return null;
-  }
-
-  if (session.projectId && session.projectId !== config.firebaseProjectId) {
-    throw new Error(
-      `session project '${session.projectId}' does not match current config ` +
-        `'${config.firebaseProjectId}'. Run 'skillmd login --reauth' to switch projects.`,
-    );
-  }
-
-  const tokenSession = await (options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken)(
-    config.firebaseApiKey,
-    session.refreshToken,
-  );
-  return tokenSession.idToken;
-}
-
 function printListHuman(payload: ListTokensResponse): void {
   if (payload.tokens.length === 0) {
     console.log("No tokens found.");
@@ -100,30 +70,32 @@ export async function runTokenCommand(
   try {
     const env = options.env ?? process.env;
     const config = (options.getConfig ?? getAuthRegistryEnvConfig)(env);
-    const idToken = await resolveWriteToken(env, config, options);
-    if (!idToken) {
-      console.error("skillmd token: not logged in. Run 'skillmd login' first.");
+    const auth = await resolveWriteAuth({
+      command: "skillmd token",
+      env,
+      config,
+      readSession: options.readSession ?? readAuthSession,
+      exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
+    });
+    if (!auth.ok) {
+      console.error(auth.message);
       return 1;
     }
 
     if (parsed.action === "ls") {
       const result = await (options.listTokens ?? defaultListTokens)(
         config.registryBaseUrl,
-        idToken,
+        auth.value.idToken,
         { timeoutMs: config.requestTimeoutMs },
       );
-      if (parsed.json) {
-        printJson(result as unknown as Record<string, unknown>);
-      } else {
-        printListHuman(result);
-      }
+      printCommandResult(parsed.json, result, () => printListHuman(result));
       return 0;
     }
 
     if (parsed.action === "add") {
       const result = await (options.createToken ?? defaultCreateToken)(
         config.registryBaseUrl,
-        idToken,
+        auth.value.idToken,
         {
           name: parsed.name,
           scope: parsed.scope,
@@ -131,35 +103,30 @@ export async function runTokenCommand(
         },
         { timeoutMs: config.requestTimeoutMs },
       );
-      if (parsed.json) {
-        printJson(result as unknown as Record<string, unknown>);
-      } else {
+      printCommandResult(parsed.json, result, () => {
         console.log(
           `Created token ${result.tokenId} (${result.scope}, expires ${result.expiresAt}).`,
         );
         console.log(`Token: ${result.token}`);
-      }
+      });
       return 0;
     }
 
     const result = await (options.revokeToken ?? defaultRevokeToken)(
       config.registryBaseUrl,
-      idToken,
+      auth.value.idToken,
       parsed.tokenId,
       { timeoutMs: config.requestTimeoutMs },
     );
-    if (parsed.json) {
-      printJson(result as unknown as Record<string, unknown>);
-    } else {
+    printCommandResult(parsed.json, result, () => {
       console.log(`Revoked token ${result.tokenId}.`);
-    }
+    });
     return 0;
   } catch (error) {
     if (isTokenApiError(error)) {
       console.error(`skillmd token: ${error.message} (${error.code}, status ${error.status})`);
       return 1;
     }
-
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd token: ${message}`);
     return 1;
