@@ -2,6 +2,8 @@
 
 import { runInitCommand } from "./commands/init";
 import { runInstallCommand } from "./commands/install";
+import { runListCommand } from "./commands/list";
+import { runRemoveCommand } from "./commands/remove";
 import { runHistoryCommand } from "./commands/history";
 import { runLoginCommand } from "./commands/login";
 import { runLogoutCommand } from "./commands/logout";
@@ -25,6 +27,8 @@ type CommandHandler = (args: string[]) => number | Promise<number>;
 const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   init: runInitCommand,
   install: runInstallCommand,
+  list: runListCommand,
+  remove: runRemoveCommand,
   history: runHistoryCommand,
   validate: runValidateCommand,
   login: runLoginCommand,

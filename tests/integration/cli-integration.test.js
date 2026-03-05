@@ -163,6 +163,30 @@ test("spawned CLI: use fails with usage when skill-id is missing", () => {
   }
 });
 
+test("spawned CLI: list is wired and prints usage on invalid args", () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+
+  try {
+    const result = runCli(["list", "--bad-flag"], root);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Usage: skillmd list/);
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: remove invalid skill id returns usage (no crash)", () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+
+  try {
+    const result = runCli(["remove", "bad"], root);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Usage: skillmd remove/);
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
 test("spawned CLI: root --version prints package version", () => {
   const root = makeTempDirectory(CLI_TEST_PREFIX);
 

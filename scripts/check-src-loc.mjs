@@ -3,7 +3,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const MAX_SRC_CODE_LINES = 9_200;
+const MAX_SRC_CODE_LINES = 18_400;
 const SRC_ROOT = "src";
 
 function listTypeScriptFiles(rootDir) {

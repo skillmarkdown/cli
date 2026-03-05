@@ -48,6 +48,8 @@ skillmd history @owner/my-skill
 
 # 4) Consume and maintain installs
 skillmd use @owner/my-skill
+skillmd list
+skillmd remove @owner/my-skill
 skillmd update --all
 ```
 
@@ -121,6 +123,8 @@ Token scope model:
 
 - `skillmd use <skill-id> [--version <semver> | --spec <tag|version|range>] [--agent-target <target>] [--json]`
 - `skillmd install [--prune] [--agent-target <target>] [--json]`
+- `skillmd list [--agent-target <target>] [--json]`
+- `skillmd remove <skill-id> [--agent-target <target>] [--json]`
 - `skillmd update [skill-id ...] [--all] [--agent-target <target>] [--json]`
 
 ### Release operations
