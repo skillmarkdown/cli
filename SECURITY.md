@@ -19,7 +19,7 @@ Include:
 
 Security fixes are prioritized for the latest published CLI line.
 
-- Current supported line: `0.11.x` (or latest minor after release)
+- Current supported line: latest published CLI minor (currently `0.14.x` as of March 5, 2026)
 
 Older lines may receive best-effort guidance but are not guaranteed patch releases.
 
