@@ -47,6 +47,7 @@ export interface PublishManifest {
   description?: string;
   repository?: string;
   homepage?: string;
+  license?: string;
   files: PackedFileEntry[];
 }
 
@@ -70,6 +71,9 @@ export interface PreparePublishRequest {
     description: string;
     repository?: string;
     homepage?: string;
+    license?: string;
+    unpackedSizeBytes?: number;
+    totalFiles?: number;
   };
   agentTarget?: AgentTarget;
   digest: string;

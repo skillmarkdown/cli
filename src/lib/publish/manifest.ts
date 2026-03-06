@@ -106,10 +106,20 @@ function readRepository(targetDir: string): string | undefined {
   return undefined;
 }
 
+function readLicense(targetDir: string): string | undefined {
+  const manifest = readPackageManifest(targetDir);
+  if (!manifest) {
+    return undefined;
+  }
+  const license = typeof manifest.license === "string" ? manifest.license.trim() : "";
+  return license || undefined;
+}
+
 export function buildPublishManifest(options: BuildPublishManifestOptions): PublishManifest {
   const description = readSkillDescription(options.targetDir);
   const repository = readRepository(options.targetDir);
   const homepage = readHomepage(options.targetDir);
+  const license = readLicense(options.targetDir);
 
   return {
     schemaVersion: "skillmd.publish.v1",
@@ -124,6 +134,7 @@ export function buildPublishManifest(options: BuildPublishManifestOptions): Publ
     description,
     repository,
     homepage,
+    license,
     files: options.artifact.files,
   };
 }

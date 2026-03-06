@@ -36,6 +36,7 @@ test("buildPublishManifest returns stable schema fields", () => {
         name: "manifest-skill",
         version: "1.0.0",
         homepage: "https://github.com/skillmarkdown/cli#readme",
+        license: "MIT",
         repository: {
           type: "git",
           url: "https://github.com/skillmarkdown/cli",
@@ -67,6 +68,7 @@ test("buildPublishManifest returns stable schema fields", () => {
     assert.equal(manifest.description, "Example description");
     assert.equal(manifest.homepage, "https://github.com/skillmarkdown/cli#readme");
     assert.equal(manifest.repository, "https://github.com/skillmarkdown/cli");
+    assert.equal(manifest.license, "MIT");
     assert.deepEqual(manifest.files, [{ path: "SKILL.md", sizeBytes: 55, sha256: "aaa" }]);
   } finally {
     cleanupDirectory(root);

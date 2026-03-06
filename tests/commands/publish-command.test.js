@@ -403,6 +403,7 @@ test("forwards repository and homepage package metadata when present", async () 
       ...validManifest(),
       repository: "https://github.com/skillmarkdown/cli",
       homepage: "https://github.com/skillmarkdown/cli#readme",
+      license: "MIT",
     }),
     preparePublish: async (_baseUrl, _idToken, payload) => {
       capturedPackageMeta = payload.packageMeta;
@@ -419,6 +420,9 @@ test("forwards repository and homepage package metadata when present", async () 
   assert.equal(result, 0);
   assert.equal(capturedPackageMeta?.repository, "https://github.com/skillmarkdown/cli");
   assert.equal(capturedPackageMeta?.homepage, "https://github.com/skillmarkdown/cli#readme");
+  assert.equal(capturedPackageMeta?.license, "MIT");
+  assert.equal(capturedPackageMeta?.unpackedSizeBytes, 0);
+  assert.equal(capturedPackageMeta?.totalFiles, 0);
 });
 
 test("fails when manifest exceeds configured max size", async () => {

@@ -60,6 +60,9 @@ interface PublishCommandOptions {
         description: string;
         repository?: string;
         homepage?: string;
+        license?: string;
+        unpackedSizeBytes?: number;
+        totalFiles?: number;
       };
       agentTarget?: string;
       digest: string;
@@ -234,12 +237,16 @@ export async function runPublishCommand(
       provenance,
       artifact,
     });
+    const artifactFiles = Array.isArray(artifact.files) ? artifact.files : [];
     const packageMeta = {
       name: skill,
       version: parsed.version,
       description: manifest.description?.trim() || skill,
       repository: manifest.repository,
       homepage: manifest.homepage,
+      license: manifest.license,
+      unpackedSizeBytes: artifactFiles.reduce((total, entry) => total + entry.sizeBytes, 0),
+      totalFiles: artifactFiles.length,
     };
     const manifestSizeBytes = measureManifestSizeBytes(manifest);
     if (manifestSizeBytes > MAX_PUBLISH_MANIFEST_SIZE_BYTES) {
