@@ -1,4 +1,5 @@
 import { basename, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
 
 import { deriveOwnerFromSession } from "../lib/auth/owner";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
@@ -14,6 +15,7 @@ import {
   type CommitPublishResponse,
   MAX_PUBLISH_ARTIFACT_SIZE_BYTES,
   MAX_PUBLISH_MANIFEST_SIZE_BYTES,
+  MAX_PUBLISH_README_SIZE_BYTES,
   type PackedArtifact,
   type PreparePublishResponse,
   type PublishAccess,
@@ -62,6 +64,7 @@ interface PublishCommandOptions {
       sizeBytes: number;
       mediaType: string;
       manifest: PublishManifest;
+      readme?: string;
     },
     options?: { timeoutMs?: number },
   ) => Promise<PreparePublishResponse>;
@@ -148,6 +151,22 @@ function measureManifestSizeBytes(manifest: PublishManifest): number {
   return Buffer.byteLength(JSON.stringify(manifest), "utf8");
 }
 
+function readOptionalRootReadme(targetDir: string): string | undefined {
+  const readmePath = resolve(targetDir, "README.md");
+  if (!existsSync(readmePath)) {
+    return undefined;
+  }
+  const raw = readFileSync(readmePath, "utf8");
+  const normalized = raw.replace(/\r\n?/g, "\n");
+  const sizeBytes = Buffer.byteLength(normalized, "utf8");
+  if (sizeBytes > MAX_PUBLISH_README_SIZE_BYTES) {
+    throw new Error(
+      `skillmd publish: README.md exceeds max size (${sizeBytes} bytes > ${MAX_PUBLISH_README_SIZE_BYTES} bytes).`,
+    );
+  }
+  return normalized;
+}
+
 export async function runPublishCommand(
   args: string[],
   options: PublishCommandOptions = {},
@@ -218,6 +237,7 @@ export async function runPublishCommand(
       );
       return 1;
     }
+    const readme = readOptionalRootReadme(targetDir);
 
     if (parsed.dryRun) {
       printDryRunResult(parsed.json, {
@@ -263,6 +283,7 @@ export async function runPublishCommand(
         sizeBytes: artifact.sizeBytes,
         mediaType: artifact.mediaType,
         manifest,
+        readme,
       },
       { timeoutMs: config.requestTimeoutMs },
     );
