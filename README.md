@@ -7,7 +7,7 @@
 
 npm-like lifecycle for agent skills: create, publish, install, tag, deprecate, and unpublish.
 
-![skillmd CLI command sweep demo](public/assets/images/cli-readme-sweep-v2.png)
+![skillmd CLI command sweep demo](public/assets/images/cli-readme-sweep-v3.jpg)
 
 ## Why skillmd
 
