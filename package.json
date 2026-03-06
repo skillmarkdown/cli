@@ -1,6 +1,6 @@
 {
   "name": "@skillmarkdown/cli",
-  "version": "0.14.7",
+  "version": "0.14.8",
   "description": "CLI for scaffolding SKILL.md-based AI skills",
   "license": "MIT",
   "type": "commonjs",
