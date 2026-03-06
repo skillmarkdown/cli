@@ -58,6 +58,8 @@ interface PublishCommandOptions {
         name: string;
         version: string;
         description: string;
+        repository?: string;
+        homepage?: string;
       };
       agentTarget?: string;
       digest: string;
@@ -236,6 +238,8 @@ export async function runPublishCommand(
       name: skill,
       version: parsed.version,
       description: manifest.description?.trim() || skill,
+      repository: manifest.repository,
+      homepage: manifest.homepage,
     };
     const manifestSizeBytes = measureManifestSizeBytes(manifest);
     if (manifestSizeBytes > MAX_PUBLISH_MANIFEST_SIZE_BYTES) {

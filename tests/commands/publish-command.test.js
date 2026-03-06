@@ -396,6 +396,31 @@ test("forwards --agent-target to prepare payload", async () => {
   assert.equal(capturedTarget, "claude");
 });
 
+test("forwards repository and homepage package metadata when present", async () => {
+  let capturedPackageMeta = null;
+  const options = baseOptions({
+    buildManifest: () => ({
+      ...validManifest(),
+      repository: "https://github.com/skillmarkdown/cli",
+      homepage: "https://github.com/skillmarkdown/cli#readme",
+    }),
+    preparePublish: async (_baseUrl, _idToken, payload) => {
+      capturedPackageMeta = payload.packageMeta;
+      return {
+        status: "idempotent",
+        publishToken: "pit-token",
+        expiresAt: "2026-03-02T00:00:00Z",
+      };
+    },
+  });
+
+  const { result } = await captureConsole(() => runPublishCommand(["--version", "1.0.0"], options));
+
+  assert.equal(result, 0);
+  assert.equal(capturedPackageMeta?.repository, "https://github.com/skillmarkdown/cli");
+  assert.equal(capturedPackageMeta?.homepage, "https://github.com/skillmarkdown/cli#readme");
+});
+
 test("fails when manifest exceeds configured max size", async () => {
   const options = baseOptions({
     buildManifest: () => ({

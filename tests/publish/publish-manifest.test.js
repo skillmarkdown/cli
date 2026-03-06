@@ -29,6 +29,23 @@ test("buildPublishManifest returns stable schema fields", () => {
     `---\nname: manifest-skill\ndescription: Example description\n---\n\nBody\n`,
     "utf8",
   );
+  fs.writeFileSync(
+    path.join(dir, "package.json"),
+    JSON.stringify(
+      {
+        name: "manifest-skill",
+        version: "1.0.0",
+        homepage: "https://github.com/skillmarkdown/cli#readme",
+        repository: {
+          type: "git",
+          url: "https://github.com/skillmarkdown/cli",
+        },
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
 
   try {
     const manifest = buildPublishManifest({
@@ -48,7 +65,47 @@ test("buildPublishManifest returns stable schema fields", () => {
     assert.equal(manifest.access, "public");
     assert.equal(manifest.provenance, false);
     assert.equal(manifest.description, "Example description");
+    assert.equal(manifest.homepage, "https://github.com/skillmarkdown/cli#readme");
+    assert.equal(manifest.repository, "https://github.com/skillmarkdown/cli");
     assert.deepEqual(manifest.files, [{ path: "SKILL.md", sizeBytes: 55, sha256: "aaa" }]);
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("buildPublishManifest omits invalid repository and homepage values", () => {
+  const root = makeTempDirectory(MANIFEST_TEST_PREFIX);
+  const dir = path.join(root, "manifest-skill");
+  fs.mkdirSync(dir);
+  fs.writeFileSync(path.join(dir, "SKILL.md"), "Body\n", "utf8");
+  fs.writeFileSync(
+    path.join(dir, "package.json"),
+    JSON.stringify(
+      {
+        name: "manifest-skill",
+        version: "1.0.0",
+        homepage: "notaurl",
+        repository: { url: "git+ssh://github.com/skillmarkdown/cli.git" },
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+
+  try {
+    const manifest = buildPublishManifest({
+      targetDir: dir,
+      skill: "manifest-skill",
+      version: "1.0.0",
+      tag: "latest",
+      access: "public",
+      provenance: false,
+      artifact: artifactFixture(),
+    });
+
+    assert.equal(manifest.homepage, undefined);
+    assert.equal(manifest.repository, undefined);
   } finally {
     cleanupDirectory(root);
   }

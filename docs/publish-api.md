@@ -32,7 +32,9 @@ Request body:
   "packageMeta": {
     "name": "my-skill",
     "version": "1.0.0",
-    "description": "Example skill"
+    "description": "Example skill",
+    "repository": "https://github.com/owner/repo",
+    "homepage": "https://github.com/owner/repo#readme"
   },
   "agentTarget": "skillmd",
   "digest": "sha256:...",
@@ -98,6 +100,11 @@ Known error codes:
 - `invalid_request`
 - `version_conflict`
 - `artifact_too_large`
+
+Notes:
+
+- `packageMeta.repository` and `packageMeta.homepage` are optional.
+- `skillmd publish` forwards these fields from `package.json` when valid `http(s)` URLs are present.
 
 ### `POST /v1/publish/commit`
 
