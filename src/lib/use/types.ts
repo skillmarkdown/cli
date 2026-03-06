@@ -6,6 +6,7 @@ export interface UseFlags {
   spec?: string;
   agentTarget?: AgentTarget;
   json: boolean;
+  save: boolean;
   valid: boolean;
 }
 

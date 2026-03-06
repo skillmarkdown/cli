@@ -4,18 +4,24 @@ import { isCanonicalSemver } from "../shared/semver";
 import { type UseFlags } from "./types";
 
 export function parseUseFlags(args: string[]): UseFlags {
-  const invalid = (): UseFlags => ({ json: false, valid: false });
+  const invalid = (): UseFlags => ({ json: false, save: false, valid: false });
   let skillId: string | undefined;
   let version: string | undefined;
   let spec: string | undefined;
   let agentTarget: UseFlags["agentTarget"];
   let json = false;
+  let save = false;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
 
     if (arg === "--json") {
       json = true;
+      continue;
+    }
+
+    if (arg === "--save") {
+      save = true;
       continue;
     }
 
@@ -71,6 +77,7 @@ export function parseUseFlags(args: string[]): UseFlags {
     spec,
     agentTarget,
     json,
+    save,
     valid: true,
   };
 }

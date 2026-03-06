@@ -162,6 +162,46 @@ test("explicit --agent-target overrides descriptor target", async () => {
   assert.ok(installInput.targetPath.includes("/.gemini/skills/registry.skillmarkdown.com/"));
 });
 
+test("save persists explicitly selected agent target", async () => {
+  let savedManifest;
+  const { result } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill", "--agent-target", "gemini", "--save"],
+      baseOptions({
+        getArtifactDescriptor: async () => ({
+          owner: "@stefdevscore",
+          ownerLogin: "stefdevscore",
+          skill: "test-skill",
+          version: "1.2.3",
+          digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+          sizeBytes: 5,
+          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+          deprecated: false,
+          deprecatedAt: null,
+          deprecatedMessage: null,
+          downloadUrl: "https://storage.example.com/object",
+          downloadExpiresAt: "2026-03-02T12:40:00.000Z",
+          agentTarget: "claude",
+        }),
+        loadSkillsManifestOrEmpty: async () => ({
+          version: 1,
+          defaults: {},
+          dependencies: [],
+        }),
+        saveSkillsManifest: async (_cwd, manifest) => {
+          savedManifest = manifest;
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(savedManifest.dependencies.length, 1);
+  assert.equal(savedManifest.dependencies[0].skillId, "@stefdevscore/test-skill");
+  assert.equal(savedManifest.dependencies[0].agentTarget, "gemini");
+  assert.equal(savedManifest.dependencies[0].spec, "latest");
+});
+
 test("supports explicit --spec selector", async () => {
   let resolvedSpec;
   const { result } = await captureConsole(() =>

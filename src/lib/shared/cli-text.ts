@@ -18,7 +18,7 @@ export const VIEW_USAGE = "Usage: skillmd view <skill-id|index> [--json]";
 export const HISTORY_USAGE =
   "Usage: skillmd history <skill-id> [--limit <1-50>] [--cursor <token>] [--json]";
 export const USE_USAGE =
-  "Usage: skillmd use <skill-id> [--version <semver> | --spec <tag|version|range>] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]";
+  "Usage: skillmd use <skill-id> [--version <semver> | --spec <tag|version|range>] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--save] [--json]";
 export const UPDATE_USAGE =
   "Usage: skillmd update [skill-id ...] [--all] [--agent-target <skillmd|claude|gemini|custom:<slug>>] [--json]";
 export const TAG_USAGE =

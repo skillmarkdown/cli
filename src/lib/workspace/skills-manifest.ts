@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 
 import { parseSkillId } from "../registry/skill-id";
 import { normalizeAgentTarget, type AgentTarget } from "../shared/agent-target";
@@ -27,10 +28,16 @@ export interface SkillsManifestFile {
 
 interface SkillsManifestDependencies {
   readFile: typeof fs.readFile;
+  writeFile: typeof fs.writeFile;
+  rename: typeof fs.rename;
+  mkdir: typeof fs.mkdir;
 }
 
 const DEFAULT_DEPENDENCIES: SkillsManifestDependencies = {
   readFile: fs.readFile.bind(fs),
+  writeFile: fs.writeFile.bind(fs),
+  rename: fs.rename.bind(fs),
+  mkdir: fs.mkdir.bind(fs),
 };
 
 function invalid(message: string): never {
@@ -79,7 +86,7 @@ function parseDependencies(value: unknown): SkillsManifestDependency[] {
   }
   const entries = Object.entries(value);
   if (entries.length === 0) {
-    invalid("dependencies must contain at least one entry");
+    return [];
   }
 
   const parsed: SkillsManifestDependency[] = [];
@@ -181,4 +188,75 @@ export async function loadSkillsManifest(
   }
 
   return normalizeManifest(parsed);
+}
+
+export function createEmptySkillsManifest(
+  defaults: SkillsManifestDefaults = {},
+): SkillsManifestFile {
+  return {
+    version: SKILLS_MANIFEST_VERSION,
+    defaults,
+    dependencies: [],
+  };
+}
+
+export async function loadSkillsManifestOrEmpty(
+  cwd: string,
+  dependencies: Partial<SkillsManifestDependencies> = {},
+): Promise<SkillsManifestFile> {
+  try {
+    return await loadSkillsManifest(cwd, dependencies);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("skills manifest not found")) {
+      return createEmptySkillsManifest();
+    }
+    throw error;
+  }
+}
+
+export async function saveSkillsManifest(
+  cwd: string,
+  manifest: SkillsManifestFile,
+  dependencies: Partial<SkillsManifestDependencies> = {},
+): Promise<void> {
+  const fileOps = { ...DEFAULT_DEPENDENCIES, ...dependencies };
+  const manifestPath = resolveSkillsManifestPath(cwd);
+  const tempPath = `${manifestPath}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`;
+
+  // Convert dependencies array to object format for JSON
+  const dependenciesObj: Record<string, { spec: string; agentTarget?: string }> = {};
+  for (const dep of manifest.dependencies) {
+    const entry: { spec: string; agentTarget?: string } = { spec: dep.spec };
+    if (dep.agentTarget) {
+      entry.agentTarget = dep.agentTarget;
+    }
+    dependenciesObj[dep.skillId] = entry;
+  }
+
+  const jsonPayload = {
+    version: manifest.version,
+    defaults: manifest.defaults,
+    dependencies: dependenciesObj,
+  };
+
+  const payload = `${JSON.stringify(jsonPayload, null, 2)}\n`;
+
+  await fileOps.mkdir(cwd, { recursive: true });
+  await fileOps.writeFile(tempPath, payload, "utf8");
+  await fileOps.rename(tempPath, manifestPath);
+}
+
+export function upsertSkillsManifestDependency(
+  manifest: SkillsManifestFile,
+  dependency: SkillsManifestDependency,
+): SkillsManifestFile {
+  const existingDeps = manifest.dependencies.filter((dep) => dep.skillId !== dependency.skillId);
+  const newDeps = [...existingDeps, dependency].sort((left, right) =>
+    left.skillId.localeCompare(right.skillId),
+  );
+
+  return {
+    ...manifest,
+    dependencies: newDeps,
+  };
 }

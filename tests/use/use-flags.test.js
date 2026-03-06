@@ -14,6 +14,7 @@ test("parses skill id with default selector behavior", () => {
     spec: undefined,
     agentTarget: undefined,
     json: false,
+    save: false,
     valid: true,
   });
 });
@@ -27,6 +28,7 @@ test("parses version selector with json flag", () => {
     spec: undefined,
     agentTarget: undefined,
     json: true,
+    save: false,
     valid: true,
   });
 });
@@ -40,6 +42,7 @@ test("parses spec selector in equals form", () => {
     spec: "beta",
     agentTarget: undefined,
     json: false,
+    save: false,
     valid: true,
   });
 });

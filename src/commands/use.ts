@@ -17,6 +17,12 @@ import {
   loadSkillsLock as defaultLoadSkillsLock,
   saveSkillsLock as defaultSaveSkillsLock,
 } from "../lib/workspace/skills-lock";
+import {
+  loadSkillsManifestOrEmpty as defaultLoadSkillsManifestOrEmpty,
+  saveSkillsManifest as defaultSaveSkillsManifest,
+  upsertSkillsManifestDependency,
+  type SkillsManifestDependency,
+} from "../lib/workspace/skills-manifest";
 
 interface UseCommandOptions {
   cwd?: string;
@@ -31,6 +37,8 @@ interface UseCommandOptions {
   resolveReadIdToken?: () => Promise<string | null>;
   loadSkillsLock?: typeof defaultLoadSkillsLock;
   saveSkillsLock?: typeof defaultSaveSkillsLock;
+  loadSkillsManifestOrEmpty?: typeof defaultLoadSkillsManifestOrEmpty;
+  saveSkillsManifest?: typeof defaultSaveSkillsManifest;
 }
 
 const PRODUCTION_REGISTRY_HOSTS = new Set(["registry.skillmarkdown.com"]);
@@ -124,6 +132,28 @@ export async function runUseCommand(
     const lock = await loadSkillsLockFn(cwd);
     const nextLock = upsertInstalledLockEntry(lock, lockEntry, now());
     await saveSkillsLockFn(cwd, nextLock);
+
+    // Handle --save flag: update skills.json manifest
+    if (parsed.save) {
+      const loadSkillsManifestOrEmptyFn =
+        options.loadSkillsManifestOrEmpty ?? defaultLoadSkillsManifestOrEmpty;
+      const saveSkillsManifestFn = options.saveSkillsManifest ?? defaultSaveSkillsManifest;
+
+      const manifest = await loadSkillsManifestOrEmptyFn(cwd);
+      const manifestAgentTarget =
+        parsed.agentTarget ??
+        (result.agentTarget !== DEFAULT_AGENT_TARGET ? result.agentTarget : undefined);
+      const dependency: SkillsManifestDependency = {
+        skillId: result.skillId,
+        ownerSlug: parsedSkillId.ownerSlug,
+        skillSlug: parsedSkillId.skillSlug,
+        spec: parsed.version ? result.version : (parsed.spec ?? "latest"),
+        agentTarget: manifestAgentTarget,
+      };
+
+      const updatedManifest = upsertSkillsManifestDependency(manifest, dependency);
+      await saveSkillsManifestFn(cwd, updatedManifest);
+    }
 
     if (parsed.json) {
       printJson({
