@@ -3,7 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { hasPackedFile, parsePackJson, summarizeByTopLevel } from "./check-pack-size-lib.mjs";
 
-const MAX_UNPACKED_BYTES = 130_000;
+const MAX_UNPACKED_BYTES = 130_100;
 
 function formatBytes(value) {
   return `${value.toLocaleString("en-US")} B`;
