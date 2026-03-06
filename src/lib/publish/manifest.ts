@@ -43,8 +43,83 @@ function readSkillDescription(targetDir: string): string | undefined {
   }
 }
 
+function readPackageManifest(targetDir: string): Record<string, unknown> | null {
+  const packageJsonPath = join(targetDir, "package.json");
+  if (!existsSync(packageJsonPath)) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return null;
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function toNormalizedUrl(value: string): string | undefined {
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return undefined;
+    }
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function readHomepage(targetDir: string): string | undefined {
+  const manifest = readPackageManifest(targetDir);
+  if (!manifest) {
+    return undefined;
+  }
+
+  const homepage = typeof manifest.homepage === "string" ? manifest.homepage.trim() : "";
+  if (!homepage) {
+    return undefined;
+  }
+  return toNormalizedUrl(homepage);
+}
+
+function readRepository(targetDir: string): string | undefined {
+  const manifest = readPackageManifest(targetDir);
+  if (!manifest) {
+    return undefined;
+  }
+
+  const repository = manifest.repository;
+  if (typeof repository === "string") {
+    return toNormalizedUrl(repository);
+  }
+
+  if (repository && typeof repository === "object" && !Array.isArray(repository)) {
+    const url = (repository as Record<string, unknown>).url;
+    if (typeof url === "string") {
+      return toNormalizedUrl(url);
+    }
+  }
+
+  return undefined;
+}
+
+function readLicense(targetDir: string): string | undefined {
+  const manifest = readPackageManifest(targetDir);
+  if (!manifest) {
+    return undefined;
+  }
+  const license = typeof manifest.license === "string" ? manifest.license.trim() : "";
+  return license || undefined;
+}
+
 export function buildPublishManifest(options: BuildPublishManifestOptions): PublishManifest {
   const description = readSkillDescription(options.targetDir);
+  const repository = readRepository(options.targetDir);
+  const homepage = readHomepage(options.targetDir);
+  const license = readLicense(options.targetDir);
 
   return {
     schemaVersion: "skillmd.publish.v1",
@@ -57,6 +132,9 @@ export function buildPublishManifest(options: BuildPublishManifestOptions): Publ
     sizeBytes: options.artifact.sizeBytes,
     mediaType: options.artifact.mediaType,
     description,
+    repository,
+    homepage,
+    license,
     files: options.artifact.files,
   };
 }

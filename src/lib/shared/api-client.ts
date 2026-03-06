@@ -9,6 +9,7 @@ export interface ApiErrorPayload {
   code?: string;
   message?: string;
   details?: unknown;
+  requestId?: unknown;
 }
 
 export interface ApiErrorFields {
@@ -51,10 +52,20 @@ export function extractApiErrorFields(
   fallbackMessage: string,
 ): ApiErrorFields {
   const nested = payload.error;
+  const requestId =
+    typeof payload.requestId === "string" && payload.requestId.trim() ? payload.requestId : null;
+  const baseDetails = nested?.details ?? payload.details;
+  const details =
+    requestId && (!baseDetails || typeof baseDetails !== "object" || Array.isArray(baseDetails))
+      ? { requestId }
+      : requestId
+        ? { ...(baseDetails as Record<string, unknown>), requestId }
+        : baseDetails;
+
   return {
     code: nested?.code || payload.code || "unknown_error",
     message: nested?.message || payload.message || fallbackMessage,
-    details: nested?.details ?? payload.details,
+    details,
   };
 }
 

@@ -17,6 +17,12 @@ import {
   loadSkillsLock as defaultLoadSkillsLock,
   saveSkillsLock as defaultSaveSkillsLock,
 } from "../lib/workspace/skills-lock";
+import {
+  loadSkillsManifestOrEmpty as defaultLoadSkillsManifestOrEmpty,
+  saveSkillsManifest as defaultSaveSkillsManifest,
+  upsertSkillsManifestDependency,
+  type SkillsManifestDependency,
+} from "../lib/workspace/skills-manifest";
 
 interface UseCommandOptions {
   cwd?: string;
@@ -31,6 +37,19 @@ interface UseCommandOptions {
   resolveReadIdToken?: () => Promise<string | null>;
   loadSkillsLock?: typeof defaultLoadSkillsLock;
   saveSkillsLock?: typeof defaultSaveSkillsLock;
+  loadSkillsManifestOrEmpty?: typeof defaultLoadSkillsManifestOrEmpty;
+  saveSkillsManifest?: typeof defaultSaveSkillsManifest;
+}
+
+const PRODUCTION_REGISTRY_HOSTS = new Set(["registry.skillmarkdown.com"]);
+
+function shouldWarnProductionRegistry(registryBaseUrl: string): boolean {
+  try {
+    const host = new URL(registryBaseUrl).host.toLowerCase();
+    return PRODUCTION_REGISTRY_HOSTS.has(host);
+  } catch {
+    return false;
+  }
 }
 
 function printHumanResult(result: UseCommandResult, warnings: string[]): void {
@@ -64,6 +83,12 @@ export async function runUseCommand(
     const config = getConfigFn(env);
     const resolveReadIdTokenFn =
       options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }));
+    const commandWarnings: string[] = [];
+    if (shouldWarnProductionRegistry(config.registryBaseUrl)) {
+      commandWarnings.push(
+        `using production registry (${config.registryBaseUrl}); set SKILLMD_FIREBASE_PROJECT_ID=skillmarkdown-development and SKILLMD_REGISTRY_BASE_URL=https://registryapi-sm46rm3rja-uc.a.run.app for dev`,
+      );
+    }
     const selector: InstallSelector = parsed.version
       ? { strategy: "version", version: parsed.version }
       : { strategy: "spec", spec: parsed.spec ?? "latest" };
@@ -103,10 +128,32 @@ export async function runUseCommand(
       },
     );
     const { result, lockEntry } = workflow;
-    const warnings = workflow.warnings ?? [];
+    const warnings = [...commandWarnings, ...(workflow.warnings ?? [])];
     const lock = await loadSkillsLockFn(cwd);
     const nextLock = upsertInstalledLockEntry(lock, lockEntry, now());
     await saveSkillsLockFn(cwd, nextLock);
+
+    // Handle --save flag: update skills.json manifest
+    if (parsed.save) {
+      const loadSkillsManifestOrEmptyFn =
+        options.loadSkillsManifestOrEmpty ?? defaultLoadSkillsManifestOrEmpty;
+      const saveSkillsManifestFn = options.saveSkillsManifest ?? defaultSaveSkillsManifest;
+
+      const manifest = await loadSkillsManifestOrEmptyFn(cwd);
+      const manifestAgentTarget =
+        parsed.agentTarget ??
+        (result.agentTarget !== DEFAULT_AGENT_TARGET ? result.agentTarget : undefined);
+      const dependency: SkillsManifestDependency = {
+        skillId: result.skillId,
+        ownerSlug: parsedSkillId.ownerSlug,
+        skillSlug: parsedSkillId.skillSlug,
+        spec: parsed.version ? result.version : (parsed.spec ?? "latest"),
+        agentTarget: manifestAgentTarget,
+      };
+
+      const updatedManifest = upsertSkillsManifestDependency(manifest, dependency);
+      await saveSkillsManifestFn(cwd, updatedManifest);
+    }
 
     if (parsed.json) {
       printJson({

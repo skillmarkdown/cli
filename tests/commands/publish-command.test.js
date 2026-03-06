@@ -334,6 +334,23 @@ test("maps version conflict errors", async () => {
   assert.match(errors.join("\n"), /version conflict/i);
 });
 
+test("includes request id in publish API error output when available", async () => {
+  const options = baseOptions({
+    preparePublish: async () => {
+      throw new PublishApiError(500, "internal_error", "unexpected error", {
+        requestId: "req_12345",
+      });
+    },
+  });
+
+  const { result, errors } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0"], options),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /request req_12345/i);
+});
+
 test("forwards --access and --provenance to prepare payload", async () => {
   let capturedAccess;
   let capturedProvenance;
@@ -377,6 +394,35 @@ test("forwards --agent-target to prepare payload", async () => {
 
   assert.equal(result, 0);
   assert.equal(capturedTarget, "claude");
+});
+
+test("forwards repository and homepage package metadata when present", async () => {
+  let capturedPackageMeta = null;
+  const options = baseOptions({
+    buildManifest: () => ({
+      ...validManifest(),
+      repository: "https://github.com/skillmarkdown/cli",
+      homepage: "https://github.com/skillmarkdown/cli#readme",
+      license: "MIT",
+    }),
+    preparePublish: async (_baseUrl, _idToken, payload) => {
+      capturedPackageMeta = payload.packageMeta;
+      return {
+        status: "idempotent",
+        publishToken: "pit-token",
+        expiresAt: "2026-03-02T00:00:00Z",
+      };
+    },
+  });
+
+  const { result } = await captureConsole(() => runPublishCommand(["--version", "1.0.0"], options));
+
+  assert.equal(result, 0);
+  assert.equal(capturedPackageMeta?.repository, "https://github.com/skillmarkdown/cli");
+  assert.equal(capturedPackageMeta?.homepage, "https://github.com/skillmarkdown/cli#readme");
+  assert.equal(capturedPackageMeta?.license, "MIT");
+  assert.equal(capturedPackageMeta?.unpackedSizeBytes, 0);
+  assert.equal(capturedPackageMeta?.totalFiles, 0);
 });
 
 test("fails when manifest exceeds configured max size", async () => {
