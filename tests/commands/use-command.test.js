@@ -249,6 +249,25 @@ test("prints json output with --json", async () => {
   assert.equal(parsed.version, "1.2.3");
 });
 
+test("warns when use command targets production registry", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill"],
+      baseOptions({
+        getConfig: () => ({
+          firebaseProjectId: "skillmarkdown",
+          registryBaseUrl: "https://registry.skillmarkdown.com",
+          requestTimeoutMs: 10000,
+          defaultAgentTarget: "skillmd",
+        }),
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.match(errors.join("\n"), /using production registry/i);
+});
+
 test("warns when selected version is deprecated and still installs", async () => {
   const { result, errors } = await captureConsole(() =>
     runUseCommand(
