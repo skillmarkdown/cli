@@ -151,6 +151,14 @@ function measureManifestSizeBytes(manifest: PublishManifest): number {
   return Buffer.byteLength(JSON.stringify(manifest), "utf8");
 }
 
+function extractRequestId(details: unknown): string | null {
+  if (!details || typeof details !== "object" || Array.isArray(details)) {
+    return null;
+  }
+  const candidate = (details as Record<string, unknown>).requestId;
+  return typeof candidate === "string" && candidate.trim() ? candidate : null;
+}
+
 function readOptionalRootReadme(targetDir: string): string | undefined {
   const readmePath = resolve(targetDir, "README.md");
   if (!existsSync(readmePath)) {
@@ -330,7 +338,11 @@ export async function runPublishCommand(
         return 1;
       }
 
-      console.error(`skillmd publish: ${error.message} (${error.code}, status ${error.status})`);
+      const requestId = extractRequestId(error.details);
+      const requestSuffix = requestId ? `, request ${requestId}` : "";
+      console.error(
+        `skillmd publish: ${error.message} (${error.code}, status ${error.status}${requestSuffix})`,
+      );
       return 1;
     }
     const message = error instanceof Error ? error.message : "Unknown error";

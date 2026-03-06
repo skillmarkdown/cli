@@ -334,6 +334,23 @@ test("maps version conflict errors", async () => {
   assert.match(errors.join("\n"), /version conflict/i);
 });
 
+test("includes request id in publish API error output when available", async () => {
+  const options = baseOptions({
+    preparePublish: async () => {
+      throw new PublishApiError(500, "internal_error", "unexpected error", {
+        requestId: "req_12345",
+      });
+    },
+  });
+
+  const { result, errors } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0"], options),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /request req_12345/i);
+});
+
 test("forwards --access and --provenance to prepare payload", async () => {
   let capturedAccess;
   let capturedProvenance;
