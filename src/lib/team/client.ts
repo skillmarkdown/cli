@@ -89,6 +89,8 @@ interface TeamMemberMutationWireResponse {
     role: TeamRole;
   };
   username?: string;
+  usernameHandle?: string;
+  role?: TeamRole;
 }
 
 function isTeamMemberMutationWireResponse(value: unknown): value is TeamMemberMutationWireResponse {
@@ -105,14 +107,18 @@ function isTeamMemberMutationWireResponse(value: unknown): value is TeamMemberMu
   if (record.status === "removed") {
     return typeof record.username === "string";
   }
-  if (!record.member || typeof record.member !== "object") {
-    return false;
+  if (record.member && typeof record.member === "object") {
+    const member = record.member as Record<string, unknown>;
+    return (
+      typeof member.username === "string" &&
+      typeof member.usernameHandle === "string" &&
+      isRole(member.role)
+    );
   }
-  const member = record.member as Record<string, unknown>;
   return (
-    typeof member.username === "string" &&
-    typeof member.usernameHandle === "string" &&
-    isRole(member.role)
+    typeof record.username === "string" &&
+    typeof record.usernameHandle === "string" &&
+    isRole(record.role)
   );
 }
 
@@ -125,16 +131,16 @@ function toMemberMutationResponse(
       status: wire.status,
       team: wire.team,
       username,
-      usernameHandle: `@${username}`,
-      role: "member",
+      usernameHandle: wire.usernameHandle ?? `@${username}`,
+      role: wire.role ?? "member",
     };
   }
   return {
     status: wire.status,
     team: wire.team,
-    username: wire.member?.username ?? "",
-    usernameHandle: wire.member?.usernameHandle ?? "",
-    role: wire.member?.role ?? "member",
+    username: wire.member?.username ?? wire.username ?? "",
+    usernameHandle: wire.member?.usernameHandle ?? wire.usernameHandle ?? "",
+    role: wire.member?.role ?? wire.role ?? "member",
   };
 }
 

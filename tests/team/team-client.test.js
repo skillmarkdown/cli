@@ -89,7 +89,9 @@ test("team client create/get/list/add/update/remove success", async () => {
       assert.equal(url.pathname, "/v1/teams/core-team/members/alice");
       return mockJsonResponse(200, {
         team: "core-team",
+        usernameHandle: "@alice",
         username: "alice",
+        role: "member",
         status: "removed",
       });
     },
