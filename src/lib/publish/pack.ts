@@ -13,8 +13,13 @@ const GZIP_OS_UNKNOWN = 255;
 const IGNORED_DIRECTORY_NAMES = new Set([
   ".agent",
   ".agents",
+  ".openai",
   ".claude",
   ".gemini",
+  ".meta",
+  ".mistral",
+  ".deepseek",
+  ".perplexity",
   ".git",
   "node_modules",
   ".skillmd",

@@ -1,4 +1,13 @@
-export const BUILTIN_AGENT_TARGETS = ["skillmd", "claude", "gemini"] as const;
+export const BUILTIN_AGENT_TARGETS = [
+  "skillmd",
+  "openai",
+  "claude",
+  "gemini",
+  "meta",
+  "mistral",
+  "deepseek",
+  "perplexity",
+] as const;
 
 export type BuiltinAgentTarget = (typeof BUILTIN_AGENT_TARGETS)[number];
 export type AgentTarget = BuiltinAgentTarget | `custom:${string}`;
@@ -7,6 +16,7 @@ export const DEFAULT_AGENT_TARGET: BuiltinAgentTarget = "skillmd";
 
 const BUILTIN_AGENT_TARGET_SET = new Set<string>(BUILTIN_AGENT_TARGETS);
 const CUSTOM_AGENT_TARGET_PATTERN = /^custom:([a-z0-9][a-z0-9-]{0,62})$/u;
+const BUILTIN_AGENT_TARGET_LIST = BUILTIN_AGENT_TARGETS.join(", ");
 
 export function normalizeAgentTarget(value: string): AgentTarget | null {
   const trimmed = value.trim();
@@ -31,7 +41,7 @@ export function parseAgentTargetOrThrow(value: string, fieldName: string): Agent
   const parsed = normalizeAgentTarget(value);
   if (!parsed) {
     throw new Error(
-      `${fieldName} must be one of skillmd, claude, gemini, or custom:<slug> ` +
+      `${fieldName} must be one of ${BUILTIN_AGENT_TARGET_LIST}, or custom:<slug> ` +
         "(slug: lowercase letters/digits with optional hyphens, up to 63 chars)",
     );
   }
@@ -47,7 +57,7 @@ export function resolveDefaultAgentTarget(envValue: string | undefined): AgentTa
     return parseAgentTargetOrThrow(envValue, "SKILLMD_AGENT_TARGET");
   } catch {
     throw new Error(
-      "invalid SKILLMD_AGENT_TARGET; expected skillmd, claude, gemini, or custom:<slug>",
+      `invalid SKILLMD_AGENT_TARGET; expected ${BUILTIN_AGENT_TARGET_LIST}, or custom:<slug>`,
     );
   }
 }

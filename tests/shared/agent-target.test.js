@@ -10,6 +10,8 @@ const { normalizeAgentTarget, resolveDefaultAgentTarget, parseCustomAgentSlug } 
 test("normalizeAgentTarget accepts builtin and custom targets", () => {
   assert.equal(normalizeAgentTarget("skillmd"), "skillmd");
   assert.equal(normalizeAgentTarget("CLAUDE"), "claude");
+  assert.equal(normalizeAgentTarget("OpenAI"), "openai");
+  assert.equal(normalizeAgentTarget("perplexity"), "perplexity");
   assert.equal(normalizeAgentTarget("custom:my-agent"), "custom:my-agent");
 });
 
@@ -22,6 +24,7 @@ test("normalizeAgentTarget rejects malformed targets", () => {
 test("resolveDefaultAgentTarget falls back to skillmd", () => {
   assert.equal(resolveDefaultAgentTarget(undefined), "skillmd");
   assert.equal(resolveDefaultAgentTarget(""), "skillmd");
+  assert.equal(resolveDefaultAgentTarget("openai"), "openai");
 });
 
 test("resolveDefaultAgentTarget throws for invalid env value", () => {

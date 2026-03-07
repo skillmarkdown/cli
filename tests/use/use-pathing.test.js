@@ -42,6 +42,14 @@ test("resolveInstallTempRoot supports provider-specific temp roots", () => {
     "/workspace/project/.gemini/.tmp",
   );
   assert.equal(
+    resolveInstallTempRoot("/workspace/project", "openai"),
+    "/workspace/project/.openai/.tmp",
+  );
+  assert.equal(
+    resolveInstallTempRoot("/workspace/project", "deepseek"),
+    "/workspace/project/.deepseek/.tmp",
+  );
+  assert.equal(
     resolveInstallTempRoot("/workspace/project", "custom:myagent"),
     "/workspace/project/.agents/.tmp/myagent",
   );
@@ -62,6 +70,18 @@ test("resolveInstalledSkillsHostRoot supports provider-specific roots", () => {
   assert.equal(
     resolveInstalledSkillsHostRoot("/workspace/project", "https://registry.example.com", "gemini"),
     "/workspace/project/.gemini/skills/registry.skillmarkdown.com",
+  );
+  assert.equal(
+    resolveInstalledSkillsHostRoot("/workspace/project", "https://registry.example.com", "meta"),
+    "/workspace/project/.meta/skills/registry.skillmarkdown.com",
+  );
+  assert.equal(
+    resolveInstalledSkillsHostRoot(
+      "/workspace/project",
+      "https://registry.example.com",
+      "perplexity",
+    ),
+    "/workspace/project/.perplexity/skills/registry.skillmarkdown.com",
   );
   assert.equal(
     resolveInstalledSkillsHostRoot(

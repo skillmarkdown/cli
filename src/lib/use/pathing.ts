@@ -4,9 +4,20 @@ import {
   DEFAULT_AGENT_TARGET,
   parseCustomAgentSlug,
   type AgentTarget,
+  type BuiltinAgentTarget,
 } from "../shared/agent-target";
 
 const INSTALL_REGISTRY_HOST = "registry.skillmarkdown.com";
+const BUILTIN_AGENT_TARGET_DIRS: Record<BuiltinAgentTarget, string> = {
+  skillmd: ".agent",
+  openai: ".openai",
+  claude: ".claude",
+  gemini: ".gemini",
+  meta: ".meta",
+  mistral: ".mistral",
+  deepseek: ".deepseek",
+  perplexity: ".perplexity",
+};
 
 export function resolveRegistryHost(baseUrl: string): string {
   void baseUrl;
@@ -31,16 +42,9 @@ export function resolveInstallTempRoot(
   cwd: string,
   agentTarget: AgentTarget = DEFAULT_AGENT_TARGET,
 ): string {
-  if (agentTarget === "skillmd") {
-    return join(cwd, ".agent", ".tmp");
-  }
-
-  if (agentTarget === "claude") {
-    return join(cwd, ".claude", ".tmp");
-  }
-
-  if (agentTarget === "gemini") {
-    return join(cwd, ".gemini", ".tmp");
+  const builtinDir = BUILTIN_AGENT_TARGET_DIRS[agentTarget as BuiltinAgentTarget];
+  if (builtinDir) {
+    return join(cwd, builtinDir, ".tmp");
   }
 
   const slug = parseCustomAgentSlug(agentTarget);
@@ -52,16 +56,9 @@ export function resolveInstallTempRoot(
 }
 
 function resolveSkillsTargetRoot(cwd: string, agentTarget: AgentTarget): string {
-  if (agentTarget === "skillmd") {
-    return join(cwd, ".agent", "skills");
-  }
-
-  if (agentTarget === "claude") {
-    return join(cwd, ".claude", "skills");
-  }
-
-  if (agentTarget === "gemini") {
-    return join(cwd, ".gemini", "skills");
+  const builtinDir = BUILTIN_AGENT_TARGET_DIRS[agentTarget as BuiltinAgentTarget];
+  if (builtinDir) {
+    return join(cwd, builtinDir, "skills");
   }
 
   const slug = parseCustomAgentSlug(agentTarget);

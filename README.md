@@ -13,7 +13,7 @@ npm-like lifecycle for agent skills: create, publish, install, tag, deprecate, a
 
 - Strict v1 registry contracts (`tag`, `access`, `spec`, `distTags`, lifecycle metadata).
 - Workspace runtime model with `skills.json` intent + `skills-lock.json` resolved state.
-- Agent-targeted installs for `skillmd`, `claude`, `gemini`, and `custom:<slug>`.
+- Agent-targeted installs for `skillmd`, `openai`, `claude`, `gemini`, `meta`, `mistral`, `deepseek`, `perplexity`, and `custom:<slug>`.
 - Release operations in one CLI: dist-tags, deprecation, and policy-gated unpublish.
 - Automation-friendly auth with scoped tokens (`read`, `publish`, `admin`).
 
