@@ -38,6 +38,27 @@ test("loadSkillsManifest parses valid manifest and sorts dependencies", async ()
   assert.equal(parsed.dependencies[0].agentTarget, "claude");
 });
 
+test("loadSkillsManifest accepts new builtin agent targets", async () => {
+  const parsed = await loadSkillsManifest("/workspace/project", {
+    readFile: async () =>
+      manifestJson({
+        version: 1,
+        defaults: {
+          agentTarget: "openai",
+        },
+        dependencies: {
+          "@owner/skill-a": {
+            spec: "latest",
+            agentTarget: "perplexity",
+          },
+        },
+      }),
+  });
+
+  assert.equal(parsed.defaults.agentTarget, "openai");
+  assert.equal(parsed.dependencies[0].agentTarget, "perplexity");
+});
+
 test("loadSkillsManifest rejects unknown top-level fields", async () => {
   await assert.rejects(
     () =>

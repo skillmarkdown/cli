@@ -229,6 +229,35 @@ test("continues after dependency failure and exits non-zero", async () => {
   assert.match(payload.failed[0].reason, /skill not found/i);
 });
 
+test("global --agent-target accepts new builtin targets", async () => {
+  const installTargets = [];
+  const { result } = await captureConsole(() =>
+    runInstallCommand(
+      ["--agent-target", "meta"],
+      baseOptions({
+        loadSkillsManifest: async () => ({
+          version: 1,
+          defaults: { agentTarget: "skillmd" },
+          dependencies: [
+            {
+              skillId: "@owner/skill-a",
+              ownerSlug: "owner",
+              skillSlug: "skill-a",
+              spec: "latest",
+            },
+          ],
+        }),
+        installFromRegistry: async (input) => {
+          installTargets.push(input.selectedAgentTarget);
+          return baseOptions().installFromRegistry(input);
+        },
+      }),
+    ),
+  );
+  assert.equal(result, 0);
+  assert.deepEqual(installTargets, ["meta"]);
+});
+
 test("global --agent-target overrides dependency/default targets", async () => {
   const installTargets = [];
   const { result } = await captureConsole(() =>

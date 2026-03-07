@@ -170,6 +170,34 @@ test("filters --all by --agent-target", async () => {
   assert.deepEqual(installCalls, ["claude"]);
 });
 
+test("filters --all by new builtin agent target", async () => {
+  const installCalls = [];
+  const { result } = await captureConsole(() =>
+    runUpdateCommand(
+      ["--all", "--agent-target", "deepseek"],
+      baseOptions({
+        loadSkillsLock: async () =>
+          lockFile({
+            a: lockEntry({ skillId: "@owner/skill-a", agentTarget: "skillmd" }),
+            b: lockEntry({
+              skillId: "@owner/skill-b",
+              installedPath:
+                "/workspace/project/.deepseek/skills/registry.skillmarkdown.com/owner/skill-b",
+              agentTarget: "deepseek",
+            }),
+          }),
+        installFromRegistry: async (input) => {
+          installCalls.push(input.selectedAgentTarget);
+          return baseOptions().installFromRegistry(input);
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.deepEqual(installCalls, ["deepseek"]);
+});
+
 test("updates explicit skill ids and reports missing installs", async () => {
   const { result, logs } = await captureConsole(() =>
     runUpdateCommand(

@@ -53,6 +53,12 @@ test("parses agent target", () => {
   assert.equal(parsed.agentTarget, "custom:myagent");
 });
 
+test("parses new builtin agent target", () => {
+  const parsed = parseUseFlags(["owner/skill", "--agent-target", "perplexity"]);
+  assert.equal(parsed.valid, true);
+  assert.equal(parsed.agentTarget, "perplexity");
+});
+
 for (const args of [
   [],
   ["owner/skill", "--version"],

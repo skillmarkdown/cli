@@ -73,3 +73,29 @@ test("prints json results and supports --agent-target", async () => {
   assert.equal(payload.total, 1);
   assert.equal(payload.entries[0].skillId, "@owner/skill-b");
 });
+
+test("filters json results with new builtin agent target", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runListCommand(["--agent-target", "perplexity", "--json"], {
+      cwd: "/workspace",
+      getConfig: () => ({
+        firebaseProjectId: "skillmarkdown-development",
+        registryBaseUrl: "https://registry.example.com",
+        requestTimeoutMs: 1000,
+        defaultAgentTarget: "skillmd",
+      }),
+      loadSkillsLock: async () => ({
+        lockfileVersion: 1,
+        generatedAt: "",
+        entries: {
+          a: lockEntry("@owner/skill-a", "skillmd"),
+          b: lockEntry("@owner/skill-b", "perplexity"),
+        },
+      }),
+    }),
+  );
+  assert.equal(result, 0);
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.total, 1);
+  assert.equal(payload.entries[0].agentTarget, "perplexity");
+});

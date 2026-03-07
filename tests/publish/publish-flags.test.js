@@ -49,6 +49,12 @@ test("parses optional agent target flag", () => {
   assert.equal(parsed.agentTarget, "gemini");
 });
 
+test("parses new builtin agent target flag", () => {
+  const parsed = parsePublishFlags(["--version", "1.2.3", "--agent-target", "openai"]);
+  assert.equal(parsed.valid, true);
+  assert.equal(parsed.agentTarget, "openai");
+});
+
 for (const args of [
   [],
   ["--version", "1.2"],
