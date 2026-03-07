@@ -13,6 +13,7 @@ import { type SearchSkillsResponse } from "../lib/search/types";
 import { SEARCH_USAGE } from "../lib/shared/cli-text";
 import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
 import { renderTable } from "../lib/shared/table";
+import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
 
 interface SearchCommandOptions {
   env?: NodeJS.ProcessEnv;
@@ -248,7 +249,7 @@ export async function runSearchCommand(
     return 0;
   } catch (error) {
     if (isSearchApiError(error)) {
-      console.error(`skillmd search: ${error.message} (${error.code}, status ${error.status})`);
+      console.error(formatCliApiErrorWithHint("skillmd search", error));
       return 1;
     }
     const message = error instanceof Error ? error.message : "Unknown error";

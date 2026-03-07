@@ -350,3 +350,23 @@ test("maps use API errors", async () => {
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /skill not found/);
 });
+
+test("prints pro-plan hint for private skill install denial", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill"],
+      baseOptions({
+        getArtifactDescriptor: async () => {
+          const { UseApiError } = requireDist("lib/use/errors.js");
+          throw new UseApiError(403, "forbidden", "private skill access is not allowed", {
+            reason: "forbidden_plan",
+          });
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /private skill access is not allowed/i);
+  assert.match(errors.join("\n"), /private skills require a Pro plan/i);
+});

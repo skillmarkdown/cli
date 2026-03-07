@@ -388,3 +388,45 @@ test("rejects pruning non-canonical install paths from lockfile", async () => {
   assert.match(payload.pruned[0].reason, /non-canonical install path/i);
   assert.equal(Object.keys(savedLock.entries).length, 2);
 });
+
+test("records pro-plan hint when install is denied for private skill access", async () => {
+  const { UseApiError } = requireDist("lib/use/errors.js");
+  const originalColumns = process.stdout.columns;
+  const originalIsTTY = process.stdout.isTTY;
+  Object.defineProperty(process.stdout, "columns", { value: 240, configurable: true });
+  Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+
+  try {
+    const { result, logs } = await captureConsole(() =>
+      runInstallCommand(
+        [],
+        baseOptions({
+          loadSkillsManifest: async () => ({
+            version: 1,
+            defaults: {},
+            dependencies: [
+              {
+                skillId: "@stefdevscore/private-skill",
+                spec: "latest",
+              },
+            ],
+          }),
+          installFromRegistry: async () => {
+            throw new UseApiError(403, "forbidden", "private skill access is not allowed", {
+              reason: "forbidden_plan",
+            });
+          },
+        }),
+      ),
+    );
+
+    assert.equal(result, 1);
+    assert.match(logs.join("\n"), /private skill access is not allowed/i);
+  } finally {
+    Object.defineProperty(process.stdout, "columns", {
+      value: originalColumns,
+      configurable: true,
+    });
+    Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, configurable: true });
+  }
+});

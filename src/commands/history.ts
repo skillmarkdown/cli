@@ -6,6 +6,7 @@ import { type HistoryResponse } from "../lib/history/types";
 import { parseSkillId } from "../lib/registry/skill-id";
 import { HISTORY_USAGE } from "../lib/shared/cli-text";
 import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
+import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
 import { renderTable } from "../lib/shared/table";
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 import { callWithReadTokenRetry, isReadTokenRetryableStatus } from "../lib/auth/read-token-retry";
@@ -145,7 +146,7 @@ export async function runHistoryCommand(
     return 0;
   } catch (error) {
     if (isHistoryApiError(error)) {
-      console.error(`skillmd history: ${error.message} (${error.code}, status ${error.status})`);
+      console.error(formatCliApiErrorWithHint("skillmd history", error));
       return 1;
     }
     const message = error instanceof Error ? error.message : "Unknown error";

@@ -146,7 +146,7 @@ test("team command maps ACL reasons and hints", async () => {
 
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /reason=forbidden_scope/);
-  assert.match(errors.join("\n"), /skillmd token add/);
+  assert.match(errors.join("\n"), /required scope/i);
 });
 
 test("team command prints teams disabled message on 404 not_found", async () => {

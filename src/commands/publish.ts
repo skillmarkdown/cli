@@ -26,6 +26,7 @@ import { PUBLISH_USAGE } from "../lib/shared/cli-text";
 import { DEFAULT_AGENT_TARGET } from "../lib/shared/agent-target";
 import { failWithUsage, printValidationResult } from "../lib/shared/command-output";
 import { printJson } from "../lib/shared/json-output";
+import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
 import { type ValidationResult, validateSkill } from "../lib/validation/validator";
 
 interface PublishCommandOptions {
@@ -154,14 +155,6 @@ function printPublishedResult(
 
 function measureManifestSizeBytes(manifest: PublishManifest): number {
   return Buffer.byteLength(JSON.stringify(manifest), "utf8");
-}
-
-function extractRequestId(details: unknown): string | null {
-  if (!details || typeof details !== "object" || Array.isArray(details)) {
-    return null;
-  }
-  const candidate = (details as Record<string, unknown>).requestId;
-  return typeof candidate === "string" && candidate.trim() ? candidate : null;
 }
 
 function readOptionalRootReadme(targetDir: string): string | undefined {
@@ -349,11 +342,7 @@ export async function runPublishCommand(
         return 1;
       }
 
-      const requestId = extractRequestId(error.details);
-      const requestSuffix = requestId ? `, request ${requestId}` : "";
-      console.error(
-        `skillmd publish: ${error.message} (${error.code}, status ${error.status}${requestSuffix})`,
-      );
+      console.error(formatCliApiErrorWithHint("skillmd publish", error));
       return 1;
     }
     const message = error instanceof Error ? error.message : "Unknown error";

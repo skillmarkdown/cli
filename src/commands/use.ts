@@ -1,5 +1,6 @@
 import { parseSkillId } from "../lib/registry/skill-id";
 import { DEFAULT_AGENT_TARGET } from "../lib/shared/agent-target";
+import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
 import { failWithUsage } from "../lib/shared/command-output";
 import { USE_USAGE } from "../lib/shared/cli-text";
 import { printJson } from "../lib/shared/json-output";
@@ -167,7 +168,7 @@ export async function runUseCommand(
     return 0;
   } catch (error) {
     if (isUseApiError(error)) {
-      console.error(`skillmd use: ${error.message} (${error.code}, status ${error.status})`);
+      console.error(formatCliApiErrorWithHint("skillmd use", error));
       return 1;
     }
     const message = error instanceof Error ? error.message : "Unknown error";

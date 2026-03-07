@@ -16,6 +16,7 @@ npm-like lifecycle for agent skills: create, publish, install, tag, deprecate, a
 - Agent-targeted installs for `skillmd`, `openai`, `claude`, `gemini`, `meta`, `mistral`, `deepseek`, `perplexity`, and `custom:<slug>`.
 - Release operations in one CLI: dist-tags, deprecation, and policy-gated unpublish.
 - Automation-friendly auth with scoped tokens (`read`, `publish`, `admin`).
+- Free/Pro plan gating for private skills; Pro enables private publish and private reads/search/install.
 
 ## Install
 
@@ -150,6 +151,17 @@ Token scope model:
 - `skillmd team members add <team-slug> <owner-login> [--role <admin|member>] [--json]`
 - `skillmd team members set-role <team-slug> <owner-login> <admin|member> [--json]`
 - `skillmd team members rm <team-slug> <owner-login> [--json]`
+
+### Private skills and plan gating
+
+- `free`: public skills only
+- `pro`: private publish plus private read/search/install
+- user plan is read from the backend user record
+- newly bootstrapped users default to `free` until an operator manually sets `users/{uid}.plan = "pro"`
+
+### Coverage
+
+Run `npm run test:coverage` to execute the full CLI test suite with Node's built-in coverage. The command writes V8 artifacts to `coverage/v8/` and prints a console summary. Coverage work in this repo is intended to protect `src/` behavior, not generated `dist/` output or test helpers.
 
 ## Troubleshooting
 

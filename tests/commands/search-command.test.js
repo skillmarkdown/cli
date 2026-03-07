@@ -151,3 +151,22 @@ test("does not crash when result distTags are missing", async () => {
   assert.equal(result, 0);
   assert.match(logs.join("\n"), /@owner\/test-skill/);
 });
+
+test("prints pro-plan hint for private search denial", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runSearchCommand(
+      ["--scope", "private"],
+      baseOptions({
+        searchSkills: async () => {
+          throw new SearchApiError(403, "forbidden", "private search is not allowed", {
+            reason: "forbidden_plan",
+          });
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /private search is not allowed/i);
+  assert.match(errors.join("\n"), /private skills require a Pro plan/i);
+});

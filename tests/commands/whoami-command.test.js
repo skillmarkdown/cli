@@ -93,3 +93,33 @@ test("maps whoami API errors", async () => {
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /invalid token/);
 });
+
+test("prints free plan and disabled entitlements in human format", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runWhoamiCommand(
+      [],
+      baseOptions({
+        getWhoami: async () => ({
+          uid: "uid-1",
+          owner: "@core",
+          ownerLogin: "core",
+          email: "core@example.com",
+          projectId: "skillmarkdown-development",
+          authType: "firebase",
+          scope: "admin",
+          plan: "free",
+          entitlements: {
+            canUsePrivateSkills: false,
+            canPublishPrivateSkills: false,
+          },
+          teams: [],
+        }),
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /Plan: free/);
+  assert.match(logs.join("\n"), /canPublishPrivateSkills=false/);
+  assert.match(logs.join("\n"), /canUsePrivateSkills=false/);
+});

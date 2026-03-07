@@ -12,6 +12,7 @@ import {
 } from "../lib/team/client";
 import { isTeamApiError } from "../lib/team/errors";
 import { parseTeamFlags } from "../lib/team/flags";
+import { authzHintForReason } from "../lib/shared/authz-error-hints";
 import {
   type MutableTeamRole,
   type TeamEnvConfig,
@@ -61,15 +62,6 @@ function printMutation(result: TeamMemberMutationResponse): void {
   else if (result.status === "updated")
     console.log(`Updated ${result.owner} role to ${result.role} in ${result.team}.`);
   else console.log(`Removed ${result.owner} from ${result.team}.`);
-}
-
-function hintForReason(reason?: string): string | null {
-  if (reason === "forbidden_scope")
-    return "Hint: use a token with required scope (for example: skillmd token add ci --scope admin).";
-  if (reason === "forbidden_owner" || reason === "forbidden_role")
-    return "Hint: verify your memberships and role with 'skillmd whoami'.";
-  if (reason === "forbidden_plan") return "Hint: this action is blocked by plan entitlements.";
-  return null;
 }
 
 export async function runTeamCommand(
@@ -177,7 +169,7 @@ export async function runTeamCommand(
           : null;
       const reason = typeof details?.reason === "string" ? details.reason : undefined;
       if (reason) console.error(`skillmd team: reason=${reason}`);
-      const hint = hintForReason(reason);
+      const hint = authzHintForReason(reason);
       if (hint && !parsed.json) console.error(hint);
       return 1;
     }

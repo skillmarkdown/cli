@@ -1,9 +1,10 @@
 import { isUseApiError } from "../use/errors";
+import { formatCliApiErrorWithHint } from "./authz-error-hints";
 import { renderTable } from "./table";
 
 export function toUseApiErrorReason(error: unknown): string {
   if (isUseApiError(error)) {
-    return `${error.message} (${error.code}, status ${error.status})`;
+    return formatCliApiErrorWithHint("skillmd use", error).replace(/^skillmd use: /, "");
   }
 
   return error instanceof Error ? error.message : "Unknown error";

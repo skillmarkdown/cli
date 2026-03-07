@@ -1,6 +1,7 @@
 import { parseSkillId } from "../lib/registry/skill-id";
 import { readSearchSelectionCache, type SearchSelectionCache } from "../lib/search/selection-cache";
 import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
+import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
 import { VIEW_USAGE } from "../lib/shared/cli-text";
 import { getSkillView } from "../lib/view/client";
 import { getRegistryEnvConfig, type RegistryEnvConfig } from "../lib/registry/config";
@@ -139,7 +140,7 @@ export async function runViewCommand(
     return 0;
   } catch (error) {
     if (isViewApiError(error)) {
-      console.error(`skillmd view: ${error.message} (${error.code}, status ${error.status})`);
+      console.error(formatCliApiErrorWithHint("skillmd view", error));
       return 1;
     }
     const message = error instanceof Error ? error.message : "Unknown error";

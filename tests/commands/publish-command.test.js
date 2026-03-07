@@ -440,3 +440,23 @@ test("fails when manifest exceeds configured max size", async () => {
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /manifest exceeds max size/i);
 });
+
+test("prints pro-plan hint for private publish denial", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runPublishCommand(
+      ["--version", "1.0.0", "--access", "private"],
+      baseOptions({
+        resolveWriteAuth: async () => ({ ok: true, value: { idToken: "id-token", session: null } }),
+        preparePublish: async () => {
+          throw new PublishApiError(403, "forbidden", "private publish is not allowed", {
+            reason: "forbidden_plan",
+          });
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /private publish is not allowed/i);
+  assert.match(errors.join("\n"), /private skills require a Pro plan/i);
+});

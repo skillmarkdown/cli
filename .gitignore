@@ -13,3 +13,5 @@ determinism-report.json
 /.agents/
 /skills-lock.json
 /tmp/
+
+coverage/
