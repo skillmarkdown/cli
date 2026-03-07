@@ -5,9 +5,8 @@ import { dirname, join } from "node:path";
 const SESSION_PATH = join(homedir(), ".skillmd", "auth.json");
 
 export interface AuthSession {
-  provider: "github";
+  provider: "email";
   uid: string;
-  githubUsername?: string;
   email?: string;
   refreshToken: string;
   projectId?: string;
@@ -26,7 +25,7 @@ export function readAuthSession(sessionPath: string = SESSION_PATH): AuthSession
     const parsed = JSON.parse(readFileSync(sessionPath, "utf8")) as AuthSession;
     if (
       !parsed ||
-      parsed.provider !== "github" ||
+      parsed.provider !== "email" ||
       typeof parsed.uid !== "string" ||
       parsed.uid.length === 0 ||
       typeof parsed.refreshToken !== "string" ||
@@ -36,12 +35,6 @@ export function readAuthSession(sessionPath: string = SESSION_PATH): AuthSession
     }
 
     if (parsed.email !== undefined && typeof parsed.email !== "string") {
-      return null;
-    }
-    if (parsed.githubUsername !== undefined && typeof parsed.githubUsername !== "string") {
-      return null;
-    }
-    if (typeof parsed.githubUsername === "string" && parsed.githubUsername.trim().length === 0) {
       return null;
     }
     if (parsed.projectId !== undefined && typeof parsed.projectId !== "string") {

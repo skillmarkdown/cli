@@ -20,9 +20,8 @@ function writeAuthSession(homeDir, overrides = {}) {
     sessionPath,
     JSON.stringify(
       {
-        provider: "github",
+        provider: "email",
         uid: "uid-1",
-        githubUsername: "core",
         refreshToken: "refresh-token",
         projectId: "skillmarkdown-development",
         ...overrides,
@@ -135,7 +134,6 @@ test("spawned CLI: publish --dry-run uses strict v1 fields", () => {
     const result = runCli(["publish", "--version", "1.0.0", "--dry-run"], skillDir, {
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
       SKILLMD_FIREBASE_API_KEY: "api-key",
-      SKILLMD_GITHUB_CLIENT_ID: "github-client-id",
       SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
     });
 
@@ -379,7 +377,6 @@ test("spawned CLI: tag ls/add/rm manages dist-tags via strict v1 endpoints", asy
 
   try {
     writeAuthSession(root, {
-      githubUsername: "core",
       projectId: "skillmarkdown-development",
     });
 
@@ -409,7 +406,6 @@ test("spawned CLI: tag ls/add/rm manages dist-tags via strict v1 endpoints", asy
     const commonEnv = {
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
       SKILLMD_FIREBASE_API_KEY: "api-key",
-      SKILLMD_GITHUB_CLIENT_ID: "github-client-id",
       SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
       NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require ${secureTokenMockPath}`.trim(),
     };
@@ -474,7 +470,6 @@ test("spawned CLI: tag ls surfaces strict dist-tags route errors", async () => {
     const env = {
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
       SKILLMD_FIREBASE_API_KEY: "api-key",
-      SKILLMD_GITHUB_CLIENT_ID: "github-client-id",
       SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
     };
 
@@ -761,7 +756,6 @@ test("spawned CLI: global --auth-token works with whoami", async () => {
       {
         SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
         SKILLMD_FIREBASE_API_KEY: "api-key",
-        SKILLMD_GITHUB_CLIENT_ID: "github-client-id",
         SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
       },
     );
@@ -888,7 +882,6 @@ test("spawned CLI: team lifecycle commands use v1 team endpoints", async () => {
     const env = {
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
       SKILLMD_FIREBASE_API_KEY: "api-key",
-      SKILLMD_GITHUB_CLIENT_ID: "github-client-id",
       SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
     };
     const token = "skmd_dev_tok_abc123abc123abc123abc123.secret";
@@ -985,7 +978,6 @@ test("spawned CLI: token ls works with command-position --auth-token", async () 
       {
         SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
         SKILLMD_FIREBASE_API_KEY: "api-key",
-        SKILLMD_GITHUB_CLIENT_ID: "github-client-id",
         SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
       },
     );

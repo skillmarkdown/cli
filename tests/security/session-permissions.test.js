@@ -28,9 +28,8 @@ describe("Security: Session File Permissions", () => {
 
       writeAuthSession(
         {
-          provider: "github",
+          provider: "email",
           uid: "test-uid-123",
-          githubUsername: "testuser",
           refreshToken: "refresh-token-here",
         },
         nestedPath,
@@ -47,9 +46,8 @@ describe("Security: Session File Permissions", () => {
     it("creates file with 0o600 permissions (owner read/write only)", () => {
       writeAuthSession(
         {
-          provider: "github",
+          provider: "email",
           uid: "test-uid-123",
-          githubUsername: "testuser",
           refreshToken: "refresh-token-here",
         },
         testSessionPath,
@@ -64,9 +62,8 @@ describe("Security: Session File Permissions", () => {
 
     it("writes valid session data", () => {
       const session = {
-        provider: "github",
+        provider: "email",
         uid: "test-uid-123",
-        githubUsername: "testuser",
         email: "test@example.com",
         refreshToken: "refresh-token-here",
         projectId: "skillmarkdown-development",
@@ -99,7 +96,7 @@ describe("Security: Session File Permissions", () => {
       fs.writeFileSync(
         incompletePath,
         JSON.stringify({
-          provider: "github",
+          provider: "email",
           // Missing uid
           refreshToken: "refresh-token-here",
         }),
@@ -134,9 +131,8 @@ describe("Security: Session File Permissions", () => {
 
       writeAuthSession(
         {
-          provider: "github",
+          provider: "email",
           uid: "test-uid",
-          githubUsername: "testuser",
           refreshToken: "refresh-token",
         },
         sessionPath,

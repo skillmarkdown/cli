@@ -12,7 +12,6 @@ function baseOptions(overrides = {}) {
     env: {
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
       SKILLMD_FIREBASE_API_KEY: "api-key",
-      SKILLMD_GITHUB_CLIENT_ID: "github-client-id",
       SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
       SKILLMD_REGISTRY_TIMEOUT_MS: "10000",
     },

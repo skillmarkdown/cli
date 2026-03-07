@@ -1,36 +1,37 @@
+import {
+  type FirebaseEmailSignInResult,
+  type FirebaseRefreshTokenValidationResult,
+} from "./firebase-auth";
+import { formatSessionProject } from "./login-status";
 import { type LoginEnvConfig } from "./config";
 import { type AuthSession } from "./session";
-import { type DeviceCodeResponse, type GitHubAccessTokenResult } from "./github-device-flow";
-import { type FirebaseIdpResult, type FirebaseRefreshTokenValidationResult } from "./firebase-auth";
-import { formatSessionProject } from "./login-status";
 
 export interface LoginFlowDependencies {
   readSession: () => AuthSession | null;
   writeSession: (session: AuthSession) => void;
   clearSession: () => boolean;
-  requestDeviceCode: (clientId: string, scope?: string) => Promise<DeviceCodeResponse>;
-  pollForAccessToken: (
-    clientId: string,
-    deviceCode: string,
-    intervalSeconds: number,
-    expiresInSeconds: number,
-  ) => Promise<GitHubAccessTokenResult>;
-  signInWithGitHubAccessToken: (
+  promptForCredentials: () => Promise<{ email: string; password: string }>;
+  signInWithEmailAndPassword: (
     apiKey: string,
-    githubAccessToken: string,
-  ) => Promise<FirebaseIdpResult>;
-  resolveGitHubUsername: (githubAccessToken: string) => Promise<string>;
+    email: string,
+    password: string,
+  ) => Promise<FirebaseEmailSignInResult>;
   verifyRefreshToken: (
     apiKey: string,
     refreshToken: string,
   ) => Promise<FirebaseRefreshTokenValidationResult>;
 }
 
+export interface LoginFlowResult {
+  exitCode: number;
+  performedLogin: boolean;
+}
+
 export async function executeLoginFlow(
   config: LoginEnvConfig,
   reauth: boolean,
   dependencies: LoginFlowDependencies,
-): Promise<number> {
+): Promise<LoginFlowResult> {
   const existingSession = dependencies.readSession();
 
   if (existingSession && !reauth) {
@@ -61,7 +62,7 @@ export async function executeLoginFlow(
           );
         }
 
-        return 0;
+        return { exitCode: 0, performedLogin: false };
       }
 
       dependencies.clearSession();
@@ -72,44 +73,28 @@ export async function executeLoginFlow(
         `skillmd login: unable to verify existing session (${message}). ` +
           "Keeping current session. Run 'skillmd login --reauth' to force reauthentication.",
       );
-      return 1;
+      return { exitCode: 1, performedLogin: false };
     }
   }
 
-  const deviceCode = await dependencies.requestDeviceCode(config.githubClientId);
-  console.log("Open this URL in your browser to authorize skillmd:");
-  console.log(deviceCode.verificationUriComplete ?? deviceCode.verificationUri);
-  console.log(`Then enter code: ${deviceCode.userCode}`);
-
-  const token = await dependencies.pollForAccessToken(
-    config.githubClientId,
-    deviceCode.deviceCode,
-    deviceCode.interval,
-    deviceCode.expiresIn,
-  );
-
-  const firebaseSession = await dependencies.signInWithGitHubAccessToken(
+  const { email, password } = await dependencies.promptForCredentials();
+  const firebaseSession = await dependencies.signInWithEmailAndPassword(
     config.firebaseApiKey,
-    token.accessToken,
+    email,
+    password,
   );
-  const githubUsername = await dependencies.resolveGitHubUsername(token.accessToken);
 
   dependencies.writeSession({
-    provider: "github",
+    provider: "email",
     uid: firebaseSession.localId,
-    githubUsername,
-    email: firebaseSession.email,
+    email: firebaseSession.email ?? email,
     refreshToken: firebaseSession.refreshToken,
     projectId: config.firebaseProjectId,
   });
 
-  if (firebaseSession.email) {
-    console.log(
-      `Login successful. Signed in as ${firebaseSession.email} (project: ${config.firebaseProjectId}).`,
-    );
-  } else {
-    console.log(`Login successful (project: ${config.firebaseProjectId}).`);
-  }
+  console.log(
+    `Login successful. Signed in as ${firebaseSession.email ?? email} (project: ${config.firebaseProjectId}).`,
+  );
 
-  return 0;
+  return { exitCode: 0, performedLogin: true };
 }

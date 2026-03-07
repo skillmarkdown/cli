@@ -10,7 +10,7 @@ interface BootstrapOwnerResponse {
   status: "bootstrapped";
   uid: string;
   owner: string;
-  ownerLogin: string;
+  ownerSlug: string;
 }
 
 interface BootstrapOwnerOptions {
@@ -26,14 +26,14 @@ function isBootstrapOwnerResponse(value: unknown): value is BootstrapOwnerRespon
     record.status === "bootstrapped" &&
     typeof record.uid === "string" &&
     typeof record.owner === "string" &&
-    typeof record.ownerLogin === "string"
+    typeof record.ownerSlug === "string"
   );
 }
 
 export async function bootstrapOwner(
   baseUrl: string,
   idToken: string,
-  request: { ownerLogin: string },
+  request: { ownerSlug: string },
   options: BootstrapOwnerOptions = {},
 ): Promise<BootstrapOwnerResponse> {
   const url = new URL(`${baseUrl}/v1/auth/bootstrap-owner`);

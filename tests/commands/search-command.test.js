@@ -89,7 +89,6 @@ test("private scope uses SKILLMD_AUTH_TOKEN when configured", async () => {
           SKILLMD_REGISTRY_TIMEOUT_MS: "10000",
           SKILLMD_AUTH_TOKEN: "skmd_dev_tok_abc123abc123abc123abc123.secret",
           SKILLMD_FIREBASE_API_KEY: "api-key",
-          SKILLMD_GITHUB_CLIENT_ID: "gh-client",
         },
         resolveReadIdToken: undefined,
         searchSkills: async (_baseUrl, _request, options) => {

@@ -1,11 +1,14 @@
 import { resolveConfiguredAuthToken } from "./api-token";
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "./id-token";
-import { deriveOwnerFromSession } from "./owner";
 import { readAuthSession, type AuthSession } from "./session";
+import { getWhoami } from "../whoami/client";
+import { type WhoamiResponse } from "../whoami/types";
 
 interface WriteAuthConfig {
   firebaseApiKey: string;
   firebaseProjectId: string;
+  registryBaseUrl: string;
+  requestTimeoutMs: number;
 }
 
 interface ResolveWriteAuthOptions {
@@ -14,6 +17,11 @@ interface ResolveWriteAuthOptions {
   config: WriteAuthConfig;
   readSession?: () => AuthSession | null;
   exchangeRefreshToken?: (apiKey: string, refreshToken: string) => Promise<FirebaseIdTokenSession>;
+  getWhoami?: (
+    baseUrl: string,
+    idToken: string,
+    options?: { timeoutMs?: number },
+  ) => Promise<WhoamiResponse>;
   requireOwner?: boolean;
   targetOwnerSlug?: string;
   ownerMismatchMessage?: (owner: string) => string;
@@ -54,32 +62,37 @@ export async function resolveWriteAuth(
     };
   }
 
-  const owner = deriveOwnerFromSession(session);
-  if (options.requireOwner && !owner) {
-    return {
-      ok: false,
-      message: `${options.command}: missing GitHub username in session. Run 'skillmd login --reauth' first.`,
-    };
-  }
-
-  if (
-    options.requireOwner &&
-    owner &&
-    options.targetOwnerSlug &&
-    `@${options.targetOwnerSlug}` !== owner
-  ) {
-    return {
-      ok: false,
-      message: options.ownerMismatchMessage
-        ? options.ownerMismatchMessage(owner)
-        : `${options.command}: can only update skills owned by ${owner}.`,
-    };
-  }
-
   const exchangeRefreshTokenFn = options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken;
   const tokenSession = await exchangeRefreshTokenFn(
     options.config.firebaseApiKey,
     session.refreshToken,
   );
+
+  let owner: string | null = null;
+  if (options.requireOwner) {
+    try {
+      const profile = await (options.getWhoami ?? getWhoami)(
+        options.config.registryBaseUrl,
+        tokenSession.idToken,
+        { timeoutMs: options.config.requestTimeoutMs },
+      );
+      owner = profile.owner;
+    } catch {
+      return {
+        ok: false,
+        message: `${options.command}: owner profile not found. Complete sign-up on the web before using this command.`,
+      };
+    }
+
+    if (owner && options.targetOwnerSlug && `@${options.targetOwnerSlug}` !== owner) {
+      return {
+        ok: false,
+        message: options.ownerMismatchMessage
+          ? options.ownerMismatchMessage(owner)
+          : `${options.command}: can only update skills owned by ${owner}.`,
+      };
+    }
+  }
+
   return { ok: true, value: { idToken: tokenSession.idToken, owner } };
 }

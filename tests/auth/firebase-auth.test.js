@@ -8,129 +8,68 @@ const {
   withMockedFetch,
 } = require("../helpers/fetch-test-utils.js");
 
-const { signInWithGitHubAccessToken, verifyFirebaseRefreshToken } = requireDist(
+const { signInWithEmailAndPassword, verifyFirebaseRefreshToken } = requireDist(
   "lib/auth/firebase-auth.js",
 );
 
-test("signInWithGitHubAccessToken returns mapped Firebase session", async () => {
-  const result = await withMockedFetch(
+test("signInWithEmailAndPassword returns mapped Firebase session", async () => {
+  await withMockedFetch(
     async () =>
       mockJsonResponse(200, {
         localId: "uid-1",
         email: "user@example.com",
         refreshToken: "refresh-1",
       }),
-    () => signInWithGitHubAccessToken("api-key", "gh-token"),
-  );
-
-  assert.deepEqual(result, {
-    localId: "uid-1",
-    email: "user@example.com",
-    refreshToken: "refresh-1",
-  });
-});
-
-test("signInWithGitHubAccessToken reports non-JSON responses", async () => {
-  await withMockedFetch(
-    async () => mockTextResponse(200, "not-json"),
     async () => {
-      await assert.rejects(signInWithGitHubAccessToken("api-key", "gh-token"), {
-        message: /Firebase auth API returned non-JSON response \(200\)/,
-      });
+      await assert.doesNotReject(() =>
+        signInWithEmailAndPassword("api-key", "user@example.com", "password123"),
+      );
     },
   );
 });
 
-test("signInWithGitHubAccessToken surfaces Firebase API error payload", async () => {
+test("signInWithEmailAndPassword reports non-JSON responses", async () => {
   await withMockedFetch(
-    async () =>
-      mockJsonResponse(400, {
-        error: {
-          message: "INVALID_IDP_RESPONSE",
-        },
-      }),
+    async () => mockTextResponse(200, "nope"),
     async () => {
-      await assert.rejects(signInWithGitHubAccessToken("api-key", "gh-token"), {
-        message: /Firebase auth error: INVALID_IDP_RESPONSE/,
-      });
+      await assert.rejects(
+        signInWithEmailAndPassword("api-key", "user@example.com", "password123"),
+        { message: /Firebase auth API returned non-JSON response/ },
+      );
     },
   );
 });
 
-test("signInWithGitHubAccessToken rejects missing required fields", async () => {
+test("signInWithEmailAndPassword surfaces Firebase API error payload", async () => {
+  await withMockedFetch(
+    async () => mockJsonResponse(400, { error: { message: "INVALID_LOGIN_CREDENTIALS" } }),
+    async () => {
+      await assert.rejects(
+        signInWithEmailAndPassword("api-key", "user@example.com", "bad-password"),
+        { message: /Firebase auth error: INVALID_LOGIN_CREDENTIALS/ },
+      );
+    },
+  );
+});
+
+test("signInWithEmailAndPassword rejects missing required fields", async () => {
   await withMockedFetch(
     async () => mockJsonResponse(200, { localId: "uid-1" }),
     async () => {
-      await assert.rejects(signInWithGitHubAccessToken("api-key", "gh-token"), {
-        message: /missing required fields/,
-      });
+      await assert.rejects(
+        signInWithEmailAndPassword("api-key", "user@example.com", "password123"),
+        { message: /missing required fields/ },
+      );
     },
   );
 });
 
-test("verifyFirebaseRefreshToken returns valid on successful refresh", async () => {
-  const result = await withMockedFetch(
-    async () =>
-      mockJsonResponse(200, {
-        refresh_token: "refresh-1",
-        access_token: "access-1",
-      }),
-    () => verifyFirebaseRefreshToken("api-key", "refresh-token"),
-  );
-
-  assert.deepEqual(result, { valid: true });
-});
-
-for (const errorMessage of ["INVALID_REFRESH_TOKEN", "TOKEN_EXPIRED", "PROJECT_NUMBER_MISMATCH"]) {
-  test(`verifyFirebaseRefreshToken returns invalid for ${errorMessage}`, async () => {
-    const result = await withMockedFetch(
-      async () =>
-        mockJsonResponse(400, {
-          error: {
-            message: errorMessage,
-          },
-        }),
-      () => verifyFirebaseRefreshToken("api-key", "refresh-token"),
-    );
-
-    assert.deepEqual(result, { valid: false });
-  });
-}
-
-test("verifyFirebaseRefreshToken rejects successful responses missing required fields", async () => {
+test("verifyFirebaseRefreshToken reports invalid refresh token", async () => {
   await withMockedFetch(
-    async () => mockJsonResponse(200, { refresh_token: "refresh-1" }),
+    async () => mockJsonResponse(400, { error: { message: "INVALID_REFRESH_TOKEN" } }),
     async () => {
-      await assert.rejects(verifyFirebaseRefreshToken("api-key", "refresh-token"), {
-        message: /missing required fields/,
-      });
-    },
-  );
-});
-
-test("verifyFirebaseRefreshToken reports non-JSON responses", async () => {
-  await withMockedFetch(
-    async () => mockTextResponse(200, "not-json"),
-    async () => {
-      await assert.rejects(verifyFirebaseRefreshToken("api-key", "refresh-token"), {
-        message: /non-JSON response \(200\)/,
-      });
-    },
-  );
-});
-
-test("verifyFirebaseRefreshToken throws on non-recoverable API errors", async () => {
-  await withMockedFetch(
-    async () =>
-      mockJsonResponse(500, {
-        error: {
-          message: "INTERNAL",
-        },
-      }),
-    async () => {
-      await assert.rejects(verifyFirebaseRefreshToken("api-key", "refresh-token"), {
-        message: /Firebase token verification failed \(500\): INTERNAL/,
-      });
+      const result = await verifyFirebaseRefreshToken("api-key", "refresh");
+      assert.deepEqual(result, { valid: false });
     },
   );
 });

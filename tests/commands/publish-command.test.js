@@ -43,14 +43,12 @@ function baseOptions(overrides = {}) {
     env: {
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
       SKILLMD_FIREBASE_API_KEY: "apikey",
-      SKILLMD_GITHUB_CLIENT_ID: "gh",
       SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
     },
     validateSkill: () => ({ status: "passed", message: "ok" }),
     readSession: () => ({
-      provider: "github",
+      provider: "email",
       uid: "uid-1",
-      githubUsername: "core",
       email: "user@example.com",
       refreshToken: "refresh-token",
       projectId: "skillmarkdown-development",
@@ -115,7 +113,7 @@ test("fails when not logged in", async () => {
 test("fails when session has no github username", async () => {
   const options = baseOptions({
     readSession: () => ({
-      provider: "github",
+      provider: "email",
       uid: "uid-1",
       refreshToken: "refresh-token",
       projectId: "skillmarkdown-development",
@@ -136,7 +134,6 @@ test("uses configured auth token for publish without session", async () => {
     env: {
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
       SKILLMD_FIREBASE_API_KEY: "apikey",
-      SKILLMD_GITHUB_CLIENT_ID: "gh",
       SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
       SKILLMD_AUTH_TOKEN: "skmd_dev_tok_abc123abc123abc123abc123.secret",
     },
@@ -169,9 +166,8 @@ test("uses configured auth token for publish without session", async () => {
 test("fails on project mismatch with reauth guidance", async () => {
   const options = baseOptions({
     readSession: () => ({
-      provider: "github",
+      provider: "email",
       uid: "uid-1",
-      githubUsername: "core",
       refreshToken: "refresh-token",
       projectId: "skillmarkdown",
     }),
@@ -229,9 +225,8 @@ test("dry-run succeeds without session or auth token", async () => {
 test("dry-run ignores session project mismatch", async () => {
   const options = baseOptions({
     readSession: () => ({
-      provider: "github",
+      provider: "email",
       uid: "uid-1",
-      githubUsername: "core",
       refreshToken: "refresh-token",
       projectId: "skillmarkdown",
     }),

@@ -39,7 +39,7 @@ describe("Security: Token Scope Enforcement", () => {
     it("fails when session exists but owner cannot be derived", async () => {
       const result = await runPublishCommand(["--version", "1.0.0"], {
         readSession: () => ({
-          provider: "github",
+          provider: "email",
           uid: "test-uid",
           refreshToken: "refresh-token",
           // Missing githubUsername
@@ -76,9 +76,8 @@ describe("Security: Token Scope Enforcement", () => {
     it("rejects session with mismatched projectId", async () => {
       const result = await runPublishCommand(["--version", "1.0.0"], {
         readSession: () => ({
-          provider: "github",
+          provider: "email",
           uid: "test-uid",
-          githubUsername: "testuser",
           refreshToken: "refresh-token",
           projectId: "different-project",
         }),

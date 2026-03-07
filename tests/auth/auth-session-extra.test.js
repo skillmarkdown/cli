@@ -9,17 +9,18 @@ const { requireDist } = require("../helpers/dist-imports.js");
 const { readAuthSession } = requireDist("lib/auth/session.js");
 
 test("readAuthSession rejects blank projectId", () => {
-  const dir = mkdtempSync(join(tmpdir(), "skillmd-session-"));
-  const path = join(dir, "auth.json");
+  const dir = mkdtempSync(join(tmpdir(), "skillmd-auth-"));
+  const sessionPath = join(dir, "auth.json");
   writeFileSync(
-    path,
+    sessionPath,
     JSON.stringify({
-      provider: "github",
-      uid: "uid_1",
-      refreshToken: "refresh",
+      provider: "email",
+      uid: "uid-1",
+      email: "user@example.com",
+      refreshToken: "refresh-1",
       projectId: "",
     }),
   );
 
-  assert.equal(readAuthSession(path), null);
+  assert.equal(readAuthSession(sessionPath), null);
 });

@@ -13,9 +13,8 @@ describe("Security: Replay Attack Prevention", () => {
       // Simulate first successful publish
       const firstResult = await runPublishCommand(["--version", "1.0.0"], {
         readSession: () => ({
-          provider: "github",
+          provider: "email",
           uid: "test-uid",
-          githubUsername: "testuser",
           refreshToken: "refresh-token",
         }),
         env: {
@@ -84,9 +83,8 @@ describe("Security: Replay Attack Prevention", () => {
       // Simulate replay attempt (same version)
       const replayResult = await runPublishCommand(["--version", "1.0.0"], {
         readSession: () => ({
-          provider: "github",
+          provider: "email",
           uid: "test-uid",
-          githubUsername: "testuser",
           refreshToken: "refresh-token",
         }),
         env: {
@@ -146,9 +144,8 @@ describe("Security: Replay Attack Prevention", () => {
     it("rejects publish when artifact exceeds max size", async () => {
       const result = await runPublishCommand(["--version", "1.0.0"], {
         readSession: () => ({
-          provider: "github",
+          provider: "email",
           uid: "test-uid",
-          githubUsername: "testuser",
           refreshToken: "refresh-token",
         }),
         env: {
@@ -179,9 +176,8 @@ describe("Security: Replay Attack Prevention", () => {
     it("rejects publish when manifest exceeds max size", async () => {
       const result = await runPublishCommand(["--version", "1.0.0"], {
         readSession: () => ({
-          provider: "github",
+          provider: "email",
           uid: "test-uid",
-          githubUsername: "testuser",
           refreshToken: "refresh-token",
         }),
         env: {

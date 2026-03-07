@@ -1,12 +1,12 @@
 import { fetchWithTimeout } from "../shared/http";
 
-export interface FirebaseIdpResult {
+export interface FirebaseEmailSignInResult {
   localId: string;
   email?: string;
   refreshToken: string;
 }
 
-interface FirebaseIdpApiResponse {
+interface FirebaseSignInApiResponse {
   localId?: string;
   email?: string;
   refreshToken?: string;
@@ -40,31 +40,34 @@ async function parseJsonApiResponse<T>(response: Response, apiLabel: string): Pr
   }
 }
 
-export async function signInWithGitHubAccessToken(
+export async function signInWithEmailAndPassword(
   apiKey: string,
-  githubAccessToken: string,
-): Promise<FirebaseIdpResult> {
+  email: string,
+  password: string,
+): Promise<FirebaseEmailSignInResult> {
   const response = await fetchWithTimeout(
-    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${encodeURIComponent(apiKey)}`,
+    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(apiKey)}`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        requestUri: "http://localhost",
+        email,
+        password,
         returnSecureToken: true,
-        returnIdpCredential: true,
-        postBody: `access_token=${encodeURIComponent(githubAccessToken)}&providerId=github.com`,
       }),
     },
     { timeoutMs: FIREBASE_HTTP_TIMEOUT_MS },
   );
 
-  const payload = await parseJsonApiResponse<FirebaseIdpApiResponse>(response, "Firebase auth API");
+  const payload = await parseJsonApiResponse<FirebaseSignInApiResponse>(
+    response,
+    "Firebase auth API",
+  );
 
   if (!response.ok) {
-    const message = payload.error?.message || "Firebase signInWithIdp request failed";
+    const message = payload.error?.message || "Firebase signInWithPassword request failed";
     throw new Error(`Firebase auth error: ${message}`);
   }
 

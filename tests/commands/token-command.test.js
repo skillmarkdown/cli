@@ -12,7 +12,6 @@ function baseOptions(overrides = {}) {
     env: {
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
       SKILLMD_FIREBASE_API_KEY: "api-key",
-      SKILLMD_GITHUB_CLIENT_ID: "github-client-id",
       SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
       SKILLMD_REGISTRY_TIMEOUT_MS: "10000",
     },
@@ -23,9 +22,8 @@ function baseOptions(overrides = {}) {
       requestTimeoutMs: 10000,
     }),
     readSession: () => ({
-      provider: "github",
+      provider: "email",
       uid: "uid-1",
-      githubUsername: "core",
       refreshToken: "refresh-token",
       projectId: "skillmarkdown-development",
     }),
@@ -98,7 +96,6 @@ test("adds token using configured auth token and no session", async () => {
         env: {
           SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
           SKILLMD_FIREBASE_API_KEY: "api-key",
-          SKILLMD_GITHUB_CLIENT_ID: "github-client-id",
           SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
           SKILLMD_REGISTRY_TIMEOUT_MS: "10000",
           SKILLMD_AUTH_TOKEN: "skmd_dev_tok_abc123abc123abc123abc123.secret",

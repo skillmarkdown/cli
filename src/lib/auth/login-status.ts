@@ -29,9 +29,9 @@ export function printSessionStatus(
   const project = formatSessionProject(session, currentConfigProjectId);
 
   if (session.email) {
-    console.log(`Logged in with GitHub as ${session.email} (project: ${project.label}).`);
+    console.log(`Logged in as ${session.email} (project: ${project.label}).`);
   } else {
-    console.log(`Logged in with GitHub (uid: ${session.uid}, project: ${project.label}).`);
+    console.log(`Logged in (uid: ${session.uid}, project: ${project.label}).`);
   }
 
   if (project.mismatch && currentConfigProjectId) {

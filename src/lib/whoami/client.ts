@@ -44,7 +44,7 @@ function isWhoamiResponse(value: unknown): value is WhoamiResponse {
   return (
     typeof record.uid === "string" &&
     typeof record.owner === "string" &&
-    typeof record.ownerLogin === "string" &&
+    typeof record.ownerSlug === "string" &&
     (typeof record.email === "string" || record.email === null) &&
     (typeof record.projectId === "string" || record.projectId === null) &&
     (record.authType === "firebase" || record.authType === "token") &&

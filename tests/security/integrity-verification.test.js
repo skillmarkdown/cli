@@ -11,9 +11,8 @@ describe("Security: Artifact Integrity Verification", () => {
 
       await runPublishCommand(["--version", "1.0.0"], {
         readSession: () => ({
-          provider: "github",
+          provider: "email",
           uid: "test-uid",
-          githubUsername: "testuser",
           refreshToken: "refresh-token",
         }),
         env: {
@@ -79,9 +78,8 @@ describe("Security: Artifact Integrity Verification", () => {
 
       await runPublishCommand(["--version", "1.0.0"], {
         readSession: () => ({
-          provider: "github",
+          provider: "email",
           uid: "test-uid",
-          githubUsername: "testuser",
           refreshToken: "refresh-token",
         }),
         env: {
@@ -134,9 +132,8 @@ describe("Security: Artifact Integrity Verification", () => {
 
       await runPublishCommand(["--version", "1.0.0", "--provenance"], {
         readSession: () => ({
-          provider: "github",
+          provider: "email",
           uid: "test-uid",
-          githubUsername: "testuser",
           refreshToken: "refresh-token",
         }),
         env: {
@@ -194,9 +191,8 @@ describe("Security: Artifact Integrity Verification", () => {
 
       await runPublishCommand(["--version", "1.0.0", "--access", "private"], {
         readSession: () => ({
-          provider: "github",
+          provider: "email",
           uid: "test-uid",
-          githubUsername: "testuser",
           refreshToken: "refresh-token",
         }),
         env: {

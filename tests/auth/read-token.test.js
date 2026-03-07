@@ -9,7 +9,6 @@ test("resolveReadIdToken returns configured auth token before session resolution
   const token = await resolveReadIdToken({
     env: {
       SKILLMD_AUTH_TOKEN: "skmd_dev_tok_abc123abc123abc123abc123.secret",
-      SKILLMD_GITHUB_CLIENT_ID: "client-id",
       SKILLMD_FIREBASE_API_KEY: "api-key",
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
     },
@@ -25,7 +24,6 @@ test("resolveReadIdToken returns configured auth token before session resolution
 test("resolveReadIdToken returns null when no session exists", async () => {
   const token = await resolveReadIdToken({
     env: {
-      SKILLMD_GITHUB_CLIENT_ID: "client-id",
       SKILLMD_FIREBASE_API_KEY: "api-key",
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
     },
@@ -38,12 +36,11 @@ test("resolveReadIdToken returns null when no session exists", async () => {
 test("resolveReadIdToken returns id token when session is valid", async () => {
   const token = await resolveReadIdToken({
     env: {
-      SKILLMD_GITHUB_CLIENT_ID: "client-id",
       SKILLMD_FIREBASE_API_KEY: "api-key",
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
     },
     readSession: () => ({
-      provider: "github",
+      provider: "email",
       uid: "uid_123",
       refreshToken: "refresh_123",
       projectId: "skillmarkdown-development",
@@ -65,12 +62,11 @@ test("resolveReadIdToken returns id token when session is valid", async () => {
 test("resolveReadIdToken returns null on project mismatch", async () => {
   const token = await resolveReadIdToken({
     env: {
-      SKILLMD_GITHUB_CLIENT_ID: "client-id",
       SKILLMD_FIREBASE_API_KEY: "api-key",
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
     },
     readSession: () => ({
-      provider: "github",
+      provider: "email",
       uid: "uid_123",
       refreshToken: "refresh_123",
       projectId: "skillmarkdown",
@@ -86,12 +82,11 @@ test("resolveReadIdToken returns null on project mismatch", async () => {
 test("resolveReadIdToken returns null for invalid refresh token errors", async () => {
   const token = await resolveReadIdToken({
     env: {
-      SKILLMD_GITHUB_CLIENT_ID: "client-id",
       SKILLMD_FIREBASE_API_KEY: "api-key",
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
     },
     readSession: () => ({
-      provider: "github",
+      provider: "email",
       uid: "uid_123",
       refreshToken: "refresh_123",
       projectId: "skillmarkdown-development",
@@ -108,12 +103,11 @@ test("resolveReadIdToken throws on transient exchange failures", async () => {
   await assert.rejects(
     resolveReadIdToken({
       env: {
-        SKILLMD_GITHUB_CLIENT_ID: "client-id",
         SKILLMD_FIREBASE_API_KEY: "api-key",
         SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
       },
       readSession: () => ({
-        provider: "github",
+        provider: "email",
         uid: "uid_123",
         refreshToken: "refresh_123",
         projectId: "skillmarkdown-development",
