@@ -2,7 +2,11 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve, sep } from "node:path";
 
-import { DEFAULT_LOGIN_AUTH_CONFIG } from "./defaults";
+import {
+  DEFAULT_LOGIN_AUTH_CONFIG,
+  DEVELOPMENT_LOGIN_AUTH_CONFIG,
+  PRODUCTION_LOGIN_AUTH_CONFIG,
+} from "./defaults";
 
 export interface LoginEnvConfig {
   firebaseApiKey: string;
@@ -16,7 +20,7 @@ interface LoginConfigOptions {
 }
 
 const USER_ENV_RELATIVE_PATH = ".skillmd/.env";
-const LOCAL_DEV_DEFAULT_PROJECT_ID = "skillmarkdown-development";
+const LOCAL_DEV_DEFAULT_PROJECT_ID = DEVELOPMENT_LOGIN_AUTH_CONFIG.firebaseProjectId;
 const CLI_PACKAGE_NAME = "@skillmarkdown/cli";
 const CLI_SCRIPT_BASENAME = "cli.js";
 
@@ -97,6 +101,12 @@ function resolveDefaultProjectId(options: LoginConfigOptions = {}): string {
     : DEFAULT_LOGIN_AUTH_CONFIG.firebaseProjectId;
 }
 
+function resolveDefaultApiKey(projectId: string): string {
+  return projectId === DEVELOPMENT_LOGIN_AUTH_CONFIG.firebaseProjectId
+    ? DEVELOPMENT_LOGIN_AUTH_CONFIG.firebaseApiKey
+    : PRODUCTION_LOGIN_AUTH_CONFIG.firebaseApiKey;
+}
+
 export function getDefaultUserEnvPath(options: LoginConfigOptions = {}): string {
   return join(options.homeDir ?? homedir(), USER_ENV_RELATIVE_PATH);
 }
@@ -106,15 +116,15 @@ export function getLoginEnvConfig(
   options: LoginConfigOptions = {},
 ): LoginEnvConfig {
   const dotEnv = loadDotEnv(getDefaultUserEnvPath(options));
-  const firebaseApiKey = firstNonEmpty(
-    env.SKILLMD_FIREBASE_API_KEY,
-    dotEnv.SKILLMD_FIREBASE_API_KEY,
-    DEFAULT_LOGIN_AUTH_CONFIG.firebaseApiKey,
-  );
   const firebaseProjectId = firstNonEmpty(
     env.SKILLMD_FIREBASE_PROJECT_ID,
     dotEnv.SKILLMD_FIREBASE_PROJECT_ID,
     resolveDefaultProjectId(options),
+  );
+  const firebaseApiKey = firstNonEmpty(
+    env.SKILLMD_FIREBASE_API_KEY,
+    dotEnv.SKILLMD_FIREBASE_API_KEY,
+    firebaseProjectId ? resolveDefaultApiKey(firebaseProjectId) : undefined,
   );
 
   if (!firebaseApiKey || !firebaseProjectId) {

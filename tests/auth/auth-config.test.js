@@ -30,3 +30,38 @@ test("getLoginEnvConfig reads values from user env file", () => {
     firebaseProjectId: "skillmarkdown",
   });
 });
+
+test("getLoginEnvConfig defaults to development project and key inside a local checkout", () => {
+  const cwd = "/tmp/workspace/cli";
+  const executionPath = "/tmp/workspace/cli/dist/cli.js";
+
+  const result = getLoginEnvConfig(
+    {},
+    {
+      cwd,
+      executionPath,
+      homeDir: "/tmp/nonexistent-home",
+    },
+  );
+
+  assert.deepEqual(result, {
+    firebaseApiKey: "AIzaSyB1eLZYLzmkrEdXXT6aZKB7sIWkTvKzf6M",
+    firebaseProjectId: "skillmarkdown-development",
+  });
+});
+
+test("getLoginEnvConfig defaults to production project and key outside a local checkout", () => {
+  const result = getLoginEnvConfig(
+    {},
+    {
+      cwd: "/tmp/other-project",
+      executionPath: "/tmp/workspace/cli/dist/cli.js",
+      homeDir: "/tmp/nonexistent-home",
+    },
+  );
+
+  assert.deepEqual(result, {
+    firebaseApiKey: "AIzaSyAkaZRmpCvZasFjeRAfW_b0V0nUcGOTjok",
+    firebaseProjectId: "skillmarkdown",
+  });
+});
