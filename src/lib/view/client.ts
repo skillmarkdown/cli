@@ -20,7 +20,7 @@ function isViewResponse(value: unknown): value is ViewResponse {
   const record = value as Record<string, unknown>;
   return (
     typeof record.owner === "string" &&
-    typeof record.ownerLogin === "string" &&
+    typeof record.username === "string" &&
     typeof record.skill === "string" &&
     typeof record.description === "string" &&
     typeof record.access === "string" &&
@@ -32,11 +32,11 @@ function isViewResponse(value: unknown): value is ViewResponse {
 
 export async function getSkillView(
   baseUrl: string,
-  request: { ownerSlug: string; skillSlug: string },
+  request: { username: string; skillSlug: string },
   options: ViewClientOptions = {},
 ): Promise<ViewResponse> {
   return requestJson({
-    url: new URL(`${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}`),
+    url: new URL(`${baseUrl}/v1/skills/${request.username}/${request.skillSlug}`),
     method: "GET",
     idToken: options.idToken,
     timeoutMs: options.timeoutMs,

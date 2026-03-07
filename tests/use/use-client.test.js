@@ -22,7 +22,7 @@ test("resolveSkillVersion returns parsed payload", async () => {
 
       return mockJsonResponse(200, {
         owner: "@stefdevscore",
-        ownerLogin: "stefdevscore",
+        username: "stefdevscore",
         skill: "test-skill",
         spec: "latest",
         version: "1.2.3",
@@ -41,7 +41,7 @@ test("resolveSkillVersion attaches bearer token when provided", async () => {
       assert.match(String(init?.headers?.Authorization), /^Bearer /);
       return mockJsonResponse(200, {
         owner: "@stefdevscore",
-        ownerLogin: "stefdevscore",
+        username: "stefdevscore",
         skill: "test-skill",
         spec: "latest",
         version: "1.2.3",
@@ -81,7 +81,7 @@ test("getArtifactDescriptor returns parsed payload", async () => {
       assert.equal(url.pathname, "/v1/skills/stefdevscore/test-skill/versions/1.2.3/artifact");
       return mockJsonResponse(200, {
         owner: "@stefdevscore",
-        ownerLogin: "stefdevscore",
+        username: "stefdevscore",
         skill: "test-skill",
         version: "1.2.3",
         digest: "sha256:abc",
@@ -96,7 +96,7 @@ test("getArtifactDescriptor returns parsed payload", async () => {
     },
     () =>
       getArtifactDescriptor("https://registry.example.com", {
-        ownerSlug: "stefdevscore",
+        username: "stefdevscore",
         skillSlug: "test-skill",
         version: "1.2.3",
       }),
@@ -139,7 +139,7 @@ test("maps API errors into UseApiError", async () => {
     async () => {
       await assert.rejects(
         getArtifactDescriptor("https://registry.example.com", {
-          ownerSlug: "stefdevscore",
+          username: "stefdevscore",
           skillSlug: "test-skill",
           version: "9.9.9",
         }),

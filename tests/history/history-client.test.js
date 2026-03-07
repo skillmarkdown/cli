@@ -18,7 +18,7 @@ test("listSkillVersionHistory returns parsed response payload", async () => {
 
       return mockJsonResponse(200, {
         owner: "@stefdevscore",
-        ownerLogin: "stefdevscore",
+        username: "stefdevscore",
         skill: "test-skill",
         limit: 10,
         results: [],
@@ -27,14 +27,14 @@ test("listSkillVersionHistory returns parsed response payload", async () => {
     },
     () =>
       listSkillVersionHistory("https://registry.example.com", {
-        ownerSlug: "stefdevscore",
+        username: "stefdevscore",
         skillSlug: "test-skill",
         limit: 10,
         cursor: "next",
       }),
   );
 
-  assert.equal(payload.ownerLogin, "stefdevscore");
+  assert.equal(payload.username, "stefdevscore");
   assert.equal(payload.limit, 10);
   assert.deepEqual(payload.results, []);
 });
@@ -45,7 +45,7 @@ test("listSkillVersionHistory attaches bearer token when provided", async () => 
       assert.match(String(init?.headers?.Authorization), /^Bearer /);
       return mockJsonResponse(200, {
         owner: "@stefdevscore",
-        ownerLogin: "stefdevscore",
+        username: "stefdevscore",
         skill: "test-skill",
         limit: 10,
         results: [],
@@ -56,7 +56,7 @@ test("listSkillVersionHistory attaches bearer token when provided", async () => 
       await listSkillVersionHistory(
         "https://registry.example.com",
         {
-          ownerSlug: "stefdevscore",
+          username: "stefdevscore",
           skillSlug: "test-skill",
           limit: 10,
         },
@@ -79,7 +79,7 @@ test("listSkillVersionHistory maps nested API errors", async () => {
     async () => {
       await assert.rejects(
         listSkillVersionHistory("https://registry.example.com", {
-          ownerSlug: "stefdevscore",
+          username: "stefdevscore",
           skillSlug: "test-skill",
         }),
         (error) => {
@@ -103,7 +103,7 @@ test("listSkillVersionHistory rejects malformed success payloads", async () => {
     async () => {
       await assert.rejects(
         listSkillVersionHistory("https://registry.example.com", {
-          ownerSlug: "stefdevscore",
+          username: "stefdevscore",
           skillSlug: "test-skill",
         }),
         /missing required fields/i,

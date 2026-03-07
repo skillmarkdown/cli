@@ -9,7 +9,7 @@ export const SKILLS_LOCK_VERSION = 1;
 
 export interface SkillsLockEntry {
   skillId: string;
-  ownerLogin: string;
+  username: string;
   skill: string;
   agentTarget: AgentTarget;
   selectorSpec: string;
@@ -66,7 +66,7 @@ function normalizeEntry(value: unknown): SkillsLockEntry | null {
   }
 
   const skillId = asTrimmedNonEmptyString(value.skillId);
-  const ownerLogin = asTrimmedNonEmptyString(value.ownerLogin);
+  const username = asTrimmedNonEmptyString(value.username);
   const skill = asTrimmedNonEmptyString(value.skill);
   const parsedAgentTarget =
     typeof value.agentTarget === "string" ? normalizeAgentTarget(value.agentTarget) : null;
@@ -83,7 +83,7 @@ function normalizeEntry(value: unknown): SkillsLockEntry | null {
 
   if (
     !skillId ||
-    !ownerLogin ||
+    !username ||
     !skill ||
     !parsedAgentTarget ||
     !selectorSpec ||
@@ -102,7 +102,7 @@ function normalizeEntry(value: unknown): SkillsLockEntry | null {
 
   return {
     skillId,
-    ownerLogin,
+    username,
     skill,
     agentTarget: parsedAgentTarget,
     selectorSpec,

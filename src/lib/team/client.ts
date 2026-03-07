@@ -84,11 +84,11 @@ interface TeamMemberMutationWireResponse {
   status: "added" | "updated" | "removed";
   team: string;
   member?: {
-    ownerLogin: string;
-    owner: string;
+    username: string;
+    usernameHandle: string;
     role: TeamRole;
   };
-  ownerLogin?: string;
+  username?: string;
 }
 
 function isTeamMemberMutationWireResponse(value: unknown): value is TeamMemberMutationWireResponse {
@@ -103,14 +103,16 @@ function isTeamMemberMutationWireResponse(value: unknown): value is TeamMemberMu
     return false;
   }
   if (record.status === "removed") {
-    return typeof record.ownerLogin === "string";
+    return typeof record.username === "string";
   }
   if (!record.member || typeof record.member !== "object") {
     return false;
   }
   const member = record.member as Record<string, unknown>;
   return (
-    typeof member.ownerLogin === "string" && typeof member.owner === "string" && isRole(member.role)
+    typeof member.username === "string" &&
+    typeof member.usernameHandle === "string" &&
+    isRole(member.role)
   );
 }
 
@@ -118,20 +120,20 @@ function toMemberMutationResponse(
   wire: TeamMemberMutationWireResponse,
 ): TeamMemberMutationResponse {
   if (wire.status === "removed") {
-    const ownerLogin = wire.ownerLogin ?? "";
+    const username = wire.username ?? "";
     return {
       status: wire.status,
       team: wire.team,
-      ownerLogin,
-      owner: `@${ownerLogin}`,
+      username,
+      usernameHandle: `@${username}`,
       role: "member",
     };
   }
   return {
     status: wire.status,
     team: wire.team,
-    ownerLogin: wire.member?.ownerLogin ?? "",
-    owner: wire.member?.owner ?? "",
+    username: wire.member?.username ?? "",
+    usernameHandle: wire.member?.usernameHandle ?? "",
     role: wire.member?.role ?? "member",
   };
 }
@@ -151,8 +153,8 @@ function isTeamMembersResponse(value: unknown): value is TeamMembersResponse {
     }
     const member = entry as Record<string, unknown>;
     return (
-      typeof member.owner === "string" &&
-      typeof member.ownerLogin === "string" &&
+      typeof member.usernameHandle === "string" &&
+      typeof member.username === "string" &&
       isRole(member.role) &&
       typeof member.addedAt === "string" &&
       typeof member.updatedAt === "string"
@@ -228,13 +230,13 @@ export async function updateTeamMemberRole(
   baseUrl: string,
   idToken: string,
   teamSlug: string,
-  ownerLogin: string,
+  username: string,
   request: TeamMemberUpdateRequest,
   options: TeamClientOptions = {},
 ): Promise<TeamMemberMutationResponse> {
   const response = await requestTeam(
     new URL(
-      `${baseUrl}/v1/teams/${encodeURIComponent(teamSlug)}/members/${encodeURIComponent(ownerLogin)}`,
+      `${baseUrl}/v1/teams/${encodeURIComponent(teamSlug)}/members/${encodeURIComponent(username)}`,
     ),
     "PATCH",
     idToken,
@@ -249,12 +251,12 @@ export async function removeTeamMember(
   baseUrl: string,
   idToken: string,
   teamSlug: string,
-  ownerLogin: string,
+  username: string,
   options: TeamClientOptions = {},
 ): Promise<TeamMemberMutationResponse> {
   const response = await requestTeam(
     new URL(
-      `${baseUrl}/v1/teams/${encodeURIComponent(teamSlug)}/members/${encodeURIComponent(ownerLogin)}`,
+      `${baseUrl}/v1/teams/${encodeURIComponent(teamSlug)}/members/${encodeURIComponent(username)}`,
     ),
     "DELETE",
     idToken,

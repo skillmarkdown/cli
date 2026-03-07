@@ -25,14 +25,14 @@ interface TagCommandOptions {
   exchangeRefreshToken?: (apiKey: string, refreshToken: string) => Promise<FirebaseIdTokenSession>;
   listDistTags?: (
     baseUrl: string,
-    request: { ownerSlug: string; skillSlug: string },
+    request: { username: string; skillSlug: string },
     options?: { timeoutMs?: number; idToken?: string },
   ) => Promise<DistTagsListResponse>;
   setDistTag?: (
     baseUrl: string,
     idToken: string,
     request: {
-      ownerSlug: string;
+      username: string;
       skillSlug: string;
       tag: string;
       version: string;
@@ -42,7 +42,7 @@ interface TagCommandOptions {
   removeDistTag?: (
     baseUrl: string,
     idToken: string,
-    request: { ownerSlug: string; skillSlug: string; tag: string },
+    request: { username: string; skillSlug: string; tag: string },
     options?: { timeoutMs?: number },
   ) => Promise<DistTagDeleteResponse>;
 }
@@ -52,7 +52,7 @@ function shouldRetryWithReadToken(error: unknown): boolean {
 }
 
 function printDistTagsHuman(payload: DistTagsListResponse): void {
-  console.log(`Skill: @${payload.ownerLogin}/${payload.skill}`);
+  console.log(`Skill: @${payload.username}/${payload.skill}`);
   console.log(`Updated: ${payload.updatedAt}`);
   console.log("Dist-Tags:");
   const tags = Object.entries(payload.distTags).sort(([left], [right]) =>
@@ -92,7 +92,7 @@ export async function runTagCommand(
           listDistTagsFn(
             config.registryBaseUrl,
             {
-              ownerSlug: parsedSkillId.ownerSlug,
+              username: parsedSkillId.username,
               skillSlug: parsedSkillId.skillSlug,
             },
             {
@@ -115,7 +115,7 @@ export async function runTagCommand(
       readSession: options.readSession ?? readAuthSession,
       exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
       requireOwner: true,
-      targetOwnerSlug: parsedSkillId.ownerSlug,
+      targetOwnerSlug: parsedSkillId.username,
       ownerMismatchMessage: (owner) =>
         `skillmd tag: can only update tags for skills owned by ${owner}.`,
     });
@@ -130,7 +130,7 @@ export async function runTagCommand(
         config.registryBaseUrl,
         auth.value.idToken,
         {
-          ownerSlug: parsedSkillId.ownerSlug,
+          username: parsedSkillId.username,
           skillSlug: parsedSkillId.skillSlug,
           tag: parsed.tag,
           version: parsed.version,
@@ -150,7 +150,7 @@ export async function runTagCommand(
       config.registryBaseUrl,
       auth.value.idToken,
       {
-        ownerSlug: parsedSkillId.ownerSlug,
+        username: parsedSkillId.username,
         skillSlug: parsedSkillId.skillSlug,
         tag: parsed.tag,
       },

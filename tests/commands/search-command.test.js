@@ -26,7 +26,7 @@ function baseOptions(overrides = {}) {
         {
           skillId: "@owner/test-skill",
           owner: "@owner",
-          ownerLogin: "owner",
+          username: "owner",
           skill: "test-skill",
           description: "desc",
           distTags: { latest: "1.2.3" },
@@ -135,7 +135,7 @@ test("does not crash when result distTags are missing", async () => {
             {
               skillId: "@owner/test-skill",
               owner: "@owner",
-              ownerLogin: "owner",
+              username: "owner",
               skill: "test-skill",
               description: "desc",
               updatedAt: "2026-03-02T12:00:00.000Z",

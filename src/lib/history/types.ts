@@ -24,7 +24,7 @@ export interface HistoryVersionResult {
 }
 
 export interface HistoryRequest {
-  ownerSlug: string;
+  username: string;
   skillSlug: string;
   limit?: number;
   cursor?: string;
@@ -32,7 +32,7 @@ export interface HistoryRequest {
 
 export interface HistoryResponse {
   owner: string;
-  ownerLogin: string;
+  username: string;
   skill: string;
   limit: number;
   results: HistoryVersionResult[];

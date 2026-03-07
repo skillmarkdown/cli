@@ -19,7 +19,7 @@ export interface UseEnvConfig {
 
 export interface ResolveSkillVersionResponse {
   owner: string;
-  ownerLogin: string;
+  username: string;
   skill: string;
   spec: string;
   version: string;
@@ -27,14 +27,14 @@ export interface ResolveSkillVersionResponse {
 }
 
 export interface ArtifactDescriptorRequest {
-  ownerSlug: string;
+  username: string;
   skillSlug: string;
   version: string;
 }
 
 export interface ArtifactDescriptorResponse {
   owner: string;
-  ownerLogin: string;
+  username: string;
   skill: string;
   version: string;
   digest: string;
@@ -56,7 +56,7 @@ export interface UseDownloadResult {
 
 export interface InstalledSkillLockEntry {
   skillId: string;
-  ownerLogin: string;
+  username: string;
   skill: string;
   selectorSpec: string;
   version: string;
@@ -73,7 +73,7 @@ export interface InstalledSkillLockEntry {
 
 export interface UseCommandResult {
   skillId: string;
-  ownerLogin: string;
+  username: string;
   skill: string;
   version: string;
   digest: string;

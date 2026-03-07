@@ -17,7 +17,7 @@ interface ViewCommandOptions {
   readSelectionCache?: () => SearchSelectionCache | null;
   getSkillView?: (
     baseUrl: string,
-    request: { ownerSlug: string; skillSlug: string },
+    request: { username: string; skillSlug: string },
     options?: { timeoutMs?: number; idToken?: string },
   ) => Promise<ViewResponse>;
   resolveReadIdToken?: () => Promise<string | null>;
@@ -28,9 +28,9 @@ function shouldRetryWithReadToken(error: unknown): boolean {
 }
 
 function printHumanResult(payload: ViewResponse): void {
-  const canonicalSkillId = `@${payload.ownerLogin}/${payload.skill}`;
+  const canonicalSkillId = `@${payload.username}/${payload.skill}`;
   console.log(`Skill: ${canonicalSkillId}`);
-  console.log(`Owner: ${payload.owner} (login: ${payload.ownerLogin})`);
+  console.log(`Owner: ${payload.owner} (username: ${payload.username})`);
   console.log(`Updated: ${payload.updatedAt}`);
   console.log(`Access: ${payload.access}`);
   console.log(`Description: ${payload.description || "-"}`);
@@ -123,7 +123,7 @@ export async function runViewCommand(
     const resolveReadIdTokenFn =
       options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }));
     const request = {
-      ownerSlug: parsedSkillId.ownerSlug,
+      username: parsedSkillId.username,
       skillSlug: parsedSkillId.skillSlug,
     };
     const { result: response } = await callWithReadTokenRetry<ViewResponse>({

@@ -79,7 +79,7 @@ test("unpublishes version for owner skill", async () => {
 
   assert.equal(result, 0);
   assert.deepEqual(capturedRequest, {
-    ownerSlug: "core",
+    username: "core",
     skillSlug: "test-skill",
     version: "1.2.3",
   });

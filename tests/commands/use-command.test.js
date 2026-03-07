@@ -24,14 +24,14 @@ function baseOptions(overrides = {}) {
     }),
     resolveVersion: async () => ({
       owner: "@stefdevscore",
-      ownerLogin: "stefdevscore",
+      username: "stefdevscore",
       skill: "test-skill",
       spec: "latest",
       version: "1.2.3",
     }),
     getArtifactDescriptor: async () => ({
       owner: "@stefdevscore",
-      ownerLogin: "stefdevscore",
+      username: "stefdevscore",
       skill: "test-skill",
       version: "1.2.3",
       digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -76,7 +76,7 @@ test("installs with default latest spec selector and updates lock", async () => 
           resolvedSpec = spec;
           return {
             owner: "@stefdevscore",
-            ownerLogin: "stefdevscore",
+            username: "stefdevscore",
             skill: "test-skill",
             spec: "latest",
             version: "1.2.3",
@@ -106,7 +106,7 @@ test("uses descriptor agent target when flag is omitted", async () => {
       baseOptions({
         getArtifactDescriptor: async () => ({
           owner: "@stefdevscore",
-          ownerLogin: "stefdevscore",
+          username: "stefdevscore",
           skill: "test-skill",
           version: "1.2.3",
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -138,7 +138,7 @@ test("explicit --agent-target overrides descriptor target", async () => {
       baseOptions({
         getArtifactDescriptor: async () => ({
           owner: "@stefdevscore",
-          ownerLogin: "stefdevscore",
+          username: "stefdevscore",
           skill: "test-skill",
           version: "1.2.3",
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -170,7 +170,7 @@ test("save persists explicitly selected agent target", async () => {
       baseOptions({
         getArtifactDescriptor: async () => ({
           owner: "@stefdevscore",
-          ownerLogin: "stefdevscore",
+          username: "stefdevscore",
           skill: "test-skill",
           version: "1.2.3",
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -212,7 +212,7 @@ test("supports explicit --spec selector", async () => {
           resolvedSpec = spec;
           return {
             owner: "@stefdevscore",
-            ownerLogin: "stefdevscore",
+            username: "stefdevscore",
             skill: "test-skill",
             spec,
             version: "1.2.3",
@@ -263,7 +263,7 @@ test("retries resolve with read token when first attempt returns not found", asy
 
           return {
             owner: "@stefdevscore",
-            ownerLogin: "stefdevscore",
+            username: "stefdevscore",
             skill: "test-skill",
             spec: "latest",
             version: "1.2.3",
@@ -315,7 +315,7 @@ test("warns when selected version is deprecated and still installs", async () =>
       baseOptions({
         getArtifactDescriptor: async () => ({
           owner: "@stefdevscore",
-          ownerLogin: "stefdevscore",
+          username: "stefdevscore",
           skill: "test-skill",
           version: "1.2.3",
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",

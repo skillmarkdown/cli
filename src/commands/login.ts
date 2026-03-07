@@ -131,7 +131,7 @@ export async function runLoginCommand(
       );
     } catch (error) {
       clearSessionFn();
-      const message = error instanceof Error ? error.message : "owner profile not found";
+      const message = error instanceof Error ? error.message : "username profile not found";
       console.error(`skillmd login: ${message}. Complete sign-up on the web before using the CLI.`);
       return 1;
     }

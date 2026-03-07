@@ -25,7 +25,7 @@ test("loadSkillsLock rejects entries with invalid agentTarget", async () => {
   const rawLockfile = validLockfile({
     a: {
       skillId: "@owner/skill-a",
-      ownerLogin: "owner",
+      username: "owner",
       skill: "skill-a",
       agentTarget: "bad-target",
       selectorSpec: "latest",
@@ -54,7 +54,7 @@ test("loadSkillsLock accepts new builtin agent targets", async () => {
   const rawLockfile = validLockfile({
     a: {
       skillId: "@owner/skill-a",
-      ownerLogin: "owner",
+      username: "owner",
       skill: "skill-a",
       agentTarget: "meta",
       selectorSpec: "latest",
@@ -85,7 +85,7 @@ test("saveSkillsLock round-trips lockfile via filesystem", async () => {
       createEmptySkillsLock(now),
       {
         skillId: "@owner/skill-a",
-        ownerLogin: "owner",
+        username: "owner",
         skill: "skill-a",
         agentTarget: "skillmd",
         selectorSpec: "latest",
@@ -120,7 +120,7 @@ test("saveSkillsLock supports concurrent writes without temp-file collisions", a
       createEmptySkillsLock(now),
       {
         skillId: "@owner/skill-a",
-        ownerLogin: "owner",
+        username: "owner",
         skill: "skill-a",
         agentTarget: "skillmd",
         selectorSpec: "latest",
@@ -140,7 +140,7 @@ test("saveSkillsLock supports concurrent writes without temp-file collisions", a
       createEmptySkillsLock(now),
       {
         skillId: "@owner/skill-b",
-        ownerLogin: "owner",
+        username: "owner",
         skill: "skill-b",
         agentTarget: "claude",
         selectorSpec: "latest",

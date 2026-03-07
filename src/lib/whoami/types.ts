@@ -6,7 +6,7 @@ export interface WhoamiEnvConfig {
 export interface WhoamiResponse {
   uid: string;
   owner: string;
-  ownerSlug: string;
+  username: string;
   email: string | null;
   projectId: string | null;
   authType: "firebase" | "token";

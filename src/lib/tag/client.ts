@@ -40,7 +40,7 @@ function isDistTagsListResponse(value: unknown): value is DistTagsListResponse {
   const record = value as Record<string, unknown>;
   return (
     typeof record.owner === "string" &&
-    typeof record.ownerLogin === "string" &&
+    typeof record.username === "string" &&
     typeof record.skill === "string" &&
     !!record.distTags &&
     typeof record.distTags === "object" &&
@@ -79,11 +79,11 @@ function isDistTagDeleteResponse(value: unknown): value is DistTagDeleteResponse
 
 export async function listDistTags(
   baseUrl: string,
-  request: { ownerSlug: string; skillSlug: string },
+  request: { username: string; skillSlug: string },
   options: TagClientOptions = {},
 ): Promise<DistTagsListResponse> {
   const parsed = await requestJson({
-    url: new URL(`${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/dist-tags`),
+    url: new URL(`${baseUrl}/v1/skills/${request.username}/${request.skillSlug}/dist-tags`),
     method: "GET",
     idToken: options.idToken,
     timeoutMs: options.timeoutMs,
@@ -107,7 +107,7 @@ export async function setDistTag(
 ): Promise<DistTagUpdateResponse> {
   const parsed = await requestJson({
     url: new URL(
-      `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/dist-tags/${request.tag}`,
+      `${baseUrl}/v1/skills/${request.username}/${request.skillSlug}/dist-tags/${request.tag}`,
     ),
     method: "PUT",
     idToken,
@@ -133,7 +133,7 @@ export async function removeDistTag(
 ): Promise<DistTagDeleteResponse> {
   const parsed = await requestJson({
     url: new URL(
-      `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/dist-tags/${request.tag}`,
+      `${baseUrl}/v1/skills/${request.username}/${request.skillSlug}/dist-tags/${request.tag}`,
     ),
     method: "DELETE",
     idToken,

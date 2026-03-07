@@ -53,15 +53,15 @@ function printTeamMembers(result: TeamMembersResponse): void {
   console.log(`Team: ${result.team}`);
   console.log(`Members: ${result.members.length}`);
   for (const member of result.members)
-    console.log(`${member.owner} (${member.role}) added=${member.addedAt}`);
+    console.log(`${member.usernameHandle} (${member.role}) added=${member.addedAt}`);
 }
 
 function printMutation(result: TeamMemberMutationResponse): void {
   if (result.status === "added")
-    console.log(`Added ${result.owner} to ${result.team} as ${result.role}.`);
+    console.log(`Added ${result.usernameHandle} to ${result.team} as ${result.role}.`);
   else if (result.status === "updated")
-    console.log(`Updated ${result.owner} role to ${result.role} in ${result.team}.`);
-  else console.log(`Removed ${result.owner} from ${result.team}.`);
+    console.log(`Updated ${result.usernameHandle} role to ${result.role} in ${result.team}.`);
+  else console.log(`Removed ${result.usernameHandle} from ${result.team}.`);
 }
 
 export async function runTeamCommand(
@@ -116,24 +116,24 @@ export async function runTeamCommand(
       return 0;
     }
 
-    if (parsed.action === "members_add" && parsed.team && parsed.ownerLogin && parsed.role) {
+    if (parsed.action === "members_add" && parsed.team && parsed.username && parsed.role) {
       const result = await (options.addTeamMember ?? defaultAddTeamMember)(
         config.registryBaseUrl,
         idToken,
         parsed.team,
-        { ownerLogin: parsed.ownerLogin, role: parsed.role as MutableTeamRole },
+        { username: parsed.username, role: parsed.role as MutableTeamRole },
         { timeoutMs: config.requestTimeoutMs },
       );
       printCommandResult(parsed.json, result, () => printMutation(result));
       return 0;
     }
 
-    if (parsed.action === "members_set_role" && parsed.team && parsed.ownerLogin && parsed.role) {
+    if (parsed.action === "members_set_role" && parsed.team && parsed.username && parsed.role) {
       const result = await (options.updateTeamMemberRole ?? defaultUpdateTeamMemberRole)(
         config.registryBaseUrl,
         idToken,
         parsed.team,
-        parsed.ownerLogin,
+        parsed.username,
         { role: parsed.role as MutableTeamRole },
         { timeoutMs: config.requestTimeoutMs },
       );
@@ -141,12 +141,12 @@ export async function runTeamCommand(
       return 0;
     }
 
-    if (parsed.action === "members_rm" && parsed.team && parsed.ownerLogin) {
+    if (parsed.action === "members_rm" && parsed.team && parsed.username) {
       const result = await (options.removeTeamMember ?? defaultRemoveTeamMember)(
         config.registryBaseUrl,
         idToken,
         parsed.team,
-        parsed.ownerLogin,
+        parsed.username,
         { timeoutMs: config.requestTimeoutMs },
       );
       printCommandResult(parsed.json, result, () => printMutation(result));

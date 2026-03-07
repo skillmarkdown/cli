@@ -111,7 +111,7 @@ function validatePrunePath(
     expectedPath = resolveInstalledSkillPath(
       cwd,
       entry.registryBaseUrl,
-      parsedSkillId.ownerSlug,
+      parsedSkillId.username,
       parsedSkillId.skillSlug,
       entry.agentTarget,
     );
@@ -261,7 +261,7 @@ export async function runInstallCommand(
             requestTimeoutMs: config.requestTimeoutMs,
             resolveReadIdToken: resolveReadIdTokenCached,
             cwd,
-            ownerSlug: parsedSkill.ownerSlug,
+            username: parsedSkill.username,
             skillSlug: parsedSkill.skillSlug,
             selector: {
               strategy: "spec",

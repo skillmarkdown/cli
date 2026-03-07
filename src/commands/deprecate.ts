@@ -19,7 +19,7 @@ interface DeprecateCommandOptions {
     baseUrl: string,
     idToken: string,
     request: {
-      ownerSlug: string;
+      username: string;
       skillSlug: string;
       range: string;
       message: string;
@@ -49,7 +49,7 @@ export async function runDeprecateCommand(
       readSession: options.readSession ?? readAuthSession,
       exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
       requireOwner: true,
-      targetOwnerSlug: parsedSkillId.ownerSlug,
+      targetOwnerSlug: parsedSkillId.username,
     });
     if (!auth.ok) {
       console.error(auth.message);
@@ -60,7 +60,7 @@ export async function runDeprecateCommand(
       config.registryBaseUrl,
       auth.value.idToken,
       {
-        ownerSlug: parsedSkillId.ownerSlug,
+        username: parsedSkillId.username,
         skillSlug: parsedSkillId.skillSlug,
         range: parsedRequest.range,
         message: parsedRequest.message,

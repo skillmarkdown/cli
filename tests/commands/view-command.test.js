@@ -22,7 +22,7 @@ function baseOptions(overrides = {}) {
     readSelectionCache: () => null,
     getSkillView: async () => ({
       owner: "@owner",
-      ownerLogin: "owner",
+      username: "owner",
       skill: "test-skill",
       description: "desc",
       access: "public",

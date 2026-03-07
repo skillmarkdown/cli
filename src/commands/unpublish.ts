@@ -19,7 +19,7 @@ interface UnpublishCommandOptions {
     baseUrl: string,
     idToken: string,
     request: {
-      ownerSlug: string;
+      username: string;
       skillSlug: string;
       version: string;
     },
@@ -48,7 +48,7 @@ export async function runUnpublishCommand(
       readSession: options.readSession ?? readAuthSession,
       exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
       requireOwner: true,
-      targetOwnerSlug: parsedSkillId.ownerSlug,
+      targetOwnerSlug: parsedSkillId.username,
     });
     if (!auth.ok) {
       console.error(auth.message);
@@ -59,7 +59,7 @@ export async function runUnpublishCommand(
       config.registryBaseUrl,
       auth.value.idToken,
       {
-        ownerSlug: parsedSkillId.ownerSlug,
+        username: parsedSkillId.username,
         skillSlug: parsedSkillId.skillSlug,
         version: parsedRequest.version,
       },

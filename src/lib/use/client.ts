@@ -27,7 +27,7 @@ function isResolveResponse(value: unknown): value is ResolveSkillVersionResponse
   const record = value as Record<string, unknown>;
   return (
     typeof record.owner === "string" &&
-    typeof record.ownerLogin === "string" &&
+    typeof record.username === "string" &&
     typeof record.skill === "string" &&
     typeof record.spec === "string" &&
     typeof record.version === "string" &&
@@ -43,7 +43,7 @@ function isArtifactDescriptorResponse(value: unknown): value is ArtifactDescript
   const record = value as Record<string, unknown>;
   return (
     typeof record.owner === "string" &&
-    typeof record.ownerLogin === "string" &&
+    typeof record.username === "string" &&
     typeof record.skill === "string" &&
     typeof record.version === "string" &&
     typeof record.digest === "string" &&
@@ -68,12 +68,12 @@ function sanitizeDownloadOrigin(downloadUrl: string): string {
 
 export async function resolveSkillVersion(
   baseUrl: string,
-  ownerSlug: string,
+  username: string,
   skillSlug: string,
   spec: string,
   options: UseClientOptions = {},
 ): Promise<ResolveSkillVersionResponse> {
-  const url = new URL(`${baseUrl}/v1/skills/${ownerSlug}/${skillSlug}/resolve`);
+  const url = new URL(`${baseUrl}/v1/skills/${username}/${skillSlug}/resolve`);
   url.searchParams.set("spec", spec);
   return requestJson({
     url,
@@ -94,7 +94,7 @@ export async function getArtifactDescriptor(
 ): Promise<ArtifactDescriptorResponse> {
   return requestJson({
     url: new URL(
-      `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/versions/${request.version}/artifact`,
+      `${baseUrl}/v1/skills/${request.username}/${request.skillSlug}/versions/${request.version}/artifact`,
     ),
     method: "GET",
     idToken: options.idToken,

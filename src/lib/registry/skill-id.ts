@@ -1,10 +1,10 @@
 export interface ParsedSkillId {
-  ownerSlug: string;
+  username: string;
   skillSlug: string;
   skillId: string;
 }
 
-const OWNER_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/;
+const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/;
 const SKILL_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
 
 export function parseSkillId(input: string): ParsedSkillId {
@@ -17,10 +17,10 @@ export function parseSkillId(input: string): ParsedSkillId {
   const ownerRaw = trimmed.slice(0, slashIndex);
   const skillRaw = trimmed.slice(slashIndex + 1);
 
-  const ownerSlug = ownerRaw.toLowerCase().replace(/^@+/, "");
+  const username = ownerRaw.toLowerCase().replace(/^@+/, "");
   const skillSlug = skillRaw.toLowerCase();
 
-  if (!OWNER_SLUG_PATTERN.test(ownerSlug)) {
+  if (!USERNAME_PATTERN.test(username)) {
     throw new Error("owner in skill id must be a valid slug");
   }
 
@@ -29,8 +29,8 @@ export function parseSkillId(input: string): ParsedSkillId {
   }
 
   return {
-    ownerSlug,
+    username,
     skillSlug,
-    skillId: `@${ownerSlug}/${skillSlug}`,
+    skillId: `@${username}/${skillSlug}`,
   };
 }

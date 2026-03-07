@@ -32,7 +32,7 @@ export async function deprecateVersions(
   options: DeprecateClientOptions = {},
 ): Promise<DeprecateVersionsResponse> {
   return requestJson({
-    url: new URL(`${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/deprecations`),
+    url: new URL(`${baseUrl}/v1/skills/${request.username}/${request.skillSlug}/deprecations`),
     method: "POST",
     idToken,
     body: {

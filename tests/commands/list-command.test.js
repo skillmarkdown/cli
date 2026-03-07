@@ -10,7 +10,7 @@ function lockEntry(skillId, agentTarget = "skillmd") {
   const skill = skillId.split("/")[1];
   return {
     skillId,
-    ownerLogin: "owner",
+    username: "owner",
     skill,
     selectorSpec: "latest",
     resolvedVersion: "1.0.0",

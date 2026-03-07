@@ -10,7 +10,7 @@ export interface UpdateFlags {
 
 export interface InstalledSkillTarget {
   skillId: string;
-  ownerSlug: string;
+  username: string;
   skillSlug: string;
   installedPath: string;
   agentTarget: AgentTarget;
@@ -32,7 +32,7 @@ export interface UpdateIntentResolution {
 
 export interface SkillsLockEntry {
   skillId: string;
-  ownerLogin: string;
+  username: string;
   skill: string;
   selectorSpec: string;
   resolvedVersion: string;

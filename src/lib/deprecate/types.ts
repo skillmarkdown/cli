@@ -20,7 +20,7 @@ export interface DeprecateEnvConfig {
 }
 
 export interface DeprecateVersionsRequest {
-  ownerSlug: string;
+  username: string;
   skillSlug: string;
   range: string;
   message: string;

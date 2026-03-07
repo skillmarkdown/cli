@@ -8,7 +8,7 @@ const { resolveUpdateIntent } = requireDist("lib/update/intent.js");
 test("resolveUpdateIntent returns version selector for exact semver", () => {
   const resolved = resolveUpdateIntent({
     skillId: "@owner/skill",
-    ownerLogin: "owner",
+    username: "owner",
     skill: "skill",
     selectorSpec: "1.2.3",
     resolvedVersion: "1.2.3",
@@ -35,7 +35,7 @@ test("resolveUpdateIntent returns spec selector for tags/ranges", () => {
   assert.deepEqual(
     resolveUpdateIntent({
       skillId: "@owner/skill",
-      ownerLogin: "owner",
+      username: "owner",
       skill: "skill",
       selectorSpec: "^1.2.0",
       resolvedVersion: "1.2.3",

@@ -100,7 +100,7 @@ export async function runUseCommand(
         requestTimeoutMs: config.requestTimeoutMs,
         resolveReadIdToken: resolveReadIdTokenFn,
         cwd,
-        ownerSlug: parsedSkillId.ownerSlug,
+        username: parsedSkillId.username,
         skillSlug: parsedSkillId.skillSlug,
         selector,
         selectedAgentTarget: parsed.agentTarget,
@@ -146,7 +146,7 @@ export async function runUseCommand(
         (result.agentTarget !== DEFAULT_AGENT_TARGET ? result.agentTarget : undefined);
       const dependency: SkillsManifestDependency = {
         skillId: result.skillId,
-        ownerSlug: parsedSkillId.ownerSlug,
+        username: parsedSkillId.username,
         skillSlug: parsedSkillId.skillSlug,
         spec: parsed.version ? result.version : (parsed.spec ?? "latest"),
         agentTarget: manifestAgentTarget,

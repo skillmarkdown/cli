@@ -14,7 +14,7 @@ export interface SkillsManifestDefaults {
 
 export interface SkillsManifestDependency {
   skillId: string;
-  ownerSlug: string;
+  username: string;
   skillSlug: string;
   spec: string;
   agentTarget?: AgentTarget;
@@ -124,7 +124,7 @@ function parseDependencies(value: unknown): SkillsManifestDependency[] {
 
     parsed.push({
       skillId: canonical.skillId,
-      ownerSlug: canonical.ownerSlug,
+      username: canonical.username,
       skillSlug: canonical.skillSlug,
       spec: rawDependency.spec.trim(),
       agentTarget,

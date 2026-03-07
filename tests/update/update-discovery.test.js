@@ -36,7 +36,7 @@ test("discoverInstalledSkills reads entries from lockfile for a target", async (
     writeLockfile(root, {
       a: {
         skillId: "@owner-a/skill-a",
-        ownerLogin: "owner-a",
+        username: "owner-a",
         skill: "skill-a",
         selectorSpec: "latest",
         resolvedVersion: "1.0.0",
@@ -52,7 +52,7 @@ test("discoverInstalledSkills reads entries from lockfile for a target", async (
       },
       b: {
         skillId: "@owner-b/skill-b",
-        ownerLogin: "owner-b",
+        username: "owner-b",
         skill: "skill-b",
         selectorSpec: "latest",
         resolvedVersion: "1.0.0",
@@ -90,7 +90,7 @@ test("discoverInstalledSkillsAcrossTargets returns all matching registry entries
     writeLockfile(root, {
       a: {
         skillId: "@owner-a/skill-a",
-        ownerLogin: "owner-a",
+        username: "owner-a",
         skill: "skill-a",
         selectorSpec: "latest",
         resolvedVersion: "1.0.0",
@@ -106,7 +106,7 @@ test("discoverInstalledSkillsAcrossTargets returns all matching registry entries
       },
       b: {
         skillId: "@owner-c/skill-c",
-        ownerLogin: "owner-c",
+        username: "owner-c",
         skill: "skill-c",
         selectorSpec: "latest",
         resolvedVersion: "1.0.0",
@@ -148,7 +148,7 @@ test("readInstalledSkillMetadata resolves entry by installed path via workspace 
     writeLockfile(root, {
       a: {
         skillId: "@owner-a/skill-a",
-        ownerLogin: "owner-a",
+        username: "owner-a",
         skill: "skill-a",
         selectorSpec: "latest",
         resolvedVersion: "1.0.0",

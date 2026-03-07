@@ -50,7 +50,7 @@ export async function unpublishVersion(
 ): Promise<UnpublishVersionResponse> {
   const parsed = await requestJson({
     url: new URL(
-      `${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/versions/${request.version}`,
+      `${baseUrl}/v1/skills/${request.username}/${request.skillSlug}/versions/${request.version}`,
     ),
     method: "DELETE",
     idToken,

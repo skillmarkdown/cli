@@ -29,7 +29,7 @@ function formatEntitlements(entitlements: WhoamiResponse["entitlements"]): strin
 }
 
 function printWhoamiHuman(result: WhoamiResponse): void {
-  console.log(`Owner: ${result.owner} (${result.ownerSlug})`);
+  console.log(`Owner: ${result.owner} (${result.username})`);
   console.log(`UID: ${result.uid}`);
   console.log(`Auth: ${result.authType} (${result.scope})`);
   console.log(`Project: ${result.projectId ?? "unknown"}`);

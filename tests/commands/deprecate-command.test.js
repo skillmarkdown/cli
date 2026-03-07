@@ -80,7 +80,7 @@ test("deprecates versions for owner skill", async () => {
 
   assert.equal(result, 0);
   assert.deepEqual(capturedRequest, {
-    ownerSlug: "core",
+    username: "core",
     skillSlug: "test-skill",
     range: "^1.2.0",
     message: "Use 2.x",

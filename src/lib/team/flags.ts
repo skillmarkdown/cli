@@ -56,8 +56,8 @@ function parseMembers(args: string[]): ParsedTeamFlags {
       : { valid: true, action: "members_ls", team, json: jsonTail };
   }
 
-  const ownerLogin = normalizeSlug(args[3]);
-  if (!ownerLogin) {
+  const username = normalizeSlug(args[3]);
+  if (!username) {
     return INVALID;
   }
 
@@ -65,7 +65,7 @@ function parseMembers(args: string[]): ParsedTeamFlags {
     const jsonTail = parseTailJson(args, 4);
     return jsonTail === null
       ? INVALID
-      : { valid: true, action: "members_rm", team, ownerLogin, json: jsonTail };
+      : { valid: true, action: "members_rm", team, username, json: jsonTail };
   }
 
   if (action === "set-role") {
@@ -76,7 +76,7 @@ function parseMembers(args: string[]): ParsedTeamFlags {
     const jsonTail = parseTailJson(args, 5);
     return jsonTail === null
       ? INVALID
-      : { valid: true, action: "members_set_role", team, ownerLogin, role, json: jsonTail };
+      : { valid: true, action: "members_set_role", team, username, role, json: jsonTail };
   }
 
   if (action === "add") {
@@ -95,7 +95,7 @@ function parseMembers(args: string[]): ParsedTeamFlags {
       role = opt.value;
       index = opt.nextIndex;
     }
-    return { valid: true, action: "members_add", team, ownerLogin, role, json };
+    return { valid: true, action: "members_add", team, username, role, json };
   }
 
   return INVALID;

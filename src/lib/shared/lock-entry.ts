@@ -11,7 +11,7 @@ export function toSkillsLockEntry(
 ): SkillsLockEntry {
   return {
     skillId: entry.skillId,
-    ownerLogin: entry.ownerLogin,
+    username: entry.username,
     skill: entry.skill,
     agentTarget: entry.agentTarget,
     selectorSpec,

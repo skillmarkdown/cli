@@ -49,8 +49,8 @@ test("team client create/get/list/add/update/remove success", async () => {
           team: "core-team",
           members: [
             {
-              owner: "@core",
-              ownerLogin: "core",
+              usernameHandle: "@core",
+              username: "core",
               role: "owner",
               addedAt: "2026-03-04T00:00:00.000Z",
               updatedAt: "2026-03-04T00:00:00.000Z",
@@ -65,8 +65,8 @@ test("team client create/get/list/add/update/remove success", async () => {
           team: "core-team",
           status: "added",
           member: {
-            owner: "@alice",
-            ownerLogin: "alice",
+            usernameHandle: "@alice",
+            username: "alice",
             role: "member",
           },
         });
@@ -78,8 +78,8 @@ test("team client create/get/list/add/update/remove success", async () => {
           team: "core-team",
           status: "updated",
           member: {
-            owner: "@alice",
-            ownerLogin: "alice",
+            usernameHandle: "@alice",
+            username: "alice",
             role: "admin",
           },
         });
@@ -89,7 +89,7 @@ test("team client create/get/list/add/update/remove success", async () => {
       assert.equal(url.pathname, "/v1/teams/core-team/members/alice");
       return mockJsonResponse(200, {
         team: "core-team",
-        ownerLogin: "alice",
+        username: "alice",
         status: "removed",
       });
     },
@@ -109,14 +109,14 @@ test("team client create/get/list/add/update/remove success", async () => {
         "core-team",
       );
       assert.equal(members.members.length, 1);
-      assert.equal(members.members[0].ownerLogin, "core");
+      assert.equal(members.members[0].username, "core");
 
       const added = await addTeamMember("https://registry.example.com", "id-token", "core-team", {
-        ownerLogin: "alice",
+        username: "alice",
         role: "member",
       });
       assert.equal(added.status, "added");
-      assert.equal(added.ownerLogin, "alice");
+      assert.equal(added.username, "alice");
 
       const updated = await updateTeamMemberRole(
         "https://registry.example.com",
@@ -135,7 +135,7 @@ test("team client create/get/list/add/update/remove success", async () => {
         "alice",
       );
       assert.equal(removed.status, "removed");
-      assert.equal(removed.ownerLogin, "alice");
+      assert.equal(removed.username, "alice");
     },
   );
 });

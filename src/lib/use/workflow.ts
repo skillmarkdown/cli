@@ -23,7 +23,7 @@ export interface InstallWorkflowInput {
   idToken?: string;
   resolveReadIdToken?: () => Promise<string | null>;
   cwd: string;
-  ownerSlug: string;
+  username: string;
   skillSlug: string;
   selector: InstallSelector;
   selectedAgentTarget?: AgentTarget;
@@ -39,14 +39,14 @@ export interface InstallWorkflowInput {
 export interface UseWorkflowDependencies {
   resolveVersion?: (
     baseUrl: string,
-    ownerSlug: string,
+    username: string,
     skillSlug: string,
     spec: string,
     options?: { timeoutMs?: number; idToken?: string },
   ) => Promise<ResolveSkillVersionResponse>;
   getArtifactDescriptor?: (
     baseUrl: string,
-    request: { ownerSlug: string; skillSlug: string; version: string },
+    request: { username: string; skillSlug: string; version: string },
     options?: { timeoutMs?: number; idToken?: string },
   ) => Promise<ArtifactDescriptorResponse>;
   downloadArtifact?: (
@@ -124,7 +124,7 @@ export async function installFromRegistry(
   } else {
     const selectorSpec = input.selector.spec;
     const resolved = await callWithOptionalReadTokenRetry((token) =>
-      resolveVersionFn(input.registryBaseUrl, input.ownerSlug, input.skillSlug, selectorSpec, {
+      resolveVersionFn(input.registryBaseUrl, input.username, input.skillSlug, selectorSpec, {
         timeoutMs: input.requestTimeoutMs,
         idToken: token,
       }),
@@ -136,7 +136,7 @@ export async function installFromRegistry(
     getArtifactDescriptorFn(
       input.registryBaseUrl,
       {
-        ownerSlug: input.ownerSlug,
+        username: input.username,
         skillSlug: input.skillSlug,
         version: selectedVersion,
       },
@@ -157,7 +157,7 @@ export async function installFromRegistry(
 
   verifyDownloadedArtifact(descriptor, download.bytes, download.contentType);
 
-  const canonicalSkillId = `@${descriptor.ownerLogin}/${descriptor.skill}`;
+  const canonicalSkillId = `@${descriptor.username}/${descriptor.skill}`;
   const resolvedAgentTarget =
     input.selectedAgentTarget ??
     descriptor.agentTarget ??
@@ -166,7 +166,7 @@ export async function installFromRegistry(
   const installedPath = resolveInstalledSkillPath(
     input.cwd,
     input.registryBaseUrl,
-    descriptor.ownerLogin,
+    descriptor.username,
     descriptor.skill,
     resolvedAgentTarget,
   );
@@ -179,7 +179,7 @@ export async function installFromRegistry(
   const selectorSpec = selectorToSpec(input.selector);
   const lockEntry: InstalledSkillLockEntry = {
     skillId: canonicalSkillId,
-    ownerLogin: descriptor.ownerLogin,
+    username: descriptor.username,
     skill: descriptor.skill,
     selectorSpec,
     version: descriptor.version,
@@ -203,7 +203,7 @@ export async function installFromRegistry(
   return {
     result: {
       skillId: canonicalSkillId,
-      ownerLogin: descriptor.ownerLogin,
+      username: descriptor.username,
       skill: descriptor.skill,
       version: descriptor.version,
       digest: descriptor.digest,

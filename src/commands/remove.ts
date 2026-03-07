@@ -79,7 +79,7 @@ function validateCanonicalPath(cwd: string, entry: SkillsLockEntry): true | stri
     const expectedPath = resolveInstalledSkillPath(
       cwd,
       entry.registryBaseUrl,
-      parsedSkillId.ownerSlug,
+      parsedSkillId.username,
       parsedSkillId.skillSlug,
       entry.agentTarget,
     );

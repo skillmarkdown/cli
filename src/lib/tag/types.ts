@@ -36,14 +36,14 @@ export interface TagEnvConfig {
 
 export interface DistTagsListResponse {
   owner: string;
-  ownerLogin: string;
+  username: string;
   skill: string;
   distTags: Record<string, string>;
   updatedAt: string;
 }
 
 export interface SetDistTagRequest {
-  ownerSlug: string;
+  username: string;
   skillSlug: string;
   tag: string;
   version: string;
@@ -57,7 +57,7 @@ export interface DistTagUpdateResponse {
 }
 
 export interface DeleteDistTagRequest {
-  ownerSlug: string;
+  username: string;
   skillSlug: string;
   tag: string;
 }

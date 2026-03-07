@@ -12,7 +12,7 @@ function lockEntry(overrides = {}) {
   const skill = skillId.split("/")[1];
   return {
     skillId,
-    ownerLogin: "owner",
+    username: "owner",
     skill,
     selectorSpec: "latest",
     resolvedVersion: "1.0.0",
@@ -60,7 +60,7 @@ function baseOptions(overrides = {}) {
       dependencies: [
         {
           skillId: "@owner/skill-a",
-          ownerSlug: "owner",
+          username: "owner",
           skillSlug: "skill-a",
           spec: "latest",
         },
@@ -73,8 +73,8 @@ function baseOptions(overrides = {}) {
     saveSkillsLock: async () => {},
     installFromRegistry: async (input) => ({
       result: {
-        skillId: `@${input.ownerSlug}/${input.skillSlug}`,
-        ownerLogin: input.ownerSlug,
+        skillId: `@${input.username}/${input.skillSlug}`,
+        username: input.username,
         skill: input.skillSlug,
         version: "1.1.0",
         digest: "sha256:new",
@@ -82,15 +82,15 @@ function baseOptions(overrides = {}) {
         mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
         installedPath:
           `/workspace/project/.agent/skills/registry.skillmarkdown.com/` +
-          `${input.ownerSlug}/${input.skillSlug}`,
+          `${input.username}/${input.skillSlug}`,
         registryBaseUrl: "https://registry.example.com",
         installedAt: "2026-03-02T12:34:56.000Z",
         source: "registry",
         agentTarget: input.selectedAgentTarget,
       },
       lockEntry: {
-        skillId: `@${input.ownerSlug}/${input.skillSlug}`,
-        ownerLogin: input.ownerSlug,
+        skillId: `@${input.username}/${input.skillSlug}`,
+        username: input.username,
         skill: input.skillSlug,
         selectorSpec: input.selector.spec ?? input.selector.version,
         version: "1.1.0",
@@ -99,7 +99,7 @@ function baseOptions(overrides = {}) {
         mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
         installedPath:
           `/workspace/project/.agent/skills/registry.skillmarkdown.com/` +
-          `${input.ownerSlug}/${input.skillSlug}`,
+          `${input.username}/${input.skillSlug}`,
         registryBaseUrl: "https://registry.example.com",
         downloadedFrom: "https://storage.example.com",
         installedAt: "2026-03-02T12:34:56.000Z",
@@ -149,13 +149,13 @@ test("installs dependencies and writes lockfile entries", async () => {
           dependencies: [
             {
               skillId: "@owner/skill-a",
-              ownerSlug: "owner",
+              username: "owner",
               skillSlug: "skill-a",
               spec: "latest",
             },
             {
               skillId: "@owner/skill-b",
-              ownerSlug: "owner",
+              username: "owner",
               skillSlug: "skill-b",
               spec: "^1.2.0",
               agentTarget: "claude",
@@ -163,7 +163,7 @@ test("installs dependencies and writes lockfile entries", async () => {
           ],
         }),
         installFromRegistry: async (input) => {
-          installCalls.push(`${input.ownerSlug}/${input.skillSlug}:${input.selectedAgentTarget}`);
+          installCalls.push(`${input.username}/${input.skillSlug}:${input.selectedAgentTarget}`);
           return baseOptions().installFromRegistry(input);
         },
         saveSkillsLock: async (_cwd, lock) => {
@@ -200,13 +200,13 @@ test("continues after dependency failure and exits non-zero", async () => {
           dependencies: [
             {
               skillId: "@owner/skill-a",
-              ownerSlug: "owner",
+              username: "owner",
               skillSlug: "skill-a",
               spec: "latest",
             },
             {
               skillId: "@owner/skill-b",
-              ownerSlug: "owner",
+              username: "owner",
               skillSlug: "skill-b",
               spec: "latest",
             },
@@ -241,7 +241,7 @@ test("global --agent-target accepts new builtin targets", async () => {
           dependencies: [
             {
               skillId: "@owner/skill-a",
-              ownerSlug: "owner",
+              username: "owner",
               skillSlug: "skill-a",
               spec: "latest",
             },
@@ -270,7 +270,7 @@ test("global --agent-target overrides dependency/default targets", async () => {
           dependencies: [
             {
               skillId: "@owner/skill-a",
-              ownerSlug: "owner",
+              username: "owner",
               skillSlug: "skill-a",
               spec: "latest",
               agentTarget: "claude",
@@ -302,7 +302,7 @@ test("prunes undeclared lock entries when --prune is set", async () => {
           dependencies: [
             {
               skillId: "@owner/skill-a",
-              ownerSlug: "owner",
+              username: "owner",
               skillSlug: "skill-a",
               spec: "latest",
             },
@@ -353,7 +353,7 @@ test("rejects pruning non-canonical install paths from lockfile", async () => {
           dependencies: [
             {
               skillId: "@owner/skill-a",
-              ownerSlug: "owner",
+              username: "owner",
               skillSlug: "skill-a",
               spec: "latest",
             },

@@ -14,7 +14,7 @@ test("listDistTags returns parsed payload", async () => {
       assert.equal(url.pathname, "/v1/skills/owner/test-skill/dist-tags");
       return mockJsonResponse(200, {
         owner: "@owner",
-        ownerLogin: "owner",
+        username: "owner",
         skill: "test-skill",
         distTags: { latest: "1.2.3" },
         updatedAt: "2026-03-03T12:00:00.000Z",
@@ -22,12 +22,12 @@ test("listDistTags returns parsed payload", async () => {
     },
     () =>
       listDistTags("https://registry.example.com", {
-        ownerSlug: "owner",
+        username: "owner",
         skillSlug: "test-skill",
       }),
   );
 
-  assert.equal(payload.ownerLogin, "owner");
+  assert.equal(payload.username, "owner");
   assert.equal(payload.distTags.latest, "1.2.3");
 });
 
@@ -43,7 +43,7 @@ test("listDistTags surfaces strict route errors without fallback", async () => {
     async () => {
       await assert.rejects(
         listDistTags("https://registry.example.com", {
-          ownerSlug: "owner",
+          username: "owner",
           skillSlug: "test-skill",
         }),
         (error) => {
@@ -75,7 +75,7 @@ test("setDistTag sends PUT payload and parses response", async () => {
     },
     () =>
       setDistTag("https://registry.example.com", "id-token", {
-        ownerSlug: "owner",
+        username: "owner",
         skillSlug: "test-skill",
         tag: "beta",
         version: "1.2.3",
@@ -101,7 +101,7 @@ test("removeDistTag sends DELETE and parses response", async () => {
     },
     () =>
       removeDistTag("https://registry.example.com", "id-token", {
-        ownerSlug: "owner",
+        username: "owner",
         skillSlug: "test-skill",
         tag: "beta",
       }),
@@ -123,7 +123,7 @@ test("tag client maps API errors", async () => {
     async () => {
       await assert.rejects(
         listDistTags("https://registry.example.com", {
-          ownerSlug: "owner",
+          username: "owner",
           skillSlug: "missing",
         }),
         (error) => {

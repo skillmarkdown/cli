@@ -12,7 +12,7 @@ export interface ViewEnvConfig {
 
 export interface ViewResponse {
   owner: string;
-  ownerLogin: string;
+  username: string;
   skill: string;
   description: string;
   access: string;

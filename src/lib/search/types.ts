@@ -18,7 +18,7 @@ export interface SearchEnvConfig {
 export interface SearchSkillResult {
   skillId: string;
   owner: string;
-  ownerLogin: string;
+  username: string;
   skill: string;
   description: string;
   distTags: Record<string, string>;

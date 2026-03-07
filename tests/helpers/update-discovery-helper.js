@@ -12,7 +12,7 @@ function toInstalledTarget(entry) {
   const parsed = parseSkillId(entry.skillId);
   return {
     skillId: parsed.skillId,
-    ownerSlug: parsed.ownerSlug,
+    username: parsed.username,
     skillSlug: parsed.skillSlug,
     installedPath: entry.installedPath,
     agentTarget: entry.agentTarget,
@@ -81,12 +81,12 @@ function toInstalledSkillTarget(cwd, registryBaseUrl, rawSkillId, agentTarget) {
   const parsed = parseSkillId(rawSkillId);
   return {
     skillId: parsed.skillId,
-    ownerSlug: parsed.ownerSlug,
+    username: parsed.username,
     skillSlug: parsed.skillSlug,
     installedPath: resolveInstalledSkillPath(
       cwd,
       registryBaseUrl,
-      parsed.ownerSlug,
+      parsed.username,
       parsed.skillSlug,
       agentTarget,
     ),

@@ -80,7 +80,7 @@ export async function resolveWriteAuth(
     } catch {
       return {
         ok: false,
-        message: `${options.command}: owner profile not found. Complete sign-up on the web before using this command.`,
+        message: `${options.command}: username profile not found. Complete sign-up on the web before using this command.`,
       };
     }
 

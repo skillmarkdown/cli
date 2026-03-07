@@ -23,7 +23,7 @@ function baseOptions(overrides = {}) {
     getWhoami: async () => ({
       uid: "uid-1",
       owner: "@core",
-      ownerLogin: "core",
+      username: "core",
       email: "core@example.com",
       projectId: "skillmarkdown-development",
       authType: "firebase",
@@ -101,7 +101,7 @@ test("prints free plan and disabled entitlements in human format", async () => {
         getWhoami: async () => ({
           uid: "uid-1",
           owner: "@core",
-          ownerLogin: "core",
+          username: "core",
           email: "core@example.com",
           projectId: "skillmarkdown-development",
           authType: "firebase",

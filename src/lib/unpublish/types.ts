@@ -18,7 +18,7 @@ export interface UnpublishEnvConfig {
 }
 
 export interface UnpublishVersionRequest {
-  ownerSlug: string;
+  username: string;
   skillSlug: string;
   version: string;
 }

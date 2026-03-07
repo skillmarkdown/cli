@@ -20,7 +20,7 @@ function isHistoryResponse(value: unknown): value is HistoryResponse {
   const record = value as Record<string, unknown>;
   return (
     typeof record.owner === "string" &&
-    typeof record.ownerLogin === "string" &&
+    typeof record.username === "string" &&
     typeof record.skill === "string" &&
     typeof record.limit === "number" &&
     Array.isArray(record.results) &&
@@ -33,7 +33,7 @@ export async function listSkillVersionHistory(
   request: HistoryRequest,
   options: HistoryClientOptions = {},
 ): Promise<HistoryResponse> {
-  const url = new URL(`${baseUrl}/v1/skills/${request.ownerSlug}/${request.skillSlug}/versions`);
+  const url = new URL(`${baseUrl}/v1/skills/${request.username}/${request.skillSlug}/versions`);
 
   if (request.limit) {
     url.searchParams.set("limit", String(request.limit));

@@ -17,7 +17,7 @@ test("getWhoami sends auth header and parses response", async () => {
       return mockJsonResponse(200, {
         uid: "uid-1",
         owner: "@core",
-        ownerLogin: "core",
+        username: "core",
         email: "core@example.com",
         projectId: "skillmarkdown-development",
         authType: "firebase",

@@ -26,7 +26,7 @@ test("unpublishVersion sends DELETE and parses response", async () => {
     },
     () =>
       unpublishVersion("https://registry.example.com", "id-token", {
-        ownerSlug: "core",
+        username: "core",
         skillSlug: "test-skill",
         version: "1.2.3",
       }),
@@ -49,7 +49,7 @@ test("unpublish client maps API errors", async () => {
     async () => {
       await assert.rejects(
         unpublishVersion("https://registry.example.com", "id-token", {
-          ownerSlug: "core",
+          username: "core",
           skillSlug: "test-skill",
           version: "1.2.3",
         }),

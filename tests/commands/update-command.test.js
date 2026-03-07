@@ -16,7 +16,7 @@ function lockEntry(overrides = {}) {
     `/workspace/project/.agent/skills/registry.skillmarkdown.com/owner/${skill}`;
   return {
     skillId,
-    ownerLogin: "owner",
+    username: "owner",
     skill,
     selectorSpec: "latest",
     resolvedVersion: "1.0.0",
@@ -63,8 +63,8 @@ function baseOptions(overrides = {}) {
     saveSkillsLock: async () => {},
     installFromRegistry: async (input) => ({
       result: {
-        skillId: `@${input.ownerSlug}/${input.skillSlug}`,
-        ownerLogin: input.ownerSlug,
+        skillId: `@${input.username}/${input.skillSlug}`,
+        username: input.username,
         skill: input.skillSlug,
         version: "1.1.0",
         digest: "sha256:new",
@@ -72,15 +72,15 @@ function baseOptions(overrides = {}) {
         mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
         installedPath:
           `/workspace/project/.agent/skills/registry.skillmarkdown.com/` +
-          `${input.ownerSlug}/${input.skillSlug}`,
+          `${input.username}/${input.skillSlug}`,
         registryBaseUrl: "https://registry.example.com",
         installedAt: "2026-03-02T12:34:56.000Z",
         source: "registry",
         agentTarget: input.selectedAgentTarget,
       },
       lockEntry: {
-        skillId: `@${input.ownerSlug}/${input.skillSlug}`,
-        ownerLogin: input.ownerSlug,
+        skillId: `@${input.username}/${input.skillSlug}`,
+        username: input.username,
         skill: input.skillSlug,
         selectorSpec: input.selector.spec ?? input.selector.version,
         version: "1.1.0",
@@ -89,11 +89,11 @@ function baseOptions(overrides = {}) {
         mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
         installedPath:
           `/workspace/project/.agent/skills/registry.skillmarkdown.com/` +
-          `${input.ownerSlug}/${input.skillSlug}`,
+          `${input.username}/${input.skillSlug}`,
         registryBaseUrl: "https://registry.example.com",
         downloadedFrom: "https://storage.example.com",
         installedAt: "2026-03-02T12:34:56.000Z",
-        sourceCommand: `skillmd update @${input.ownerSlug}/${input.skillSlug}`,
+        sourceCommand: `skillmd update @${input.username}/${input.skillSlug}`,
         agentTarget: input.selectedAgentTarget,
       },
     }),

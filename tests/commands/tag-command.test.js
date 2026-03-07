@@ -35,7 +35,7 @@ function baseOptions(overrides = {}) {
     }),
     listDistTags: async () => ({
       owner: "@core",
-      ownerLogin: "core",
+      username: "core",
       skill: "publish-skill",
       distTags: {
         latest: "1.0.0",

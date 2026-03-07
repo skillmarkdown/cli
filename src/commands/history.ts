@@ -16,7 +16,7 @@ interface HistoryCommandOptions {
   getConfig?: (env: NodeJS.ProcessEnv) => RegistryEnvConfig;
   listHistory?: (
     baseUrl: string,
-    request: { ownerSlug: string; skillSlug: string; limit?: number; cursor?: string },
+    request: { username: string; skillSlug: string; limit?: number; cursor?: string },
     options?: { timeoutMs?: number; idToken?: string },
   ) => Promise<HistoryResponse>;
   resolveReadIdToken?: () => Promise<string | null>;
@@ -125,7 +125,7 @@ export async function runHistoryCommand(
     const resolveReadIdTokenFn =
       options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }));
     const request = {
-      ownerSlug: parsedSkillId.ownerSlug,
+      username: parsedSkillId.username,
       skillSlug: parsedSkillId.skillSlug,
       limit: parsed.limit,
       cursor: parsed.cursor,

@@ -14,7 +14,7 @@ test("getSkillView returns parsed response payload", async () => {
       assert.equal(url.pathname, "/v1/skills/owner/test-skill");
       return mockJsonResponse(200, {
         owner: "@owner",
-        ownerLogin: "owner",
+        username: "owner",
         skill: "test-skill",
         description: "desc",
         access: "public",
@@ -26,7 +26,7 @@ test("getSkillView returns parsed response payload", async () => {
     },
     () =>
       getSkillView("https://registry.example.com", {
-        ownerSlug: "owner",
+        username: "owner",
         skillSlug: "test-skill",
       }),
   );
@@ -41,7 +41,7 @@ test("getSkillView attaches bearer token when provided", async () => {
       assert.match(String(init?.headers?.Authorization), /^Bearer /);
       return mockJsonResponse(200, {
         owner: "@owner",
-        ownerLogin: "owner",
+        username: "owner",
         skill: "test-skill",
         description: "desc",
         access: "private",
@@ -55,7 +55,7 @@ test("getSkillView attaches bearer token when provided", async () => {
       await getSkillView(
         "https://registry.example.com",
         {
-          ownerSlug: "owner",
+          username: "owner",
           skillSlug: "test-skill",
         },
         { idToken: "token_123" },
@@ -76,7 +76,7 @@ test("getSkillView maps API errors", async () => {
     async () => {
       await assert.rejects(
         getSkillView("https://registry.example.com", {
-          ownerSlug: "owner",
+          username: "owner",
           skillSlug: "missing",
         }),
         (error) => {

@@ -27,13 +27,13 @@ export function resolveRegistryHost(baseUrl: string): string {
 export function resolveInstalledSkillPath(
   cwd: string,
   registryBaseUrl: string,
-  ownerSlug: string,
+  username: string,
   skillSlug: string,
   agentTarget: AgentTarget = DEFAULT_AGENT_TARGET,
 ): string {
   return join(
     resolveInstalledSkillsHostRoot(cwd, registryBaseUrl, agentTarget),
-    ownerSlug,
+    username,
     skillSlug,
   );
 }

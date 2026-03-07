@@ -21,7 +21,7 @@ function baseOptions(overrides = {}) {
     }),
     listHistory: async () => ({
       owner: "@stefdevscore",
-      ownerLogin: "stefdevscore",
+      username: "stefdevscore",
       skill: "test-skill",
       limit: 20,
       results: [
@@ -102,7 +102,7 @@ test("retries history request with read token after not found", async () => {
 
           return {
             owner: "@stefdevscore",
-            ownerLogin: "stefdevscore",
+            username: "stefdevscore",
             skill: "test-skill",
             limit: 20,
             results: [],
@@ -125,7 +125,7 @@ test("prints deprecated metadata and truncates digest in human output", async ()
       baseOptions({
         listHistory: async () => ({
           owner: "@stefdevscore",
-          ownerLogin: "stefdevscore",
+          username: "stefdevscore",
           skill: "test-skill",
           limit: 10,
           results: [
@@ -162,7 +162,7 @@ test("prints json output with --json", async () => {
 
   assert.equal(result, 0);
   const parsed = JSON.parse(logs.join("\n"));
-  assert.equal(parsed.ownerLogin, "stefdevscore");
+  assert.equal(parsed.username, "stefdevscore");
   assert.equal(Array.isArray(parsed.results), true);
 });
 
@@ -173,7 +173,7 @@ test("prints no-result message when empty", async () => {
       baseOptions({
         listHistory: async () => ({
           owner: "@stefdevscore",
-          ownerLogin: "stefdevscore",
+          username: "stefdevscore",
           skill: "test-skill",
           limit: 20,
           results: [],

@@ -251,7 +251,7 @@ test("spawned CLI: search prints dist-tag latest and caches selection for numeri
             {
               skillId: "@owner/skill-a",
               owner: "@owner",
-              ownerLogin: "owner",
+              username: "owner",
               skill: "skill-a",
               description: "A skill",
               distTags: { latest: "1.2.3" },
@@ -269,7 +269,7 @@ test("spawned CLI: search prints dist-tag latest and caches selection for numeri
       response.end(
         JSON.stringify({
           owner: "@owner",
-          ownerLogin: "owner",
+          username: "owner",
           skill: "skill-a",
           description: "A skill",
           access: "public",
@@ -320,7 +320,7 @@ test("spawned CLI: tag ls/add/rm manages dist-tags via strict v1 endpoints", asy
       response.end(
         JSON.stringify({
           owner: "@core",
-          ownerLogin: "core",
+          username: "core",
           skill: "tag-skill",
           distTags,
           updatedAt: "2026-03-03T12:00:00.000Z",
@@ -512,7 +512,7 @@ test("spawned CLI: update --all uses skills-lock.json and rewrites resolved vers
       response.end(
         JSON.stringify({
           owner: "@owner",
-          ownerLogin: "owner",
+          username: "owner",
           skill: "skill-a",
           spec: "latest",
           version: "1.1.0",
@@ -529,7 +529,7 @@ test("spawned CLI: update --all uses skills-lock.json and rewrites resolved vers
       response.end(
         JSON.stringify({
           owner: "@owner",
-          ownerLogin: "owner",
+          username: "owner",
           skill: "skill-a",
           version: "1.1.0",
           digest: archive.digest,
@@ -564,7 +564,7 @@ test("spawned CLI: update --all uses skills-lock.json and rewrites resolved vers
         entries: {
           a: {
             skillId: "@owner/skill-a",
-            ownerLogin: "owner",
+            username: "owner",
             skill: "skill-a",
             selectorSpec: "latest",
             resolvedVersion: "1.0.0",
@@ -623,7 +623,7 @@ test("spawned CLI: install reads skills.json and writes skills-lock.json", async
       response.end(
         JSON.stringify({
           owner: "@owner",
-          ownerLogin: "owner",
+          username: "owner",
           skill: "skill-a",
           spec: "latest",
           version: "1.2.3",
@@ -640,7 +640,7 @@ test("spawned CLI: install reads skills.json and writes skills-lock.json", async
       response.end(
         JSON.stringify({
           owner: "@owner",
-          ownerLogin: "owner",
+          username: "owner",
           skill: "skill-a",
           version: "1.2.3",
           digest: archive.digest,
@@ -729,7 +729,7 @@ test("spawned CLI: global --auth-token works with whoami", async () => {
         JSON.stringify({
           uid: "uid-1",
           owner: "@core",
-          ownerLogin: "core",
+          username: "core",
           email: "core@example.com",
           projectId: "skillmarkdown-development",
           authType: "token",
@@ -818,7 +818,7 @@ test("spawned CLI: team lifecycle commands use v1 team endpoints", async () => {
             members: [
               {
                 owner: "@core",
-                ownerLogin: "core",
+                username: "core",
                 role: "owner",
                 addedAt: "2026-03-04T00:00:00.000Z",
                 updatedAt: "2026-03-04T00:00:00.000Z",
@@ -837,7 +837,7 @@ test("spawned CLI: team lifecycle commands use v1 team endpoints", async () => {
             status: "added",
             member: {
               owner: "@alice",
-              ownerLogin: "alice",
+              username: "alice",
               role: "member",
             },
           }),
@@ -853,7 +853,7 @@ test("spawned CLI: team lifecycle commands use v1 team endpoints", async () => {
             status: "updated",
             member: {
               owner: "@alice",
-              ownerLogin: "alice",
+              username: "alice",
               role: "admin",
             },
           }),
@@ -866,7 +866,7 @@ test("spawned CLI: team lifecycle commands use v1 team endpoints", async () => {
         response.end(
           JSON.stringify({
             team: "core-team",
-            ownerLogin: "alice",
+            username: "alice",
             status: "removed",
           }),
         );

@@ -28,7 +28,7 @@ test("deprecateVersions sends POST body and parses response", async () => {
     },
     () =>
       deprecateVersions("https://registry.example.com", "id-token", {
-        ownerSlug: "core",
+        username: "core",
         skillSlug: "test-skill",
         range: "^1.2.0",
         message: "Use 2.x",
@@ -51,7 +51,7 @@ test("deprecate client maps API errors", async () => {
     async () => {
       await assert.rejects(
         deprecateVersions("https://registry.example.com", "id-token", {
-          ownerSlug: "core",
+          username: "core",
           skillSlug: "test-skill",
           range: "^1.2.0",
           message: "Use 2.x",

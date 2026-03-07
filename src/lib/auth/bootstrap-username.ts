@@ -6,18 +6,18 @@ import {
   type ApiErrorPayload,
 } from "../shared/api-client";
 
-interface BootstrapOwnerResponse {
+interface BootstrapUsernameResponse {
   status: "bootstrapped";
   uid: string;
   owner: string;
-  ownerSlug: string;
+  username: string;
 }
 
-interface BootstrapOwnerOptions {
+interface BootstrapUsernameOptions {
   timeoutMs?: number;
 }
 
-function isBootstrapOwnerResponse(value: unknown): value is BootstrapOwnerResponse {
+function isBootstrapUsernameResponse(value: unknown): value is BootstrapUsernameResponse {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -26,17 +26,17 @@ function isBootstrapOwnerResponse(value: unknown): value is BootstrapOwnerRespon
     record.status === "bootstrapped" &&
     typeof record.uid === "string" &&
     typeof record.owner === "string" &&
-    typeof record.ownerSlug === "string"
+    typeof record.username === "string"
   );
 }
 
-export async function bootstrapOwner(
+export async function bootstrapUsername(
   baseUrl: string,
   idToken: string,
-  request: { ownerSlug: string },
-  options: BootstrapOwnerOptions = {},
-): Promise<BootstrapOwnerResponse> {
-  const url = new URL(`${baseUrl}/v1/auth/bootstrap-owner`);
+  request: { username: string },
+  options: BootstrapUsernameOptions = {},
+): Promise<BootstrapUsernameResponse> {
+  const url = new URL(`${baseUrl}/v1/auth/bootstrap-username`);
   const response = await fetchWithTimeout(
     url,
     {
@@ -49,20 +49,22 @@ export async function bootstrapOwner(
     },
     { timeoutMs: options.timeoutMs },
   );
-  const parsed = await parseJsonOrThrow<BootstrapOwnerResponse | ApiErrorPayload>(
+  const parsed = await parseJsonOrThrow<BootstrapUsernameResponse | ApiErrorPayload>(
     response,
     "Auth bootstrap API",
   );
   if (!response.ok) {
+    const errorPayload =
+      parsed && typeof parsed === "object" ? (parsed as ApiErrorPayload) : ({} as ApiErrorPayload);
     const error = extractApiErrorFields(
       response.status,
-      parsed as ApiErrorPayload,
-      `bootstrap-owner request failed (${response.status})`,
+      errorPayload,
+      `bootstrap-username request failed (${response.status})`,
     );
     throw new Error(`${error.message} (${error.code}, status ${response.status})`);
   }
-  if (!isBootstrapOwnerResponse(parsed)) {
-    throw new Error("Auth bootstrap API response was missing required fields");
+  if (!isBootstrapUsernameResponse(parsed)) {
+    throw new Error("Auth bootstrap username API response was missing required fields");
   }
   return parsed;
 }

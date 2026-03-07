@@ -15,8 +15,8 @@ export interface TeamRecord {
 }
 
 export interface TeamMemberRecord {
-  owner: string;
-  ownerLogin: string;
+  usernameHandle: string;
+  username: string;
   role: TeamRole;
   addedAt: string;
   updatedAt: string;
@@ -33,7 +33,7 @@ export interface TeamCreateRequest {
 }
 
 export interface TeamMemberAddRequest {
-  ownerLogin: string;
+  username: string;
   role: MutableTeamRole;
 }
 
@@ -43,8 +43,8 @@ export interface TeamMemberUpdateRequest {
 
 export interface TeamMemberMutationResponse {
   team: string;
-  owner: string;
-  ownerLogin: string;
+  usernameHandle: string;
+  username: string;
   role: TeamRole;
   status: "added" | "updated" | "removed";
 }
@@ -63,6 +63,6 @@ export interface ParsedTeamFlags {
   action?: TeamAction;
   team?: string;
   displayName?: string | null;
-  ownerLogin?: string;
+  username?: string;
   role?: TeamRole;
 }

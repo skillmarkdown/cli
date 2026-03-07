@@ -8,7 +8,7 @@ const { parseSkillId } = requireDist("lib/registry/skill-id.js");
 test("parseSkillId accepts @owner/skill and normalizes casing", () => {
   const parsed = parseSkillId("@StefDevScore/Test-Skill");
   assert.deepEqual(parsed, {
-    ownerSlug: "stefdevscore",
+    username: "stefdevscore",
     skillSlug: "test-skill",
     skillId: "@stefdevscore/test-skill",
   });
@@ -17,7 +17,7 @@ test("parseSkillId accepts @owner/skill and normalizes casing", () => {
 test("parseSkillId accepts owner/skill format", () => {
   const parsed = parseSkillId("stefdevscore/test-skill");
   assert.deepEqual(parsed, {
-    ownerSlug: "stefdevscore",
+    username: "stefdevscore",
     skillSlug: "test-skill",
     skillId: "@stefdevscore/test-skill",
   });

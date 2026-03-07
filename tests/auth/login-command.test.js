@@ -41,7 +41,7 @@ test("login uses built-in defaults when env vars are missing", async () => {
     getWhoami: async () => ({
       uid: "uid-1",
       owner: "@core",
-      ownerSlug: "core",
+      username: "core",
       email: "user@example.com",
       projectId: "skillmarkdown",
       authType: "firebase",
@@ -82,7 +82,7 @@ test("login succeeds and writes session", async () => {
     getWhoami: async () => ({
       uid: "uid-1",
       owner: "@core",
-      ownerSlug: "core",
+      username: "core",
       email: "user@example.com",
       projectId: "skillmarkdown",
       authType: "firebase",
@@ -139,7 +139,7 @@ test("login clears stale session and reauthenticates", async () => {
     getWhoami: async () => ({
       uid: "uid-new",
       owner: "@core",
-      ownerSlug: "core",
+      username: "core",
       email: "new@example.com",
       projectId: "skillmarkdown",
       authType: "firebase",
@@ -186,7 +186,7 @@ test("login fails and clears session when owner profile is missing", async () =>
       expiresInSeconds: 3600,
     }),
     getWhoami: async () => {
-      throw new Error("owner profile not found");
+      throw new Error("username profile not found");
     },
   });
 

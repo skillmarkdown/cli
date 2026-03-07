@@ -21,7 +21,7 @@ test("parses members add defaults", () => {
     valid: true,
     action: "members_add",
     team: "core-team",
-    ownerLogin: "owner-login",
+    username: "owner-login",
     role: "member",
     json: false,
   });
@@ -40,7 +40,7 @@ test("parses members set-role", () => {
     valid: true,
     action: "members_set_role",
     team: "core-team",
-    ownerLogin: "owner-login",
+    username: "owner-login",
     role: "admin",
     json: true,
   });

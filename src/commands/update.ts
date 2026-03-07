@@ -288,7 +288,7 @@ export async function runUpdateCommand(
             requestTimeoutMs: config.requestTimeoutMs,
             resolveReadIdToken: resolveReadIdTokenCached,
             cwd,
-            ownerSlug: parsedSkillId.ownerSlug,
+            username: parsedSkillId.username,
             skillSlug: parsedSkillId.skillSlug,
             selector: toSelector(intent.selector.value),
             selectedAgentTarget: entry.agentTarget as AgentTarget,
