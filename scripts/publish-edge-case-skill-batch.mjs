@@ -18,7 +18,7 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workspaceRoot = resolve(repoRoot, "..");
 const cliPath = join(repoRoot, "dist", "cli.js");
 const templateRoot = resolve(workspaceRoot, "skillmd-cli-skill");
-const defaultCount = 240;
+const defaultCount = 48;
 const defaultVersionSet = [
   "0.1.0",
   "0.1.1",
@@ -39,6 +39,19 @@ const defaultTargets = [
   "deepseek",
   "perplexity",
 ];
+
+const profileDefaults = {
+  baseline: {
+    count: 48,
+    versionsPerSkill: 1,
+    multiVersionEvery: 4,
+  },
+  extended: {
+    count: 240,
+    versionsPerSkill: 2,
+    multiVersionEvery: 1,
+  },
+};
 const licenseTexts = {
   MIT: `MIT License
 
@@ -68,13 +81,15 @@ SOFTWARE.
 
 function parseArgs(argv) {
   const parsed = {
-    count: defaultCount,
+    profile: "baseline",
+    count: profileDefaults.baseline.count,
     startIndex: 1,
     access: "public",
     workspace: null,
     keepWorkspace: false,
     prefix: "edge",
-    versionsPerSkill: 1,
+    versionsPerSkill: profileDefaults.baseline.versionsPerSkill,
+    multiVersionEvery: profileDefaults.baseline.multiVersionEvery,
     versionSet: [...defaultVersionSet],
     tags: [...defaultTags],
     targets: [...defaultTargets],
@@ -84,6 +99,15 @@ function parseArgs(argv) {
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
+    if (arg === "--profile") {
+      parsed.profile = (argv[index + 1] ?? "").trim() || "baseline";
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--profile=")) {
+      parsed.profile = arg.slice("--profile=".length).trim() || "baseline";
+      continue;
+    }
     if (arg === "--count") {
       parsed.count = Number.parseInt(argv[index + 1] ?? "", 10);
       index += 1;
@@ -100,6 +124,15 @@ function parseArgs(argv) {
     }
     if (arg.startsWith("--start-index=")) {
       parsed.startIndex = Number.parseInt(arg.slice("--start-index=".length), 10);
+      continue;
+    }
+    if (arg === "--multi-version-every") {
+      parsed.multiVersionEvery = Number.parseInt(argv[index + 1] ?? "", 10);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--multi-version-every=")) {
+      parsed.multiVersionEvery = Number.parseInt(arg.slice("--multi-version-every=".length), 10);
       continue;
     }
     if (arg === "--versions-per-skill") {
@@ -183,6 +216,28 @@ function parseArgs(argv) {
     throw new Error(`unsupported argument: ${arg}`);
   }
 
+  const profile = profileDefaults[parsed.profile] ?? null;
+  if (!profile) {
+    throw new Error("--profile must be baseline or extended");
+  }
+  if (!argv.some((value) => value === "--count" || value.startsWith("--count="))) {
+    parsed.count = profile.count;
+  }
+  if (
+    !argv.some(
+      (value) => value === "--versions-per-skill" || value.startsWith("--versions-per-skill="),
+    )
+  ) {
+    parsed.versionsPerSkill = profile.versionsPerSkill;
+  }
+  if (
+    !argv.some(
+      (value) => value === "--multi-version-every" || value.startsWith("--multi-version-every="),
+    )
+  ) {
+    parsed.multiVersionEvery = profile.multiVersionEvery;
+  }
+
   if (!Number.isInteger(parsed.count) || parsed.count < 1) {
     throw new Error("--count must be a positive integer");
   }
@@ -191,6 +246,9 @@ function parseArgs(argv) {
   }
   if (!Number.isInteger(parsed.versionsPerSkill) || parsed.versionsPerSkill < 1) {
     throw new Error("--versions-per-skill must be a positive integer");
+  }
+  if (!Number.isInteger(parsed.multiVersionEvery) || parsed.multiVersionEvery < 1) {
+    throw new Error("--multi-version-every must be a positive integer");
   }
   if (!["public", "private"].includes(parsed.access)) {
     throw new Error("--access must be public or private");
@@ -225,9 +283,11 @@ function printUsage(code) {
       "for browse/search/detail/install edge-case handling.",
       "",
       "Options:",
+      "  --profile <baseline|extended>  Seed profile. Default: baseline",
       `  --count <n>               Number of skills to generate. Default: ${defaultCount}`,
       "  --start-index <n>         Starting sequence number. Default: 1",
-      "  --versions-per-skill <n>  Versions to publish per skill. Default: 1",
+      "  --versions-per-skill <n>  Versions to publish for multi-version skills",
+      "  --multi-version-every <n> Every nth skill gets multi-version history",
       "  --access <public|private> Publish access. Default: public",
       "  --targets <csv>           Agent targets. Default: built-in provider set",
       "  --tags <csv>              Dist-tags to rotate across publishes",
@@ -241,11 +301,13 @@ function printUsage(code) {
       "",
       "Examples:",
       "  node scripts/publish-edge-case-skill-batch.mjs",
-      "  node scripts/publish-edge-case-skill-batch.mjs --count 320 --versions-per-skill 2",
+      "  node scripts/publish-edge-case-skill-batch.mjs --profile extended",
       "  node scripts/publish-edge-case-skill-batch.mjs --prefix edgeb --dry-run",
-      "  node scripts/publish-edge-case-skill-batch.mjs --targets skillmd,claude,gemini --count 90",
+      "  node scripts/publish-edge-case-skill-batch.mjs --count 96 --multi-version-every 3",
       "",
       "Notes:",
+      "  - baseline profile creates 48 skills with every 4th skill getting version history",
+      "  - extended profile recreates the heavier 240-skill matrix",
       "  - private publish requires a Pro-capable account",
       "  - uses /skillmd-cli-skill as the source template for wholeness",
       "  - writes a summary manifest to edge-case-publish-report.json in the workspace",
@@ -311,7 +373,10 @@ function buildScenario(index, options) {
   const target = options.targets[index % options.targets.length];
   const contentMode = ["full", "lean", "reference-heavy", "ops-heavy"][index % 4];
   const licenseMode = ["MIT", "Apache2", "Proprietary", "none"][index % 4];
-  const historyLength = Math.max(1, Math.min(options.versionsPerSkill, options.versionSet.length));
+  const shouldUseVersionHistory = index % options.multiVersionEvery === 0;
+  const historyLength = shouldUseVersionHistory
+    ? Math.max(1, Math.min(options.versionsPerSkill, options.versionSet.length))
+    : 1;
   const publishes = [];
 
   for (let versionIndex = 0; versionIndex < historyLength; versionIndex += 1) {
@@ -599,10 +664,12 @@ function main() {
   const report = {
     templateRoot,
     workspace: tempRoot,
+    profile: options.profile,
     access: options.access,
     dryRun: options.dryRun,
     count: options.count,
     versionsPerSkill: options.versionsPerSkill,
+    multiVersionEvery: options.multiVersionEvery,
     published: [],
   };
 

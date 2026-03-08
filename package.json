@@ -41,7 +41,8 @@
     "test": "npm run build:test && node --test",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:coverage": "npm run build:test && rm -rf coverage && mkdir -p coverage/v8 && NODE_V8_COVERAGE=coverage/v8 node --test --experimental-test-coverage",
-    "seed:edge-cases:dev": "node scripts/publish-edge-case-skill-batch.mjs"
+    "seed:edge-cases:dev": "node scripts/publish-edge-case-skill-batch.mjs --profile baseline",
+    "seed:edge-cases:dev:extended": "node scripts/publish-edge-case-skill-batch.mjs --profile extended"
   },
   "engines": {
     "node": ">=18"
