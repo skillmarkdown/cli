@@ -272,3 +272,33 @@ test("continues after update failure and exits non-zero", async () => {
   assert.equal(parsed.updated.length, 1);
   assert.equal(parsed.failed.length, 1);
 });
+
+test("update --global reads global lock scope and preserves global source command", async () => {
+  let loadArgs;
+  let saveArgs;
+  const { result } = await captureConsole(() =>
+    runUpdateCommand(
+      ["--all", "--global", "--agent-target", "openai"],
+      baseOptions({
+        homeDir: "/Users/tester",
+        loadSkillsLock: async (...args) => {
+          loadArgs = args;
+          return lockFile({
+            a: lockEntry({
+              skillId: "@owner/skill-a",
+              installedPath: "/Users/tester/.codex/skills/registry.skillmarkdown.com/owner/skill-a",
+              agentTarget: "openai",
+            }),
+          });
+        },
+        saveSkillsLock: async (...args) => {
+          saveArgs = args;
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(loadArgs[2].scope, "global");
+  assert.equal(saveArgs[3].scope, "global");
+});

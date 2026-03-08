@@ -12,8 +12,11 @@ import {
   type SkillsLockEntry,
 } from "../lib/workspace/skills-lock";
 
+type ListScope = "workspace" | "global";
+
 interface ListCommandOptions {
   cwd?: string;
+  homeDir?: string;
   env?: NodeJS.ProcessEnv;
   getConfig?: (env: NodeJS.ProcessEnv) => UseEnvConfig;
   loadSkillsLock?: typeof defaultLoadSkillsLock;
@@ -22,11 +25,13 @@ interface ListCommandOptions {
 interface ParsedListFlags {
   valid: boolean;
   json: boolean;
+  global: boolean;
   agentTarget?: AgentTarget;
 }
 
 function parseListFlags(args: string[]): ParsedListFlags {
   let json = false;
+  let global = false;
   let agentTarget: AgentTarget | undefined;
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -34,24 +39,28 @@ function parseListFlags(args: string[]): ParsedListFlags {
       json = true;
       continue;
     }
+    if (arg === "-g" || arg === "--global") {
+      global = true;
+      continue;
+    }
     if (arg === "--agent-target") {
       const value = args[index + 1];
-      if (!value) return { valid: false, json: false };
+      if (!value) return { valid: false, json: false, global: false };
       const parsed = normalizeAgentTarget(value);
-      if (!parsed) return { valid: false, json: false };
+      if (!parsed) return { valid: false, json: false, global: false };
       agentTarget = parsed;
       index += 1;
       continue;
     }
     if (arg.startsWith("--agent-target=")) {
       const parsed = normalizeAgentTarget(arg.slice("--agent-target=".length));
-      if (!parsed) return { valid: false, json: false };
+      if (!parsed) return { valid: false, json: false, global: false };
       agentTarget = parsed;
       continue;
     }
-    return { valid: false, json: false };
+    return { valid: false, json: false, global: false };
   }
-  return { valid: true, json, agentTarget };
+  return { valid: true, json, global, agentTarget };
 }
 
 function toListRow(entry: SkillsLockEntry): {
@@ -110,7 +119,12 @@ export async function runListCommand(
     const cwd = options.cwd ?? process.cwd();
     const env = options.env ?? process.env;
     const config = (options.getConfig ?? getUseEnvConfig)(env);
-    const lock = await (options.loadSkillsLock ?? defaultLoadSkillsLock)(cwd);
+    const scope: ListScope = parsed.global ? "global" : "workspace";
+    const lock = await (options.loadSkillsLock ?? defaultLoadSkillsLock)(
+      cwd,
+      {},
+      { scope, homeDir: options.homeDir },
+    );
     const host = resolveRegistryHost(config.registryBaseUrl);
     const rows = listSkillsLockEntries(lock)
       .filter(({ entry }) => {
@@ -127,12 +141,12 @@ export async function runListCommand(
       );
 
     if (parsed.json) {
-      printJson({ total: rows.length, entries: rows });
+      printJson({ total: rows.length, scope, entries: rows });
     } else if (rows.length === 0) {
       console.log("No installed skills found.");
     } else {
       printListTable(rows);
-      console.log(`Summary: total=${rows.length}`);
+      console.log(`Summary: scope=${scope} total=${rows.length}`);
     }
     return 0;
   } catch (error) {

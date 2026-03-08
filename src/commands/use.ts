@@ -27,6 +27,7 @@ import {
 
 interface UseCommandOptions {
   cwd?: string;
+  homeDir?: string;
   env?: NodeJS.ProcessEnv;
   now?: () => Date;
   getConfig?: (env: NodeJS.ProcessEnv) => UseEnvConfig;
@@ -57,8 +58,9 @@ function printHumanResult(result: UseCommandResult, warnings: string[]): void {
   for (const warning of warnings) {
     console.error(`Warning: ${warning}`);
   }
+  const scopeLabel = result.installScope === "global" ? " globally" : "";
   console.log(
-    `Installed ${result.skillId}@${result.version} to ${result.installedPath} (digest=${result.digest}).`,
+    `Installed ${result.skillId}@${result.version}${scopeLabel} to ${result.installedPath} (digest=${result.digest}).`,
   );
   console.log(`Next: skillmd history ${result.skillId} --limit 20`);
 }
@@ -77,6 +79,7 @@ export async function runUseCommand(
     const env = options.env ?? process.env;
     const now = options.now ?? (() => new Date());
     const cwd = options.cwd ?? process.cwd();
+    const installScope = parsed.global ? "global" : "workspace";
     const getConfigFn = options.getConfig ?? getUseEnvConfig;
     const installFromRegistryFn = options.installFromRegistry ?? defaultInstallFromRegistry;
     const loadSkillsLockFn = options.loadSkillsLock ?? defaultLoadSkillsLock;
@@ -85,6 +88,10 @@ export async function runUseCommand(
     const resolveReadIdTokenFn =
       options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }));
     const commandWarnings: string[] = [];
+    if (parsed.global && parsed.save) {
+      return failWithUsage("skillmd use: --save cannot be combined with --global", USE_USAGE);
+    }
+
     if (shouldWarnProductionRegistry(config.registryBaseUrl)) {
       commandWarnings.push(
         `using production registry (${config.registryBaseUrl}); set SKILLMD_FIREBASE_PROJECT_ID=skillmarkdown-development and SKILLMD_REGISTRY_BASE_URL=https://registryapi-sm46rm3rja-uc.a.run.app for dev`,
@@ -106,8 +113,13 @@ export async function runUseCommand(
         selectedAgentTarget: parsed.agentTarget,
         defaultAgentTarget: config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET,
         now,
+        installScope,
+        homeDir: options.homeDir,
         sourceCommandFactory: ({ canonicalSkillId, resolvedAgentTarget }) => {
           const parts = ["skillmd", "use", canonicalSkillId];
+          if (parsed.global) {
+            parts.push("--global");
+          }
           if (parsed.version) {
             parts.push("--version", parsed.version);
           } else if (parsed.spec) {
@@ -130,9 +142,9 @@ export async function runUseCommand(
     );
     const { result, lockEntry } = workflow;
     const warnings = [...commandWarnings, ...(workflow.warnings ?? [])];
-    const lock = await loadSkillsLockFn(cwd);
+    const lock = await loadSkillsLockFn(cwd, {}, { scope: installScope, homeDir: options.homeDir });
     const nextLock = upsertInstalledLockEntry(lock, lockEntry, now());
-    await saveSkillsLockFn(cwd, nextLock);
+    await saveSkillsLockFn(cwd, nextLock, {}, { scope: installScope, homeDir: options.homeDir });
 
     // Handle --save flag: update skills.json manifest
     if (parsed.save) {

@@ -92,3 +92,91 @@ test("resolveInstalledSkillsHostRoot supports provider-specific roots", () => {
     "/workspace/project/.agents/skills/myagent/registry.skillmarkdown.com",
   );
 });
+
+test("resolveInstalledSkillPath supports global builtin homes", () => {
+  assert.equal(
+    resolveInstalledSkillPath(
+      "/workspace/project",
+      "https://registry.example.com",
+      "stefdevscore",
+      "pagetest-01",
+      "openai",
+      { scope: "global", homeDir: "/Users/tester" },
+    ),
+    "/Users/tester/.codex/skills/registry.skillmarkdown.com/stefdevscore/pagetest-01",
+  );
+  assert.equal(
+    resolveInstalledSkillPath(
+      "/workspace/project",
+      "https://registry.example.com",
+      "stefdevscore",
+      "pagetest-01",
+      "claude",
+      { scope: "global", homeDir: "/Users/tester" },
+    ),
+    "/Users/tester/.claude/skills/registry.skillmarkdown.com/stefdevscore/pagetest-01",
+  );
+});
+
+test("resolveInstalledSkillPath maps known global aliases to canonical homes", () => {
+  assert.equal(
+    resolveInstalledSkillPath(
+      "/workspace/project",
+      "https://registry.example.com",
+      "stefdevscore",
+      "pagetest-01",
+      "custom:chatgpt",
+      { scope: "global", homeDir: "/Users/tester" },
+    ),
+    "/Users/tester/.codex/skills/registry.skillmarkdown.com/stefdevscore/pagetest-01",
+  );
+  assert.equal(
+    resolveInstalledSkillPath(
+      "/workspace/project",
+      "https://registry.example.com",
+      "stefdevscore",
+      "pagetest-01",
+      "custom:anthropic",
+      { scope: "global", homeDir: "/Users/tester" },
+    ),
+    "/Users/tester/.claude/skills/registry.skillmarkdown.com/stefdevscore/pagetest-01",
+  );
+});
+
+test("resolveInstalledSkillPath keeps unknown custom targets under .agents globally", () => {
+  assert.equal(
+    resolveInstalledSkillPath(
+      "/workspace/project",
+      "https://registry.example.com",
+      "stefdevscore",
+      "pagetest-01",
+      "custom:myagent",
+      { scope: "global", homeDir: "/Users/tester" },
+    ),
+    "/Users/tester/.agents/skills/myagent/registry.skillmarkdown.com/stefdevscore/pagetest-01",
+  );
+});
+
+test("resolveInstallTempRoot supports global provider and alias temp roots", () => {
+  assert.equal(
+    resolveInstallTempRoot("/workspace/project", "openai", {
+      scope: "global",
+      homeDir: "/Users/tester",
+    }),
+    "/Users/tester/.codex/.tmp",
+  );
+  assert.equal(
+    resolveInstallTempRoot("/workspace/project", "custom:google", {
+      scope: "global",
+      homeDir: "/Users/tester",
+    }),
+    "/Users/tester/.gemini/.tmp",
+  );
+  assert.equal(
+    resolveInstallTempRoot("/workspace/project", "custom:myagent", {
+      scope: "global",
+      homeDir: "/Users/tester",
+    }),
+    "/Users/tester/.agents/.tmp/myagent",
+  );
+});

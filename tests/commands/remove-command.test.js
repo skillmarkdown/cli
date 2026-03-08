@@ -114,3 +114,57 @@ test("prints json output and returns non-zero on failures", async () => {
   assert.equal(payload.removed, 0);
   assert.equal(payload.failed.length, 1);
 });
+
+test("remove --global validates and removes global install paths", async () => {
+  let removedPath;
+  let saveArgs;
+  const { result } = await captureConsole(() =>
+    runRemoveCommand(["@owner/skill-a", "--global", "--agent-target", "openai"], {
+      cwd: "/workspace/project",
+      homeDir: "/Users/tester",
+      env: {
+        SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+        SKILLMD_REGISTRY_BASE_URL: "https://registry.skillmarkdown.com",
+        SKILLMD_REGISTRY_TIMEOUT_MS: "10000",
+      },
+      getConfig: () => ({
+        firebaseProjectId: "skillmarkdown-development",
+        registryBaseUrl: "https://registry.skillmarkdown.com",
+        requestTimeoutMs: 10000,
+        defaultAgentTarget: "skillmd",
+      }),
+      loadSkillsLock: async () => ({
+        lockfileVersion: 1,
+        generatedAt: "2026-03-02T00:00:00.000Z",
+        entries: {
+          a: {
+            skillId: "@owner/skill-a",
+            username: "owner",
+            skill: "skill-a",
+            selectorSpec: "latest",
+            resolvedVersion: "1.0.0",
+            digest: "sha256:test",
+            sizeBytes: 1,
+            mediaType: "application/test",
+            installedPath: "/Users/tester/.codex/skills/registry.skillmarkdown.com/owner/skill-a",
+            registryBaseUrl: "https://registry.skillmarkdown.com",
+            installedAt: "2026-03-02T00:00:00.000Z",
+            sourceCommand: "skillmd use --global @owner/skill-a --agent-target openai",
+            downloadedFrom: "https://storage.example.com",
+            agentTarget: "openai",
+          },
+        },
+      }),
+      saveSkillsLock: async (...args) => {
+        saveArgs = args;
+      },
+      removePath: async (path) => {
+        removedPath = path;
+      },
+    }),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(removedPath, "/Users/tester/.codex/skills/registry.skillmarkdown.com/owner/skill-a");
+  assert.equal(saveArgs[3].scope, "global");
+});

@@ -554,3 +554,38 @@ test("prints pro-plan hint for private skill install denial", async () => {
   assert.match(errors.join("\n"), /private skill access is not allowed/i);
   assert.match(errors.join("\n"), /private skills require a Pro plan/i);
 });
+
+test("global use installs to provider home and writes global lock", async () => {
+  let installInput;
+  let saveArgs;
+  const { result } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill", "--global", "--agent-target", "openai"],
+      baseOptions({
+        homeDir: "/Users/tester",
+        installArtifact: async (input) => {
+          installInput = input;
+        },
+        saveSkillsLock: async (...args) => {
+          saveArgs = args;
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(
+    installInput.targetPath,
+    "/Users/tester/.codex/skills/registry.skillmarkdown.com/stefdevscore/test-skill",
+  );
+  assert.equal(saveArgs[3].scope, "global");
+});
+
+test("global use rejects --save", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runUseCommand(["@stefdevscore/test-skill", "--global", "--save"], baseOptions()),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /--save cannot be combined with --global/i);
+});

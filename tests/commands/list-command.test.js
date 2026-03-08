@@ -33,7 +33,7 @@ test("fails with usage on invalid args", async () => {
 
 test("prints no installed skills when lock is empty", async () => {
   const { result, logs } = await captureConsole(() =>
-    runListCommand([], {
+    runListCommand(["--global"], {
       cwd: "/workspace",
       getConfig: () => ({
         firebaseProjectId: "skillmarkdown-development",
@@ -98,4 +98,37 @@ test("filters json results with new builtin agent target", async () => {
   const payload = JSON.parse(logs.join("\n"));
   assert.equal(payload.total, 1);
   assert.equal(payload.entries[0].agentTarget, "perplexity");
+});
+
+test("list --global reads the global lock scope", async () => {
+  let loadArgs;
+  const { result, logs } = await captureConsole(() =>
+    runListCommand(["--global"], {
+      cwd: "/workspace/project",
+      homeDir: "/Users/tester",
+      env: {
+        SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+        SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
+        SKILLMD_REGISTRY_TIMEOUT_MS: "10000",
+      },
+      getConfig: () => ({
+        firebaseProjectId: "skillmarkdown-development",
+        registryBaseUrl: "https://registry.example.com",
+        requestTimeoutMs: 10000,
+        defaultAgentTarget: "skillmd",
+      }),
+      loadSkillsLock: async (...args) => {
+        loadArgs = args;
+        return {
+          lockfileVersion: 1,
+          generatedAt: "2026-03-02T00:00:00.000Z",
+          entries: {},
+        };
+      },
+    }),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(loadArgs[2].scope, "global");
+  assert.match(logs.join("\n"), /No installed skills found\./);
 });

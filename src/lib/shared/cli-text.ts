@@ -4,9 +4,9 @@ export const INIT_USAGE = "Usage: skillmd init [--no-validate] [--template <mini
 export const INSTALL_USAGE =
   "Usage: skillmd install [--prune] [--agent-target <skillmd|openai|claude|gemini|meta|mistral|deepseek|perplexity|custom:<slug>>] [--json]";
 export const LIST_USAGE =
-  "Usage: skillmd list [--agent-target <skillmd|openai|claude|gemini|meta|mistral|deepseek|perplexity|custom:<slug>>] [--json]";
+  "Usage: skillmd list [-g|--global] [--agent-target <skillmd|openai|claude|gemini|meta|mistral|deepseek|perplexity|custom:<slug>>] [--json]";
 export const REMOVE_USAGE =
-  "Usage: skillmd remove <skill-id> [--agent-target <skillmd|openai|claude|gemini|meta|mistral|deepseek|perplexity|custom:<slug>>] [--json]";
+  "Usage: skillmd remove <skill-id> [-g|--global] [--agent-target <skillmd|openai|claude|gemini|meta|mistral|deepseek|perplexity|custom:<slug>>] [--json]";
 export const VALIDATE_USAGE = "Usage: skillmd validate [path] [--strict] [--parity]";
 export const LOGIN_USAGE = "Usage: skillmd login [--status|--reauth]";
 export const LOGOUT_USAGE = "Usage: skillmd logout";
@@ -18,9 +18,9 @@ export const VIEW_USAGE = "Usage: skillmd view <skill-id|index> [--json]";
 export const HISTORY_USAGE =
   "Usage: skillmd history <skill-id> [--limit <1-50>] [--cursor <token>] [--json]";
 export const USE_USAGE =
-  "Usage: skillmd use <skill-id> [--version <semver> | --spec <tag|version|range>] [--agent-target <skillmd|openai|claude|gemini|meta|mistral|deepseek|perplexity|custom:<slug>>] [--save] [--json]";
+  "Usage: skillmd use <skill-id> [-g|--global] [--version <semver> | --spec <tag|version|range>] [--agent-target <skillmd|openai|claude|gemini|meta|mistral|deepseek|perplexity|custom:<slug>>] [--save] [--json]";
 export const UPDATE_USAGE =
-  "Usage: skillmd update [skill-id ...] [--all] [--agent-target <skillmd|openai|claude|gemini|meta|mistral|deepseek|perplexity|custom:<slug>>] [--json]";
+  "Usage: skillmd update [skill-id ...] [-g|--global] [--all] [--agent-target <skillmd|openai|claude|gemini|meta|mistral|deepseek|perplexity|custom:<slug>>] [--json]";
 export const TAG_USAGE =
   "Usage: skillmd tag <ls|add|rm> ... [--json]\n" +
   "  skillmd tag ls <skill-id> [--json]\n" +

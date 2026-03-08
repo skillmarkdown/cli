@@ -1,4 +1,5 @@
 import { type AgentTarget } from "../shared/agent-target";
+import { type InstallScope } from "./pathing";
 
 export interface UseFlags {
   skillId?: string;
@@ -7,6 +8,7 @@ export interface UseFlags {
   agentTarget?: AgentTarget;
   json: boolean;
   save: boolean;
+  global: boolean;
   valid: boolean;
 }
 
@@ -84,6 +86,7 @@ export interface UseCommandResult {
   installedAt: string;
   source: "registry";
   agentTarget: AgentTarget;
+  installScope: InstallScope;
 }
 
 export type InstallSelector =

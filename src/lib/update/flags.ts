@@ -3,10 +3,17 @@ import { normalizeAgentTarget } from "../shared/agent-target";
 import { parseOptionValue } from "../shared/flag-parse";
 
 export function parseUpdateFlags(args: string[]): UpdateFlags {
-  const invalid = (): UpdateFlags => ({ all: false, json: false, skillIds: [], valid: false });
+  const invalid = (): UpdateFlags => ({
+    all: false,
+    global: false,
+    json: false,
+    skillIds: [],
+    valid: false,
+  });
   const skillIds: string[] = [];
   let all = false;
   let json = false;
+  let global = false;
   let agentTarget: UpdateFlags["agentTarget"];
 
   for (let index = 0; index < args.length; index += 1) {
@@ -18,6 +25,11 @@ export function parseUpdateFlags(args: string[]): UpdateFlags {
 
     if (arg === "--json") {
       json = true;
+      continue;
+    }
+
+    if (arg === "-g" || arg === "--global") {
+      global = true;
       continue;
     }
 
@@ -46,6 +58,7 @@ export function parseUpdateFlags(args: string[]): UpdateFlags {
   return {
     all,
     json,
+    global,
     skillIds,
     agentTarget,
     valid: true,

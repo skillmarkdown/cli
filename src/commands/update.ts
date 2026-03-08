@@ -36,6 +36,7 @@ import {
 
 interface UpdateCommandOptions {
   cwd?: string;
+  homeDir?: string;
   env?: NodeJS.ProcessEnv;
   now?: () => Date;
   getConfig?: (env: NodeJS.ProcessEnv) => UseEnvConfig;
@@ -206,7 +207,8 @@ export async function runUpdateCommand(
       parsed.agentTarget ??
       (explicitEnvAgentTarget ? (config.defaultAgentTarget as AgentTarget) : undefined);
     const mode: UpdateMode = parsed.all || parsed.skillIds.length === 0 ? "all" : "ids";
-    let lock = await loadSkillsLockFn(cwd);
+    const installScope = parsed.global ? "global" : "workspace";
+    let lock = await loadSkillsLockFn(cwd, {}, { scope: installScope, homeDir: options.homeDir });
     const entries: UpdateCommandEntry[] = [];
 
     const selectedResult =
@@ -294,8 +296,13 @@ export async function runUpdateCommand(
             selectedAgentTarget: entry.agentTarget as AgentTarget,
             defaultAgentTarget: config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET,
             now,
+            installScope,
+            homeDir: options.homeDir,
             sourceCommandFactory: ({ canonicalSkillId }) => {
               const parts = ["skillmd", "update", canonicalSkillId];
+              if (parsed.global) {
+                parts.push("--global");
+              }
               if (entry.agentTarget !== DEFAULT_AGENT_TARGET) {
                 parts.push("--agent-target", entry.agentTarget);
               }
@@ -333,7 +340,7 @@ export async function runUpdateCommand(
       }
     }
 
-    await saveSkillsLockFn(cwd, lock);
+    await saveSkillsLockFn(cwd, lock, {}, { scope: installScope, homeDir: options.homeDir });
 
     if (parsed.json) {
       printJson(toJsonResult(mode, entries));

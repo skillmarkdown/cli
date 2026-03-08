@@ -3,6 +3,7 @@ import { type AgentTarget } from "../shared/agent-target";
 export interface UpdateFlags {
   all: boolean;
   json: boolean;
+  global: boolean;
   skillIds: string[];
   agentTarget?: AgentTarget;
   valid: boolean;

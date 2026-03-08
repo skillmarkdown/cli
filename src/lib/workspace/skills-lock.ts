@@ -1,10 +1,14 @@
-import { promises as fs } from "node:fs";
-import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { promises as fs } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 import { normalizeAgentTarget, type AgentTarget } from "../shared/agent-target";
+import { type InstallScope } from "../use/pathing";
 
 export const SKILLS_LOCK_FILENAME = "skills-lock.json";
+export const GLOBAL_SKILLS_LOCK_FILENAME = "global-skills-lock.json";
+export const GLOBAL_SKILLS_LOCK_HOME_DIR = ".skillmd";
 export const SKILLS_LOCK_VERSION = 1;
 
 export interface SkillsLockEntry {
@@ -35,6 +39,11 @@ interface SkillsLockDependencies {
   writeFile: typeof fs.writeFile;
   rename: typeof fs.rename;
   mkdir: typeof fs.mkdir;
+}
+
+export interface SkillsLockLocationOptions {
+  scope?: InstallScope;
+  homeDir?: string;
 }
 
 const DEFAULT_DEPENDENCIES: SkillsLockDependencies = {
@@ -151,13 +160,21 @@ function normalizeLock(value: unknown): SkillsLockFile | null {
   };
 }
 
-function resolveLockPath(cwd: string): string {
+function resolveLockPath(cwd: string, options: SkillsLockLocationOptions = {}): string {
+  if (options.scope === "global") {
+    return join(
+      options.homeDir ?? homedir(),
+      GLOBAL_SKILLS_LOCK_HOME_DIR,
+      GLOBAL_SKILLS_LOCK_FILENAME,
+    );
+  }
+
   return join(cwd, SKILLS_LOCK_FILENAME);
 }
 
 export function createEmptySkillsLock(now: Date = new Date()): SkillsLockFile {
   return {
-    lockfileVersion: SKILLS_LOCK_VERSION,
+    lockfileVersion: 1,
     generatedAt: now.toISOString(),
     entries: {},
   };
@@ -181,9 +198,10 @@ export function listSkillsLockEntries(
 export async function loadSkillsLock(
   cwd: string,
   dependencies: Partial<SkillsLockDependencies> = {},
+  location: SkillsLockLocationOptions = {},
 ): Promise<SkillsLockFile> {
   const fileOps = { ...DEFAULT_DEPENDENCIES, ...dependencies };
-  const path = resolveLockPath(cwd);
+  const path = resolveLockPath(cwd, location);
   let raw: string;
   try {
     raw = await fileOps.readFile(path, "utf8");
@@ -198,13 +216,17 @@ export async function loadSkillsLock(
   try {
     parsed = JSON.parse(raw) as unknown;
   } catch {
-    throw new Error(`invalid skills lockfile: ${SKILLS_LOCK_FILENAME} contains malformed JSON`);
+    const filename =
+      location.scope === "global" ? GLOBAL_SKILLS_LOCK_FILENAME : SKILLS_LOCK_FILENAME;
+    throw new Error(`invalid skills lockfile: ${filename} contains malformed JSON`);
   }
 
   const normalized = normalizeLock(parsed);
   if (!normalized) {
+    const filename =
+      location.scope === "global" ? GLOBAL_SKILLS_LOCK_FILENAME : SKILLS_LOCK_FILENAME;
     throw new Error(
-      `invalid skills lockfile: ${SKILLS_LOCK_FILENAME} must match lockfileVersion ${SKILLS_LOCK_VERSION} schema`,
+      `invalid skills lockfile: ${filename} must match lockfileVersion ${SKILLS_LOCK_VERSION} schema`,
     );
   }
   return normalized;
@@ -214,17 +236,18 @@ export async function saveSkillsLock(
   cwd: string,
   lock: SkillsLockFile,
   dependencies: Partial<SkillsLockDependencies> = {},
+  location: SkillsLockLocationOptions = {},
 ): Promise<void> {
   const normalized = normalizeLock(lock);
   if (!normalized) {
     throw new Error("cannot write invalid skills lockfile payload");
   }
   const fileOps = { ...DEFAULT_DEPENDENCIES, ...dependencies };
-  const path = resolveLockPath(cwd);
+  const path = resolveLockPath(cwd, location);
   const tempPath = `${path}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`;
   const payload = `${JSON.stringify(normalized, null, 2)}\n`;
 
-  await fileOps.mkdir(cwd, { recursive: true });
+  await fileOps.mkdir(join(path, ".."), { recursive: true });
   await fileOps.writeFile(tempPath, payload, "utf8");
   await fileOps.rename(tempPath, path);
 }

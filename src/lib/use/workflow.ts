@@ -1,5 +1,5 @@
 import { callWithReadTokenRetry } from "../auth/read-token-retry";
-import { resolveInstalledSkillPath, resolveInstallTempRoot } from "./pathing";
+import { resolveInstalledSkillPath, resolveInstallTempRoot, type InstallScope } from "./pathing";
 import { DEFAULT_AGENT_TARGET, type AgentTarget } from "../shared/agent-target";
 import {
   downloadArtifact as defaultDownloadArtifact,
@@ -28,6 +28,8 @@ export interface InstallWorkflowInput {
   selector: InstallSelector;
   selectedAgentTarget?: AgentTarget;
   defaultAgentTarget?: AgentTarget;
+  installScope?: InstallScope;
+  homeDir?: string;
   sourceCommandFactory: (input: {
     canonicalSkillId: string;
     selector: InstallSelector;
@@ -163,12 +165,14 @@ export async function installFromRegistry(
     descriptor.agentTarget ??
     input.defaultAgentTarget ??
     DEFAULT_AGENT_TARGET;
+  const installScope = input.installScope ?? "workspace";
   const installedPath = resolveInstalledSkillPath(
     input.cwd,
     input.registryBaseUrl,
     descriptor.username,
     descriptor.skill,
     resolvedAgentTarget,
+    { scope: installScope, homeDir: input.homeDir },
   );
   const installedAt = now().toISOString();
   const sourceCommand = input.sourceCommandFactory({
@@ -196,7 +200,10 @@ export async function installFromRegistry(
 
   await installArtifactFn({
     targetPath: installedPath,
-    tempRoot: resolveInstallTempRoot(input.cwd, resolvedAgentTarget),
+    tempRoot: resolveInstallTempRoot(input.cwd, resolvedAgentTarget, {
+      scope: installScope,
+      homeDir: input.homeDir,
+    }),
     archiveBytes: download.bytes,
   });
 
@@ -214,6 +221,7 @@ export async function installFromRegistry(
       installedAt,
       source: "registry",
       agentTarget: resolvedAgentTarget,
+      installScope,
     },
     lockEntry,
     warnings,
