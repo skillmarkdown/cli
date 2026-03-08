@@ -22,6 +22,7 @@ import { executeLoginFlow } from "../lib/auth/login-flow";
 import { parseLoginFlags } from "../lib/auth/login-flags";
 import { printSessionStatus } from "../lib/auth/login-status";
 import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
+import { resolveUsernameEmail as defaultResolveUsernameEmail } from "../lib/auth/username-lookup";
 import { getRegistryEnvConfig } from "../lib/registry/config";
 import { type WhoamiResponse } from "../lib/whoami/types";
 
@@ -30,7 +31,12 @@ interface LoginCommandOptions {
   readSession?: () => AuthSession | null;
   writeSession?: (session: AuthSession) => void;
   clearSession?: () => boolean;
-  promptForCredentials?: () => Promise<{ email: string; password: string }>;
+  promptForCredentials?: () => Promise<{ username: string; password: string }>;
+  resolveUsernameEmail?: (
+    baseUrl: string,
+    username: string,
+    options?: { timeoutMs?: number },
+  ) => Promise<string>;
   signInWithEmailAndPassword?: (
     apiKey: string,
     email: string,
@@ -59,19 +65,78 @@ function requireConfig(env: NodeJS.ProcessEnv): LoginEnvConfig {
   }
 }
 
-async function promptForCredentials(): Promise<{ email: string; password: string }> {
-  const rl = createInterface({ input, output });
-  try {
-    const email = (await rl.question("Email: ")).trim();
-    const password = (await rl.question("Password: ")).trim();
-
-    if (!email || !password) {
-      throw new Error("email and password are required");
+function promptForHiddenPassword(prompt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!input.isTTY || !output.isTTY) {
+      reject(new Error("interactive password entry requires a TTY"));
+      return;
     }
 
-    return { email, password };
-  } finally {
+    output.write(prompt);
+    const previousRawMode = input.isRaw ?? false;
+    let password = "";
+
+    const cleanup = () => {
+      input.off("data", onData);
+      input.setRawMode(previousRawMode);
+      input.pause();
+    };
+
+    const finish = () => {
+      output.write("\n");
+      cleanup();
+      resolve(password.trim());
+    };
+
+    const fail = (error: Error) => {
+      output.write("\n");
+      cleanup();
+      reject(error);
+    };
+
+    const onData = (chunk: Buffer | string) => {
+      const value = Buffer.isBuffer(chunk) ? chunk.toString("utf8") : chunk;
+      for (const char of value) {
+        if (char === "\u0003") {
+          fail(new Error("login cancelled"));
+          return;
+        }
+        if (char == "\r" || char == "\n") {
+          finish();
+          return;
+        }
+        if (char === "\u007f" || char === "\b") {
+          if (password.length > 0) {
+            password = password.slice(0, -1);
+          }
+          continue;
+        }
+        password += char;
+      }
+    };
+
+    input.setRawMode(true);
+    input.resume();
+    input.on("data", onData);
+  });
+}
+
+async function promptForCredentials(): Promise<{ username: string; password: string }> {
+  const rl = createInterface({ input, output });
+  try {
+    const username = (await rl.question("Username: ")).trim();
     rl.close();
+
+    const password = await promptForHiddenPassword("Password: ");
+
+    if (!username || !password) {
+      throw new Error("username and password are required");
+    }
+
+    return { username, password };
+  } catch (error) {
+    rl.close();
+    throw error;
   }
 }
 
@@ -95,11 +160,18 @@ export async function runLoginCommand(
       return printSessionStatus(readSessionFn(), config.firebaseProjectId);
     }
 
+    const registryConfig = getRegistryEnvConfig(env, {
+      firebaseProjectId: config.firebaseProjectId,
+    });
+
     const loginResult = await executeLoginFlow(config, reauth, {
+      registryBaseUrl: registryConfig.registryBaseUrl,
+      requestTimeoutMs: registryConfig.requestTimeoutMs,
       readSession: readSessionFn,
       writeSession: writeSessionFn,
       clearSession: clearSessionFn,
       promptForCredentials: options.promptForCredentials ?? promptForCredentials,
+      resolveUsernameEmail: options.resolveUsernameEmail ?? defaultResolveUsernameEmail,
       signInWithEmailAndPassword: options.signInWithEmailAndPassword ?? signInWithEmailAndPassword,
       verifyRefreshToken: options.verifyRefreshToken ?? verifyFirebaseRefreshToken,
     });
@@ -115,9 +187,6 @@ export async function runLoginCommand(
       return loginResult.exitCode;
     }
 
-    const registryConfig = getRegistryEnvConfig(env, {
-      firebaseProjectId: config.firebaseProjectId,
-    });
     const tokenSession = await (options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken)(
       config.firebaseApiKey,
       session.refreshToken,
