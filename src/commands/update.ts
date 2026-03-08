@@ -224,7 +224,7 @@ export async function runUpdateCommand(
         skillId: missing.skillId,
         agentTarget: missing.agentTarget,
         status: "failed",
-        reason: "skill is not installed in this project",
+        reason: `skill is not installed in this ${installScope === "global" ? "user" : "project"}`,
       });
     }
 
@@ -250,7 +250,7 @@ export async function runUpdateCommand(
             installedPath: entry.installedPath,
             fromVersion: entry.resolvedVersion,
             status: "failed",
-            reason: "skill is not installed in this project",
+            reason: `skill is not installed in this ${installScope === "global" ? "user" : "project"}`,
           });
           lock = removeSkillsLockEntry(lock, selected.key, now());
           continue;
