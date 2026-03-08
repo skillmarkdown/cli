@@ -18,27 +18,15 @@ interface WhoamiCommandOptions {
   ) => Promise<WhoamiResponse>;
 }
 
-function formatEntitlements(entitlements: WhoamiResponse["entitlements"]): string {
-  if (!entitlements || Object.keys(entitlements).length === 0) {
-    return "-";
-  }
-  return Object.entries(entitlements)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}=${String(value)}`)
-    .join(", ");
-}
-
 function printWhoamiHuman(result: WhoamiResponse): void {
   console.log(`Owner: ${result.owner} (${result.username})`);
   console.log(`UID: ${result.uid}`);
-  console.log(`Auth: ${result.authType} (${result.scope})`);
+  const authLabel = result.authType === "firebase" ? "account session" : `token (${result.scope})`;
+  console.log(`Auth: ${authLabel}`);
   console.log(`Project: ${result.projectId ?? "unknown"}`);
   console.log(`Email: ${result.email ?? "-"}`);
   if (result.plan) {
     console.log(`Plan: ${result.plan}`);
-  }
-  if (result.entitlements) {
-    console.log(`Entitlements: ${formatEntitlements(result.entitlements)}`);
   }
   if (result.teams) {
     console.log(`Teams: ${result.teams.length}`);

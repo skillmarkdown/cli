@@ -30,6 +30,8 @@
     "prepublishOnly": "npm run clean && npm run build",
     "smoke:link": "bash ./scripts/smoke-link.sh",
     "smoke:pack": "bash ./scripts/smoke-pack.sh",
+    "seed:providers:dev": "node scripts/publish-provider-batch.mjs",
+    "seed:test-skill:dev": "node scripts/publish-test-skill-sequence.mjs",
     "sweep:commands:dev": "npm run build && node scripts/command-sweep.mjs --env dev --write --allow-auth-blocked",
     "sweep:commands:dev:extended": "npm run build && node scripts/command-sweep.mjs --env dev --write --extended --allow-auth-blocked",
     "sweep:commands:prod": "npm run build && node scripts/command-sweep.mjs --env prod --allow-auth-blocked",

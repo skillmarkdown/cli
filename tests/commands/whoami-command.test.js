@@ -62,9 +62,9 @@ test("prints whoami payload in human format", async () => {
   const { result, logs } = await captureConsole(() => runWhoamiCommand([], baseOptions()));
   assert.equal(result, 0);
   assert.match(logs.join("\n"), /Owner: @core \(core\)/);
-  assert.match(logs.join("\n"), /Auth: firebase \(admin\)/);
+  assert.match(logs.join("\n"), /Auth: account session/);
   assert.match(logs.join("\n"), /Plan: teams/);
-  assert.match(logs.join("\n"), /Entitlements: /);
+  assert.doesNotMatch(logs.join("\n"), /Entitlements:/);
   assert.match(logs.join("\n"), /Teams: 1/);
 });
 
@@ -93,7 +93,7 @@ test("maps whoami API errors", async () => {
   assert.match(errors.join("\n"), /invalid token/);
 });
 
-test("prints free plan and disabled entitlements in human format", async () => {
+test("prints free plan without entitlements in human format", async () => {
   const { result, logs } = await captureConsole(() =>
     runWhoamiCommand(
       [],
@@ -119,6 +119,5 @@ test("prints free plan and disabled entitlements in human format", async () => {
 
   assert.equal(result, 0);
   assert.match(logs.join("\n"), /Plan: free/);
-  assert.match(logs.join("\n"), /canPublishPrivateSkills=false/);
-  assert.match(logs.join("\n"), /canUsePrivateSkills=false/);
+  assert.doesNotMatch(logs.join("\n"), /Entitlements:/);
 });
