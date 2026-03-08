@@ -202,6 +202,69 @@ test("save persists explicitly selected agent target", async () => {
   assert.equal(savedManifest.dependencies[0].spec, "latest");
 });
 
+test("save omits agent target when resolved target is the default", async () => {
+  let savedManifest;
+  const { result } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill", "--save"],
+      baseOptions({
+        loadSkillsManifestOrEmpty: async () => ({
+          version: 1,
+          defaults: {},
+          dependencies: [],
+        }),
+        saveSkillsManifest: async (_cwd, manifest) => {
+          savedManifest = manifest;
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(savedManifest.dependencies.length, 1);
+  assert.equal(savedManifest.dependencies[0].skillId, "@stefdevscore/test-skill");
+  assert.equal(savedManifest.dependencies[0].agentTarget, undefined);
+  assert.equal(savedManifest.dependencies[0].spec, "latest");
+});
+
+test("save persists descriptor agent target when it is non-default", async () => {
+  let savedManifest;
+  const { result } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill", "--save"],
+      baseOptions({
+        getArtifactDescriptor: async () => ({
+          owner: "@stefdevscore",
+          username: "stefdevscore",
+          skill: "test-skill",
+          version: "1.2.3",
+          digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+          sizeBytes: 5,
+          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+          deprecated: false,
+          deprecatedAt: null,
+          deprecatedMessage: null,
+          downloadUrl: "https://storage.example.com/object",
+          downloadExpiresAt: "2026-03-02T12:40:00.000Z",
+          agentTarget: "claude",
+        }),
+        loadSkillsManifestOrEmpty: async () => ({
+          version: 1,
+          defaults: {},
+          dependencies: [],
+        }),
+        saveSkillsManifest: async (_cwd, manifest) => {
+          savedManifest = manifest;
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(savedManifest.dependencies.length, 1);
+  assert.equal(savedManifest.dependencies[0].agentTarget, "claude");
+});
+
 test("supports explicit --spec selector", async () => {
   let resolvedSpec;
   const { result } = await captureConsole(() =>
@@ -289,6 +352,42 @@ test("prints json output with --json", async () => {
   assert.equal(parsed.version, "1.2.3");
 });
 
+test("prints warnings in json output", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill", "--version", "1.2.3", "--json"],
+      baseOptions({
+        getConfig: () => ({
+          firebaseProjectId: "skillmarkdown",
+          registryBaseUrl: "https://registry.skillmarkdown.com",
+          requestTimeoutMs: 10000,
+          defaultAgentTarget: "skillmd",
+        }),
+        getArtifactDescriptor: async () => ({
+          owner: "@stefdevscore",
+          username: "stefdevscore",
+          skill: "test-skill",
+          version: "1.2.3",
+          digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+          sizeBytes: 5,
+          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+          deprecated: true,
+          deprecatedAt: "2026-03-02T10:00:00.000Z",
+          deprecatedMessage: "security issue",
+          downloadUrl: "https://storage.example.com/object",
+          downloadExpiresAt: "2026-03-02T12:40:00.000Z",
+        }),
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  const parsed = JSON.parse(logs.join("\n"));
+  assert.equal(parsed.warnings.length, 2);
+  assert.match(parsed.warnings[0], /using production registry/i);
+  assert.match(parsed.warnings[1], /deprecated version 1.2.3/i);
+});
+
 test("warns when use command targets production registry", async () => {
   const { result, errors } = await captureConsole(() =>
     runUseCommand(
@@ -335,6 +434,66 @@ test("warns when selected version is deprecated and still installs", async () =>
   assert.match(errors.join("\n"), /deprecated version 1.2.3/i);
 });
 
+test("stores canonical source command with resolved non-default agent target", async () => {
+  let savedLock;
+  const { result } = await captureConsole(() =>
+    runUseCommand(
+      ["@StefDevScore/Test-Skill", "--spec", "beta"],
+      baseOptions({
+        getArtifactDescriptor: async () => ({
+          owner: "@stefdevscore",
+          username: "stefdevscore",
+          skill: "test-skill",
+          version: "1.2.3",
+          digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+          sizeBytes: 5,
+          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+          deprecated: false,
+          deprecatedAt: null,
+          deprecatedMessage: null,
+          downloadUrl: "https://storage.example.com/object",
+          downloadExpiresAt: "2026-03-02T12:40:00.000Z",
+          agentTarget: "claude",
+        }),
+        saveSkillsLock: async (_cwd, lock) => {
+          savedLock = lock;
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  const entry = Object.values(savedLock.entries)[0];
+  assert.equal(entry.skillId, "@stefdevscore/test-skill");
+  assert.equal(
+    entry.sourceCommand,
+    "skillmd use @stefdevscore/test-skill --spec beta --agent-target claude",
+  );
+});
+
+test("does not call manifest helpers unless --save is passed", async () => {
+  let loadManifestCalled = false;
+  let saveManifestCalled = false;
+  const { result } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill"],
+      baseOptions({
+        loadSkillsManifestOrEmpty: async () => {
+          loadManifestCalled = true;
+          return { version: 1, defaults: {}, dependencies: [] };
+        },
+        saveSkillsManifest: async () => {
+          saveManifestCalled = true;
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(loadManifestCalled, false);
+  assert.equal(saveManifestCalled, false);
+});
+
 test("maps use API errors", async () => {
   const { result, errors } = await captureConsole(() =>
     runUseCommand(
@@ -349,6 +508,31 @@ test("maps use API errors", async () => {
 
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /skill not found/);
+});
+
+test("fails for invalid skill ids", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runUseCommand(["not-a-skill-id"], baseOptions()),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /skill id must be in the form/i);
+});
+
+test("prefixes unexpected errors with command name", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runUseCommand(
+      ["@stefdevscore/test-skill"],
+      baseOptions({
+        saveSkillsLock: async () => {
+          throw new Error("disk is full");
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /skillmd use: disk is full/i);
 });
 
 test("prints pro-plan hint for private skill install denial", async () => {
