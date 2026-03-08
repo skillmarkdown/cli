@@ -40,6 +40,38 @@ const defaultTargets = [
   "perplexity",
 ];
 
+const discoverSkillCategories = [
+  { label: "Agent Frameworks", queryToken: "frameworks" },
+  { label: "Automation", queryToken: "automation" },
+  { label: "Code Generation", queryToken: "codegen" },
+  { label: "CLI Workflows", queryToken: "cli" },
+  { label: "Documentation", queryToken: "docs" },
+  { label: "Testing", queryToken: "testing" },
+  { label: "Data Pipelines", queryToken: "data" },
+  { label: "Developer Tools", queryToken: "tooling" },
+  { label: "Evaluation", queryToken: "evals" },
+  { label: "Search and RAG", queryToken: "rag" },
+  { label: "Orchestration", queryToken: "orchestration" },
+  { label: "Prompt Engineering", queryToken: "prompts" },
+  { label: "Integrations", queryToken: "integration" },
+  { label: "Multimodal", queryToken: "multimodal" },
+  { label: "Voice Agents", queryToken: "voice" },
+  { label: "Browser Agents", queryToken: "browser" },
+  { label: "Reasoning", queryToken: "reasoning" },
+  { label: "Model Routing", queryToken: "routing" },
+  { label: "Deployment", queryToken: "deployment" },
+  { label: "Safety", queryToken: "safety" },
+  { label: "Observability", queryToken: "observability" },
+  { label: "Structured Output", queryToken: "json" },
+  { label: "Verification", queryToken: "validation" },
+  { label: "Benchmarking", queryToken: "benchmark" },
+  { label: "Retrieval", queryToken: "retrieval" },
+  { label: "Fine-tuning", queryToken: "finetune" },
+  { label: "Runtime", queryToken: "runtime" },
+  { label: "Debugging", queryToken: "debug" },
+  { label: "Collaboration", queryToken: "collaboration" },
+];
+
 const profileDefaults = {
   baseline: {
     count: 48,
@@ -385,6 +417,20 @@ function buildScenario(index, options) {
     publishes.push({ version, tag });
   }
 
+  const primaryCategory = discoverSkillCategories[index % discoverSkillCategories.length];
+  const secondaryCategory = discoverSkillCategories[(index + 11) % discoverSkillCategories.length];
+  const tertiaryCategory = discoverSkillCategories[(index + 19) % discoverSkillCategories.length];
+  const categoryTokens = Array.from(
+    new Set([
+      primaryCategory.queryToken,
+      secondaryCategory.queryToken,
+      tertiaryCategory.queryToken,
+    ]),
+  );
+  const categoryLabels = categoryTokens.map(
+    (token) => discoverSkillCategories.find((entry) => entry.queryToken === token)?.label ?? token,
+  );
+
   const descriptor = [
     target,
     contentMode,
@@ -399,6 +445,9 @@ function buildScenario(index, options) {
     target,
     contentMode,
     licenseMode,
+    primaryCategory,
+    categoryTokens,
+    categoryLabels,
     includeSecurityPolicy: index % 3 !== 1,
     includeContributingGuide: index % 3 !== 2,
     includeExtraAsset: index % 2 === 0,
@@ -433,7 +482,7 @@ function rewriteTemplateFiles(skillDir, scenario) {
   const handle = `@test/${scenario.skillSlug}`;
   const title = `${scenario.target.toUpperCase()} Registry Coverage Skill`;
   const shortDescription = `Exercise ${scenario.target} registry behavior with realistic content and varied release parameters.`;
-  const longDescription = `${shortDescription} This package is generated from the skillmd-cli-skill template and expanded to cover browse, detail, install, and lifecycle edge cases.`;
+  const longDescription = `${shortDescription} This package is generated from the skillmd-cli-skill template and expanded to cover browse, detail, install, and lifecycle edge cases across ${scenario.categoryLabels.join(", ")}.`;
 
   let skillContent = readFileSync(skillFile, "utf8");
   skillContent = replaceAll(skillContent, "name: skillmd-cli-skill", `name: ${scenario.skillSlug}`);
@@ -553,6 +602,11 @@ function rewriteTemplateFiles(skillDir, scenario) {
     rmSync(assetDataFile, { force: true });
   }
 
+  skillContent = skillContent.replace(
+    "## Limitations / Failure modes",
+    `${buildDiscoverCoverageSection(scenario)}\n\n## Limitations / Failure modes`,
+  );
+
   if (scenario.includeWorkflowNotes) {
     writeFileSync(
       workflowNotesFile,
@@ -560,6 +614,9 @@ function rewriteTemplateFiles(skillDir, scenario) {
         "# Workflow Notes",
         "",
         `Use ${handle} when you need a realistic ${scenario.target} package with generated release history and template-complete support documents.`,
+        "",
+        `Discover Skills fit: ${scenario.categoryLabels.join(", ")}`,
+        `Search tokens: ${scenario.categoryTokens.join(", ")}`,
       ].join("\n"),
       "utf8",
     );
@@ -596,6 +653,37 @@ function applyLicenseMode(licenseFile, mode) {
     return;
   }
   writeFileSync(licenseFile, `${licenseTexts[mode]}\n`, "utf8");
+}
+
+function buildDiscoverCoverageSection(scenario) {
+  return [
+    "## Discover Skills Coverage",
+    "",
+    `Primary category: ${scenario.primaryCategory.label} (${scenario.primaryCategory.queryToken})`,
+    `Supporting categories: ${scenario.categoryLabels.slice(1).join(", ") || scenario.primaryCategory.label}`,
+    "",
+    "Search verification tokens:",
+    ...scenario.categoryTokens.map((token) => `- ${token}`),
+    "",
+    `This package intentionally contains category language for ${scenario.categoryLabels.join(", ")} so homepage discovery queries have stable, realistic matches.`,
+  ].join("\n");
+}
+
+function validateDiscoverCoverage(scenarios) {
+  const seen = new Set();
+  for (const scenario of scenarios) {
+    for (const token of scenario.categoryTokens) {
+      seen.add(token);
+    }
+  }
+
+  const missing = discoverSkillCategories
+    .map((entry) => entry.queryToken)
+    .filter((token) => !seen.has(token));
+
+  if (missing.length > 0) {
+    throw new Error(`baseline discover coverage is incomplete: ${missing.join(", ")}`);
+  }
 }
 
 function buildExamplesSection(scenario) {
@@ -661,6 +749,11 @@ function main() {
   const keepWorkspace = options.keepWorkspace || Boolean(options.workspace);
 
   mkdirSync(tempRoot, { recursive: true });
+  const scenarios = Array.from({ length: options.count }, (_, index) =>
+    buildScenario(index, options),
+  );
+  validateDiscoverCoverage(scenarios);
+
   const report = {
     templateRoot,
     workspace: tempRoot,
@@ -670,14 +763,18 @@ function main() {
     count: options.count,
     versionsPerSkill: options.versionsPerSkill,
     multiVersionEvery: options.multiVersionEvery,
+    discoverCoverage: discoverSkillCategories.map(({ label, queryToken }) => ({
+      label,
+      queryToken,
+      covered: scenarios.some((scenario) => scenario.categoryTokens.includes(queryToken)),
+    })),
     published: [],
   };
 
   try {
     console.log(`Workspace: ${tempRoot}`);
     console.log(`Template: ${templateRoot}`);
-    for (let index = 0; index < options.count; index += 1) {
-      const scenario = buildScenario(index, options);
+    for (const scenario of scenarios) {
       const skillDir = join(tempRoot, scenario.skillSlug);
       copyTemplateSkill(skillDir);
       rewriteTemplateFiles(skillDir, scenario);
@@ -688,6 +785,9 @@ function main() {
         target: scenario.target,
         contentMode: scenario.contentMode,
         licenseMode: scenario.licenseMode,
+        primaryCategory: scenario.primaryCategory,
+        categoryTokens: scenario.categoryTokens,
+        categoryLabels: scenario.categoryLabels,
         releases,
       });
       console.log(
