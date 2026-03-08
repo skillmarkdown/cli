@@ -40,7 +40,8 @@
     "sweep:commands:both:extended": "npm run build && node scripts/command-sweep.mjs --env both --write --extended --allow-auth-blocked",
     "test": "npm run build:test && node --test",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:coverage": "npm run build:test && rm -rf coverage && mkdir -p coverage/v8 && NODE_V8_COVERAGE=coverage/v8 node --test --experimental-test-coverage"
+    "test:coverage": "npm run build:test && rm -rf coverage && mkdir -p coverage/v8 && NODE_V8_COVERAGE=coverage/v8 node --test --experimental-test-coverage",
+    "seed:edge-cases:dev": "node scripts/publish-edge-case-skill-batch.mjs"
   },
   "engines": {
     "node": ">=18"
