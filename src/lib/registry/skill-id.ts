@@ -11,7 +11,7 @@ export function parseSkillId(input: string): ParsedSkillId {
   const trimmed = input.trim();
   const slashIndex = trimmed.indexOf("/");
   if (slashIndex <= 0 || slashIndex === trimmed.length - 1) {
-    throw new Error("skill id must be in the form @owner/skill or owner/skill");
+    throw new Error("skill id must be in the form @username/skill or username/skill");
   }
 
   const ownerRaw = trimmed.slice(0, slashIndex);

@@ -44,13 +44,13 @@ skillmd publish --version 1.0.0 --tag latest --access public
 
 # 3) Discover and inspect
 skillmd search
-skillmd view @owner/my-skill
-skillmd history @owner/my-skill
+skillmd view @username/my-skill
+skillmd history @username/my-skill
 
 # 4) Consume and maintain installs
-skillmd use @owner/my-skill
+skillmd use @username/my-skill
 skillmd list
-skillmd remove @owner/my-skill
+skillmd remove @username/my-skill
 skillmd update --all
 ```
 
@@ -65,11 +65,11 @@ Use `skillmd install` for declarative, workspace-level installs.
     "agentTarget": "skillmd"
   },
   "dependencies": {
-    "@owner/research-skill": {
+    "@username/research-skill": {
       "spec": "latest",
       "agentTarget": "claude"
     },
-    "@owner/ops-skill": {
+    "@username/ops-skill": {
       "spec": "^1.2.0"
     }
   }
@@ -151,9 +151,9 @@ Token scope model:
 - `skillmd team create <team-slug> [--display-name <name>] [--json]`
 - `skillmd team view <team-slug> [--json]`
 - `skillmd team members ls <team-slug> [--json]`
-- `skillmd team members add <team-slug> <owner-login> [--role <admin|member>] [--json]`
-- `skillmd team members set-role <team-slug> <owner-login> <admin|member> [--json]`
-- `skillmd team members rm <team-slug> <owner-login> [--json]`
+- `skillmd team members add <team-slug> <username> [--role <admin|member>] [--json]`
+- `skillmd team members set-role <team-slug> <username> <admin|member> [--json]`
+- `skillmd team members rm <team-slug> <username> [--json]`
 
 ### Private skills and plan gating
 
@@ -162,7 +162,11 @@ Token scope model:
 - user plan is read from the backend user record
 - newly bootstrapped users default to `free` until an operator manually sets `users/{uid}.plan = "pro"`
 
-### Coverage
+### Release Checklist
+
+- Production checklist: `docs/production-ready-checklist.md`
+
+## Coverage
 
 Run `npm run test:coverage` to execute the full CLI test suite with Node's built-in coverage. The command writes V8 artifacts to `coverage/v8/` and prints a console summary. Coverage work in this repo is intended to protect `src/` behavior, not generated `dist/` output or test helpers.
 
@@ -198,9 +202,9 @@ Symptom: version/tag pointer cannot be resolved.
 Fix:
 
 ```bash
-skillmd view @owner/skill
-skillmd history @owner/skill
-skillmd tag ls @owner/skill
+skillmd view @username/skill
+skillmd history @username/skill
+skillmd tag ls @username/skill
 ```
 
 Then retry with explicit selector, for example `--spec 1.2.3` or `--spec beta`.

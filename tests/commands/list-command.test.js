@@ -10,17 +10,17 @@ function lockEntry(skillId, agentTarget = "skillmd") {
   const skill = skillId.split("/")[1];
   return {
     skillId,
-    username: "owner",
+    username: "username",
     skill,
     selectorSpec: "latest",
     resolvedVersion: "1.0.0",
     digest: "sha256:test",
     sizeBytes: 1,
     mediaType: "application/octet-stream",
-    installedPath: `/workspace/.agent/skills/registry.example.com/owner/${skill}`,
+    installedPath: `/workspace/.agent/skills/registry.example.com/username/${skill}`,
     registryBaseUrl: "https://registry.example.com",
     installedAt: "2026-03-01T00:00:00.000Z",
-    sourceCommand: "skillmd use @owner/skill",
+    sourceCommand: "skillmd use @username/skill",
     downloadedFrom: "https://storage.example.com",
     agentTarget,
   };
@@ -62,8 +62,8 @@ test("prints json results and supports --agent-target", async () => {
         lockfileVersion: 1,
         generatedAt: "",
         entries: {
-          a: lockEntry("@owner/skill-a", "skillmd"),
-          b: lockEntry("@owner/skill-b", "claude"),
+          a: lockEntry("@username/skill-a", "skillmd"),
+          b: lockEntry("@username/skill-b", "claude"),
         },
       }),
     }),
@@ -71,7 +71,7 @@ test("prints json results and supports --agent-target", async () => {
   assert.equal(result, 0);
   const payload = JSON.parse(logs.join("\n"));
   assert.equal(payload.total, 1);
-  assert.equal(payload.entries[0].skillId, "@owner/skill-b");
+  assert.equal(payload.entries[0].skillId, "@username/skill-b");
 });
 
 test("filters json results with new builtin agent target", async () => {
@@ -88,8 +88,8 @@ test("filters json results with new builtin agent target", async () => {
         lockfileVersion: 1,
         generatedAt: "",
         entries: {
-          a: lockEntry("@owner/skill-a", "skillmd"),
-          b: lockEntry("@owner/skill-b", "perplexity"),
+          a: lockEntry("@username/skill-a", "skillmd"),
+          b: lockEntry("@username/skill-b", "perplexity"),
         },
       }),
     }),

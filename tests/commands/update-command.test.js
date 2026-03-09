@@ -8,15 +8,15 @@ const { runUpdateCommand } = requireDist("commands/update.js");
 const { UseApiError } = requireDist("lib/use/errors.js");
 
 function lockEntry(overrides = {}) {
-  const skillId = overrides.skillId ?? "@owner/skill-a";
+  const skillId = overrides.skillId ?? "@username/skill-a";
   const skill = skillId.split("/")[1];
   const agentTarget = overrides.agentTarget ?? "skillmd";
   const installedPath =
     overrides.installedPath ??
-    `/workspace/project/.agent/skills/registry.skillmarkdown.com/owner/${skill}`;
+    `/workspace/project/.agent/skills/registry.skillmarkdown.com/username/${skill}`;
   return {
     skillId,
-    username: "owner",
+    username: "username",
     skill,
     selectorSpec: "latest",
     resolvedVersion: "1.0.0",
@@ -58,7 +58,7 @@ function baseOptions(overrides = {}) {
     }),
     loadSkillsLock: async () =>
       lockFile({
-        a: lockEntry({ skillId: "@owner/skill-a" }),
+        a: lockEntry({ skillId: "@username/skill-a" }),
       }),
     saveSkillsLock: async () => {},
     installFromRegistry: async (input) => ({
@@ -104,7 +104,7 @@ function baseOptions(overrides = {}) {
 }
 
 test("fails with usage on invalid args", async () => {
-  const exitCode = await runUpdateCommand(["--all", "@owner/skill"]);
+  const exitCode = await runUpdateCommand(["--all", "@username/skill"]);
   assert.equal(exitCode, 1);
 });
 
@@ -116,11 +116,11 @@ test("updates all lockfile entries by default", async () => {
       baseOptions({
         loadSkillsLock: async () =>
           lockFile({
-            a: lockEntry({ skillId: "@owner/skill-a" }),
+            a: lockEntry({ skillId: "@username/skill-a" }),
             b: lockEntry({
-              skillId: "@owner/skill-b",
+              skillId: "@username/skill-b",
               installedPath:
-                "/workspace/project/.claude/skills/registry.skillmarkdown.com/owner/skill-b",
+                "/workspace/project/.claude/skills/registry.skillmarkdown.com/username/skill-b",
               agentTarget: "claude",
             }),
           }),
@@ -138,7 +138,7 @@ test("updates all lockfile entries by default", async () => {
     Object.values(savedLock.entries)
       .map((entry) => entry.sourceCommand)
       .sort(),
-    ["skillmd update @owner/skill-a", "skillmd update @owner/skill-b"],
+    ["skillmd update @username/skill-a", "skillmd update @username/skill-b"],
   );
 });
 
@@ -150,11 +150,11 @@ test("filters --all by --agent-target", async () => {
       baseOptions({
         loadSkillsLock: async () =>
           lockFile({
-            a: lockEntry({ skillId: "@owner/skill-a", agentTarget: "skillmd" }),
+            a: lockEntry({ skillId: "@username/skill-a", agentTarget: "skillmd" }),
             b: lockEntry({
-              skillId: "@owner/skill-b",
+              skillId: "@username/skill-b",
               installedPath:
-                "/workspace/project/.claude/skills/registry.skillmarkdown.com/owner/skill-b",
+                "/workspace/project/.claude/skills/registry.skillmarkdown.com/username/skill-b",
               agentTarget: "claude",
             }),
           }),
@@ -178,11 +178,11 @@ test("filters --all by new builtin agent target", async () => {
       baseOptions({
         loadSkillsLock: async () =>
           lockFile({
-            a: lockEntry({ skillId: "@owner/skill-a", agentTarget: "skillmd" }),
+            a: lockEntry({ skillId: "@username/skill-a", agentTarget: "skillmd" }),
             b: lockEntry({
-              skillId: "@owner/skill-b",
+              skillId: "@username/skill-b",
               installedPath:
-                "/workspace/project/.deepseek/skills/registry.skillmarkdown.com/owner/skill-b",
+                "/workspace/project/.deepseek/skills/registry.skillmarkdown.com/username/skill-b",
               agentTarget: "deepseek",
             }),
           }),
@@ -201,11 +201,11 @@ test("filters --all by new builtin agent target", async () => {
 test("updates explicit skill ids and reports missing installs", async () => {
   const { result, logs } = await captureConsole(() =>
     runUpdateCommand(
-      ["@owner/skill-a", "@owner/missing", "--json"],
+      ["@username/skill-a", "@username/missing", "--json"],
       baseOptions({
         loadSkillsLock: async () =>
           lockFile({
-            a: lockEntry({ skillId: "@owner/skill-a" }),
+            a: lockEntry({ skillId: "@username/skill-a" }),
           }),
       }),
     ),
@@ -227,7 +227,7 @@ test("skips exact-version pinned entries", async () => {
         loadSkillsLock: async () =>
           lockFile({
             a: lockEntry({
-              skillId: "@owner/skill-a",
+              skillId: "@username/skill-a",
               selectorSpec: "1.2.3",
               resolvedVersion: "1.2.3",
             }),
@@ -254,8 +254,8 @@ test("continues after update failure and exits non-zero", async () => {
       baseOptions({
         loadSkillsLock: async () =>
           lockFile({
-            a: lockEntry({ skillId: "@owner/skill-a" }),
-            b: lockEntry({ skillId: "@owner/skill-b" }),
+            a: lockEntry({ skillId: "@username/skill-a" }),
+            b: lockEntry({ skillId: "@username/skill-b" }),
           }),
         installFromRegistry: async (input) => {
           if (input.skillSlug === "skill-a") {
@@ -285,8 +285,9 @@ test("update --global reads global lock scope and preserves global source comman
           loadArgs = args;
           return lockFile({
             a: lockEntry({
-              skillId: "@owner/skill-a",
-              installedPath: "/Users/tester/.codex/skills/registry.skillmarkdown.com/owner/skill-a",
+              skillId: "@username/skill-a",
+              installedPath:
+                "/Users/tester/.codex/skills/registry.skillmarkdown.com/username/skill-a",
               agentTarget: "openai",
             }),
           });

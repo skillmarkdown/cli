@@ -3,6 +3,8 @@ import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/rea
 import { callWithReadTokenRetry, isReadTokenRetryableStatus } from "../lib/auth/read-token-retry";
 import { resolveWriteAuth } from "../lib/auth/write-auth";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
+import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
+import { type WhoamiResponse } from "../lib/whoami/types";
 import { parseSkillId } from "../lib/registry/skill-id";
 import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
 import { TAG_USAGE } from "../lib/shared/cli-text";
@@ -23,6 +25,11 @@ interface TagCommandOptions {
   readSession?: () => AuthSession | null;
   resolveReadIdToken?: () => Promise<string | null>;
   exchangeRefreshToken?: (apiKey: string, refreshToken: string) => Promise<FirebaseIdTokenSession>;
+  getWhoami?: (
+    baseUrl: string,
+    idToken: string,
+    options?: { timeoutMs?: number },
+  ) => Promise<WhoamiResponse>;
   listDistTags?: (
     baseUrl: string,
     request: { username: string; skillSlug: string },
@@ -114,6 +121,7 @@ export async function runTagCommand(
       config,
       readSession: options.readSession ?? readAuthSession,
       exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
+      getWhoami: options.getWhoami ?? defaultGetWhoami,
       requireOwner: true,
       targetOwnerSlug: parsedSkillId.username,
       ownerMismatchMessage: (owner) =>

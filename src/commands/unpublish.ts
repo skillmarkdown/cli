@@ -1,5 +1,7 @@
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
 import { resolveWriteAuth } from "../lib/auth/write-auth";
+import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
+import { type WhoamiResponse } from "../lib/whoami/types";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { parseSkillId } from "../lib/registry/skill-id";
 import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
@@ -15,6 +17,11 @@ interface UnpublishCommandOptions {
   getConfig?: (env: NodeJS.ProcessEnv) => UnpublishEnvConfig;
   readSession?: () => AuthSession | null;
   exchangeRefreshToken?: (apiKey: string, refreshToken: string) => Promise<FirebaseIdTokenSession>;
+  getWhoami?: (
+    baseUrl: string,
+    idToken: string,
+    options?: { timeoutMs?: number },
+  ) => Promise<WhoamiResponse>;
   unpublishVersion?: (
     baseUrl: string,
     idToken: string,
@@ -47,6 +54,7 @@ export async function runUnpublishCommand(
       config,
       readSession: options.readSession ?? readAuthSession,
       exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
+      getWhoami: options.getWhoami ?? defaultGetWhoami,
       requireOwner: true,
       targetOwnerSlug: parsedSkillId.username,
     });

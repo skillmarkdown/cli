@@ -67,6 +67,18 @@ function baseOptions(overrides = {}) {
       userId: "uid-1",
       expiresInSeconds: 3600,
     }),
+    getWhoami: async () => ({
+      uid: "uid-1",
+      owner: "@core",
+      username: "core",
+      email: "core@example.com",
+      projectId: "skillmarkdown-development",
+      authType: "firebase",
+      scope: "admin",
+      plan: "pro",
+      entitlements: { privateSkills: true },
+      teams: [],
+    }),
     preparePublish: async () => ({
       status: "upload_required",
       publishToken: "pub-token",
@@ -110,7 +122,7 @@ test("fails when not logged in", async () => {
   assert.match(errors.join("\n"), /not logged in/i);
 });
 
-test("fails when session has no github username", async () => {
+test("publishes when session has no embedded owner fields", async () => {
   const options = baseOptions({
     readSession: () => ({
       provider: "email",
@@ -123,8 +135,8 @@ test("fails when session has no github username", async () => {
     runPublishCommand(["--version", "1.0.0"], options),
   );
 
-  assert.equal(result, 1);
-  assert.match(errors.join("\n"), /login --reauth/i);
+  assert.equal(result, 0);
+  assert.equal(errors.length, 0);
 });
 
 test("uses configured auth token for publish without session", async () => {

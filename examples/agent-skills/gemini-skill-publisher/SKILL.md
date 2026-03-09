@@ -18,7 +18,7 @@ Use when the requested skill workflow must target Gemini roots and metadata:
 ## Inputs
 
 - skill workspace path
-- skill id (`@owner/skill`)
+- skill id (`@username/skill`)
 - version, channel, visibility
 
 ## Outputs
@@ -52,7 +52,7 @@ Use when the requested skill workflow must target Gemini roots and metadata:
 ## Examples
 
 - “Publish this skill for Gemini latest.”
-- “Install @owner/skill for Gemini in this folder.”
+- “Install @username/skill for Gemini in this folder.”
 - “Update all Gemini-targeted skills here.”
 
 ## Limitations / Failure modes

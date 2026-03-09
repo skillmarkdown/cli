@@ -15,7 +15,7 @@ test("resolveRegistryHost always returns canonical install host", () => {
   assert.equal(host, "registry.skillmarkdown.com");
 });
 
-test("resolveInstalledSkillPath builds project-local host/owner/skill path", () => {
+test("resolveInstalledSkillPath builds project-local host/username/skill path", () => {
   const path = resolveInstalledSkillPath(
     "/workspace/project",
     "https://registryapi-sm46rm3rja-uc.a.run.app/",

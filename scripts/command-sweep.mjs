@@ -1262,7 +1262,7 @@ function runProfileSweep({
         env,
         expectedPattern: /(unpublish_denied|status 409)/i,
         skipReason: !unpublishDenySpec
-          ? "set SKILLMD_SWEEP_UNPUBLISH_DENY_SPEC='@owner/skill@version' to enable this policy-window check"
+          ? "set SKILLMD_SWEEP_UNPUBLISH_DENY_SPEC='@username/skill@version' to enable this policy-window check"
           : writeSkipReason,
       });
     }

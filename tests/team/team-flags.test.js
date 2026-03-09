@@ -16,12 +16,12 @@ test("parses create flags", () => {
 });
 
 test("parses members add defaults", () => {
-  const parsed = parseTeamFlags(["members", "add", "core-team", "owner-login"]);
+  const parsed = parseTeamFlags(["members", "add", "core-team", "username-login"]);
   assert.deepEqual(parsed, {
     valid: true,
     action: "members_add",
     team: "core-team",
-    username: "owner-login",
+    username: "username-login",
     role: "member",
     json: false,
   });
@@ -32,7 +32,7 @@ test("parses members set-role", () => {
     "members",
     "set-role",
     "core-team",
-    "owner-login",
+    "username-login",
     "admin",
     "--json",
   ]);
@@ -40,7 +40,7 @@ test("parses members set-role", () => {
     valid: true,
     action: "members_set_role",
     team: "core-team",
-    username: "owner-login",
+    username: "username-login",
     role: "admin",
     json: true,
   });

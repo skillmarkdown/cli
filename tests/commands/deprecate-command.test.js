@@ -32,6 +32,18 @@ function baseOptions(overrides = {}) {
       userId: "uid-1",
       expiresInSeconds: 3600,
     }),
+    getWhoami: async () => ({
+      uid: "uid-1",
+      owner: "@core",
+      username: "core",
+      email: "core@example.com",
+      projectId: "skillmarkdown-development",
+      authType: "firebase",
+      scope: "admin",
+      plan: "pro",
+      entitlements: { privateSkills: true },
+      teams: [],
+    }),
     deprecateVersions: async () => ({
       status: "updated",
       range: "^1.2.0",

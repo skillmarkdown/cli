@@ -11,6 +11,7 @@ test("parses no-arg update as valid", () => {
   assert.deepEqual(parsed, {
     all: false,
     json: false,
+    global: false,
     skillIds: [],
     agentTarget: undefined,
     valid: true,
@@ -23,6 +24,7 @@ test("parses --all with flags", () => {
   assert.deepEqual(parsed, {
     all: true,
     json: true,
+    global: false,
     skillIds: [],
     agentTarget: undefined,
     valid: true,
@@ -30,12 +32,13 @@ test("parses --all with flags", () => {
 });
 
 test("parses multiple skill ids", () => {
-  const parsed = parseUpdateFlags(["@owner/skill-a", "owner/skill-b"]);
+  const parsed = parseUpdateFlags(["@username/skill-a", "username/skill-b"]);
 
   assert.deepEqual(parsed, {
     all: false,
     json: false,
-    skillIds: ["@owner/skill-a", "owner/skill-b"],
+    global: false,
+    skillIds: ["@username/skill-a", "username/skill-b"],
     agentTarget: undefined,
     valid: true,
   });
@@ -48,7 +51,7 @@ test("parses --agent-target", () => {
 });
 
 for (const args of [
-  ["--all", "@owner/skill"],
+  ["--all", "@username/skill"],
   ["--bad-flag"],
   ["--agent-target", "custom:UPPER"],
 ]) {

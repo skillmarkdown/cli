@@ -24,8 +24,8 @@ function validLockfile(entries) {
 test("loadSkillsLock rejects entries with invalid agentTarget", async () => {
   const rawLockfile = validLockfile({
     a: {
-      skillId: "@owner/skill-a",
-      username: "owner",
+      skillId: "@username/skill-a",
+      username: "username",
       skill: "skill-a",
       agentTarget: "bad-target",
       selectorSpec: "latest",
@@ -36,7 +36,7 @@ test("loadSkillsLock rejects entries with invalid agentTarget", async () => {
       installedPath: "/tmp/a",
       registryBaseUrl: "https://registry.example.com",
       installedAt: "2026-03-02T00:00:00.000Z",
-      sourceCommand: "skillmd use @owner/skill-a",
+      sourceCommand: "skillmd use @username/skill-a",
       downloadedFrom: "https://storage.example.com",
     },
   });
@@ -53,8 +53,8 @@ test("loadSkillsLock rejects entries with invalid agentTarget", async () => {
 test("loadSkillsLock accepts new builtin agent targets", async () => {
   const rawLockfile = validLockfile({
     a: {
-      skillId: "@owner/skill-a",
-      username: "owner",
+      skillId: "@username/skill-a",
+      username: "username",
       skill: "skill-a",
       agentTarget: "meta",
       selectorSpec: "latest",
@@ -65,7 +65,7 @@ test("loadSkillsLock accepts new builtin agent targets", async () => {
       installedPath: "/tmp/a",
       registryBaseUrl: "https://registry.example.com",
       installedAt: "2026-03-02T00:00:00.000Z",
-      sourceCommand: "skillmd use @owner/skill-a --agent-target meta",
+      sourceCommand: "skillmd use @username/skill-a --agent-target meta",
       downloadedFrom: "https://storage.example.com",
     },
   });
@@ -84,8 +84,8 @@ test("saveSkillsLock round-trips lockfile via filesystem", async () => {
     const lock = upsertSkillsLockEntry(
       createEmptySkillsLock(now),
       {
-        skillId: "@owner/skill-a",
-        username: "owner",
+        skillId: "@username/skill-a",
+        username: "username",
         skill: "skill-a",
         agentTarget: "skillmd",
         selectorSpec: "latest",
@@ -93,10 +93,10 @@ test("saveSkillsLock round-trips lockfile via filesystem", async () => {
         digest: "sha256:abc",
         sizeBytes: 123,
         mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-        installedPath: "/tmp/skills/owner/skill-a",
+        installedPath: "/tmp/skills/username/skill-a",
         registryBaseUrl: "https://registry.example.com",
         installedAt: now.toISOString(),
-        sourceCommand: "skillmd use @owner/skill-a",
+        sourceCommand: "skillmd use @username/skill-a",
         downloadedFrom: "https://storage.example.com",
       },
       now,
@@ -119,8 +119,8 @@ test("saveSkillsLock supports concurrent writes without temp-file collisions", a
     const lockA = upsertSkillsLockEntry(
       createEmptySkillsLock(now),
       {
-        skillId: "@owner/skill-a",
-        username: "owner",
+        skillId: "@username/skill-a",
+        username: "username",
         skill: "skill-a",
         agentTarget: "skillmd",
         selectorSpec: "latest",
@@ -128,10 +128,10 @@ test("saveSkillsLock supports concurrent writes without temp-file collisions", a
         digest: "sha256:a",
         sizeBytes: 1,
         mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-        installedPath: "/tmp/skills/owner/skill-a",
+        installedPath: "/tmp/skills/username/skill-a",
         registryBaseUrl: "https://registry.example.com",
         installedAt: now.toISOString(),
-        sourceCommand: "skillmd use @owner/skill-a",
+        sourceCommand: "skillmd use @username/skill-a",
         downloadedFrom: "https://storage.example.com",
       },
       now,
@@ -139,8 +139,8 @@ test("saveSkillsLock supports concurrent writes without temp-file collisions", a
     const lockB = upsertSkillsLockEntry(
       createEmptySkillsLock(now),
       {
-        skillId: "@owner/skill-b",
-        username: "owner",
+        skillId: "@username/skill-b",
+        username: "username",
         skill: "skill-b",
         agentTarget: "claude",
         selectorSpec: "latest",
@@ -148,10 +148,10 @@ test("saveSkillsLock supports concurrent writes without temp-file collisions", a
         digest: "sha256:b",
         sizeBytes: 2,
         mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-        installedPath: "/tmp/skills/owner/skill-b",
+        installedPath: "/tmp/skills/username/skill-b",
         registryBaseUrl: "https://registry.example.com",
         installedAt: now.toISOString(),
-        sourceCommand: "skillmd use @owner/skill-b --agent-target claude",
+        sourceCommand: "skillmd use @username/skill-b --agent-target claude",
         downloadedFrom: "https://storage.example.com",
       },
       now,
@@ -163,7 +163,8 @@ test("saveSkillsLock supports concurrent writes without temp-file collisions", a
     const loadedValues = Object.values(loaded.entries);
     assert.equal(loadedValues.length, 1);
     assert.ok(
-      loadedValues[0].skillId === "@owner/skill-a" || loadedValues[0].skillId === "@owner/skill-b",
+      loadedValues[0].skillId === "@username/skill-a" ||
+        loadedValues[0].skillId === "@username/skill-b",
     );
 
     const files = fs.readdirSync(cwd);

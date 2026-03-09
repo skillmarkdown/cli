@@ -18,10 +18,10 @@ test("loadSkillsManifest parses valid manifest and sorts dependencies", async ()
           agentTarget: "skillmd",
         },
         dependencies: {
-          "@owner/skill-b": {
+          "@username/skill-b": {
             spec: "^1.2.0",
           },
-          "@owner/skill-a": {
+          "@username/skill-a": {
             spec: "latest",
             agentTarget: "claude",
           },
@@ -33,7 +33,7 @@ test("loadSkillsManifest parses valid manifest and sorts dependencies", async ()
   assert.equal(parsed.defaults.agentTarget, "skillmd");
   assert.deepEqual(
     parsed.dependencies.map((dependency) => dependency.skillId),
-    ["@owner/skill-a", "@owner/skill-b"],
+    ["@username/skill-a", "@username/skill-b"],
   );
   assert.equal(parsed.dependencies[0].agentTarget, "claude");
 });
@@ -47,7 +47,7 @@ test("loadSkillsManifest accepts new builtin agent targets", async () => {
           agentTarget: "openai",
         },
         dependencies: {
-          "@owner/skill-a": {
+          "@username/skill-a": {
             spec: "latest",
             agentTarget: "perplexity",
           },
@@ -67,7 +67,7 @@ test("loadSkillsManifest rejects unknown top-level fields", async () => {
           manifestJson({
             version: 1,
             dependencies: {
-              "@owner/skill-a": { spec: "latest" },
+              "@username/skill-a": { spec: "latest" },
             },
             extra: true,
           }),
@@ -100,11 +100,11 @@ test("loadSkillsManifest rejects non-canonical dependency key", async () => {
           manifestJson({
             version: 1,
             dependencies: {
-              "owner/skill-a": { spec: "latest" },
+              "username/skill-a": { spec: "latest" },
             },
           }),
       }),
-    /invalid skills manifest: dependency key 'owner\/skill-a' must be canonical/i,
+    /invalid skills manifest: dependency key 'username\/skill-a' must be canonical/i,
   );
 });
 
@@ -116,11 +116,11 @@ test("loadSkillsManifest rejects invalid dependency agentTarget", async () => {
           manifestJson({
             version: 1,
             dependencies: {
-              "@owner/skill-a": { spec: "latest", agentTarget: "custom:UPPER" },
+              "@username/skill-a": { spec: "latest", agentTarget: "custom:UPPER" },
             },
           }),
       }),
-    /invalid skills manifest: dependency '@owner\/skill-a'.agentTarget must be a valid agent target/i,
+    /invalid skills manifest: dependency '@username\/skill-a'.agentTarget must be a valid agent target/i,
   );
 });
 

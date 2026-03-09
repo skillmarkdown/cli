@@ -1,5 +1,7 @@
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
 import { resolveWriteAuth } from "../lib/auth/write-auth";
+import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
+import { type WhoamiResponse } from "../lib/whoami/types";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { parseDeprecateFlags, parseDeprecateRequest } from "../lib/deprecate/flags";
 import { deprecateVersions as defaultDeprecateVersions } from "../lib/deprecate/client";
@@ -15,6 +17,11 @@ interface DeprecateCommandOptions {
   getConfig?: (env: NodeJS.ProcessEnv) => DeprecateEnvConfig;
   readSession?: () => AuthSession | null;
   exchangeRefreshToken?: (apiKey: string, refreshToken: string) => Promise<FirebaseIdTokenSession>;
+  getWhoami?: (
+    baseUrl: string,
+    idToken: string,
+    options?: { timeoutMs?: number },
+  ) => Promise<WhoamiResponse>;
   deprecateVersions?: (
     baseUrl: string,
     idToken: string,
@@ -48,6 +55,7 @@ export async function runDeprecateCommand(
       config,
       readSession: options.readSession ?? readAuthSession,
       exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
+      getWhoami: options.getWhoami ?? defaultGetWhoami,
       requireOwner: true,
       targetOwnerSlug: parsedSkillId.username,
     });

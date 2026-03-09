@@ -35,9 +35,9 @@ export const TEAM_USAGE =
   "  skillmd team create <team-slug> [--display-name <name>] [--json]\n" +
   "  skillmd team view <team-slug> [--json]\n" +
   "  skillmd team members ls <team-slug> [--json]\n" +
-  "  skillmd team members add <team-slug> <owner-login> [--role <admin|member>] [--json]\n" +
-  "  skillmd team members set-role <team-slug> <owner-login> <admin|member> [--json]\n" +
-  "  skillmd team members rm <team-slug> <owner-login> [--json]";
+  "  skillmd team members add <team-slug> <username> [--role <admin|member>] [--json]\n" +
+  "  skillmd team members set-role <team-slug> <username> <admin|member> [--json]\n" +
+  "  skillmd team members rm <team-slug> <username> [--json]";
 export const TOKEN_USAGE =
   "Usage: skillmd token <ls|add|rm> ... [--json]\n" +
   "  skillmd token ls [--json]\n" +

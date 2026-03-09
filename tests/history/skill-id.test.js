@@ -5,7 +5,7 @@ const { requireDist } = require("../helpers/dist-imports.js");
 
 const { parseSkillId } = requireDist("lib/registry/skill-id.js");
 
-test("parseSkillId accepts @owner/skill and normalizes casing", () => {
+test("parseSkillId accepts @username/skill and normalizes casing", () => {
   const parsed = parseSkillId("@StefDevScore/Test-Skill");
   assert.deepEqual(parsed, {
     username: "stefdevscore",
@@ -14,7 +14,7 @@ test("parseSkillId accepts @owner/skill and normalizes casing", () => {
   });
 });
 
-test("parseSkillId accepts owner/skill format", () => {
+test("parseSkillId accepts username/skill format", () => {
   const parsed = parseSkillId("stefdevscore/test-skill");
   assert.deepEqual(parsed, {
     username: "stefdevscore",
@@ -27,9 +27,9 @@ for (const input of [
   "noslash",
   "/skill",
   "owner/",
-  "@-owner/skill",
-  "owner/skill_underscore",
-  "owner/skill-",
+  "@-username/skill",
+  "username/skill_underscore",
+  "username/skill-",
 ]) {
   test(`parseSkillId rejects invalid input: ${input}`, () => {
     assert.throws(() => parseSkillId(input), /skill id must be in the form|valid slug/);

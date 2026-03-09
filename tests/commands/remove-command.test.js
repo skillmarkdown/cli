@@ -7,11 +7,11 @@ const { captureConsole } = require("../helpers/console-test-utils.js");
 const { runRemoveCommand } = requireDist("commands/remove.js");
 
 function lockEntry(overrides = {}) {
-  const skillId = overrides.skillId ?? "@owner/skill-a";
+  const skillId = overrides.skillId ?? "@username/skill-a";
   const skill = skillId.split("/")[1];
   return {
     skillId,
-    username: "owner",
+    username: "username",
     skill,
     selectorSpec: "latest",
     resolvedVersion: "1.0.0",
@@ -20,10 +20,10 @@ function lockEntry(overrides = {}) {
     mediaType: "application/octet-stream",
     installedPath:
       overrides.installedPath ??
-      `/workspace/.agent/skills/registry.skillmarkdown.com/owner/${skill}`,
+      `/workspace/.agent/skills/registry.skillmarkdown.com/username/${skill}`,
     registryBaseUrl: "https://registry.example.com",
     installedAt: "2026-03-01T00:00:00.000Z",
-    sourceCommand: "skillmd use @owner/skill",
+    sourceCommand: "skillmd use @username/skill",
     downloadedFrom: "https://storage.example.com",
     agentTarget: overrides.agentTarget ?? "skillmd",
   };
@@ -42,7 +42,7 @@ test("fails with usage on invalid skill id without throwing", async () => {
 
 test("fails when skill is not installed", async () => {
   const { result, errors } = await captureConsole(() =>
-    runRemoveCommand(["@owner/missing"], {
+    runRemoveCommand(["@username/missing"], {
       cwd: "/workspace",
       getConfig: () => ({
         firebaseProjectId: "skillmarkdown-development",
@@ -61,7 +61,7 @@ test("removes installed skill and updates lock", async () => {
   let removedPath = "";
   let savedLock;
   const { result, logs } = await captureConsole(() =>
-    runRemoveCommand(["@owner/skill-a"], {
+    runRemoveCommand(["@username/skill-a"], {
       cwd: "/workspace",
       getConfig: () => ({
         firebaseProjectId: "skillmarkdown-development",
@@ -83,14 +83,14 @@ test("removes installed skill and updates lock", async () => {
     }),
   );
   assert.equal(result, 0);
-  assert.equal(removedPath, "/workspace/.agent/skills/registry.skillmarkdown.com/owner/skill-a");
+  assert.equal(removedPath, "/workspace/.agent/skills/registry.skillmarkdown.com/username/skill-a");
   assert.equal(Object.keys(savedLock.entries).length, 0);
   assert.match(logs.join("\n"), /Removed 1 install/);
 });
 
 test("prints json output and returns non-zero on failures", async () => {
   const { result, logs } = await captureConsole(() =>
-    runRemoveCommand(["@owner/skill-a", "--json"], {
+    runRemoveCommand(["@username/skill-a", "--json"], {
       cwd: "/workspace",
       getConfig: () => ({
         firebaseProjectId: "skillmarkdown-development",
@@ -119,7 +119,7 @@ test("remove --global validates and removes global install paths", async () => {
   let removedPath;
   let saveArgs;
   const { result } = await captureConsole(() =>
-    runRemoveCommand(["@owner/skill-a", "--global", "--agent-target", "openai"], {
+    runRemoveCommand(["@username/skill-a", "--global", "--agent-target", "openai"], {
       cwd: "/workspace/project",
       homeDir: "/Users/tester",
       env: {
@@ -138,18 +138,19 @@ test("remove --global validates and removes global install paths", async () => {
         generatedAt: "2026-03-02T00:00:00.000Z",
         entries: {
           a: {
-            skillId: "@owner/skill-a",
-            username: "owner",
+            skillId: "@username/skill-a",
+            username: "username",
             skill: "skill-a",
             selectorSpec: "latest",
             resolvedVersion: "1.0.0",
             digest: "sha256:test",
             sizeBytes: 1,
             mediaType: "application/test",
-            installedPath: "/Users/tester/.codex/skills/registry.skillmarkdown.com/owner/skill-a",
+            installedPath:
+              "/Users/tester/.codex/skills/registry.skillmarkdown.com/username/skill-a",
             registryBaseUrl: "https://registry.skillmarkdown.com",
             installedAt: "2026-03-02T00:00:00.000Z",
-            sourceCommand: "skillmd use --global @owner/skill-a --agent-target openai",
+            sourceCommand: "skillmd use --global @username/skill-a --agent-target openai",
             downloadedFrom: "https://storage.example.com",
             agentTarget: "openai",
           },
@@ -165,6 +166,9 @@ test("remove --global validates and removes global install paths", async () => {
   );
 
   assert.equal(result, 0);
-  assert.equal(removedPath, "/Users/tester/.codex/skills/registry.skillmarkdown.com/owner/skill-a");
+  assert.equal(
+    removedPath,
+    "/Users/tester/.codex/skills/registry.skillmarkdown.com/username/skill-a",
+  );
   assert.equal(saveArgs[3].scope, "global");
 });

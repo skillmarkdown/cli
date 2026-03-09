@@ -5,6 +5,8 @@ import { deriveOwnerFromSession } from "../lib/auth/owner";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
 import { resolveWriteAuth } from "../lib/auth/write-auth";
+import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
+import { type WhoamiResponse } from "../lib/whoami/types";
 import { getPublishEnvConfig } from "../lib/publish/config";
 import { isPublishApiError } from "../lib/publish/errors";
 import { parsePublishFlags } from "../lib/publish/flags";
@@ -46,6 +48,11 @@ interface PublishCommandOptions {
     artifact: PackedArtifact;
   }) => PublishManifest;
   exchangeRefreshToken?: (apiKey: string, refreshToken: string) => Promise<FirebaseIdTokenSession>;
+  getWhoami?: (
+    baseUrl: string,
+    idToken: string,
+    options?: { timeoutMs?: number },
+  ) => Promise<WhoamiResponse>;
   preparePublish?: (
     baseUrl: string,
     idToken: string,
@@ -199,7 +206,7 @@ export async function runPublishCommand(
 
   const readSessionFn = options.readSession ?? readAuthSession;
   const session = readSessionFn();
-  let owner = session ? deriveOwnerFromSession(session) : null;
+  let owner = session ? deriveOwnerFromSession() : null;
 
   try {
     const getConfigFn = options.getConfig ?? getPublishEnvConfig;
@@ -272,6 +279,7 @@ export async function runPublishCommand(
       config,
       readSession: options.readSession ?? readAuthSession,
       exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
+      getWhoami: options.getWhoami ?? defaultGetWhoami,
       requireOwner: true,
     });
     if (!auth.ok) {
@@ -333,7 +341,7 @@ export async function runPublishCommand(
     if (isPublishApiError(error)) {
       if (error.status === 409 && error.code === "version_conflict") {
         if (!owner && session) {
-          owner = deriveOwnerFromSession(session);
+          owner = deriveOwnerFromSession();
         }
         console.error(
           `skillmd publish: version conflict for ${owner ?? "@unknown"}/${basename(targetDir)}@${parsed.version}. ` +

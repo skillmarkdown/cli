@@ -154,7 +154,7 @@ test("spawned CLI: use fails with usage when skill-id is missing", () => {
     assert.equal(result.status, 1);
     assert.match(
       result.stderr,
-      /Usage: skillmd use <skill-id> \[--version <semver> \| --spec <tag\|version\|range>\]/,
+      /Usage: skillmd use <skill-id> .*\[--version <semver> \| --spec <tag\|version\|range>\]/,
     );
   } finally {
     cleanupDirectory(root);
@@ -249,9 +249,9 @@ test("spawned CLI: search prints dist-tag latest and caches selection for numeri
           limit: 20,
           results: [
             {
-              skillId: "@owner/skill-a",
+              skillId: "@username/skill-a",
               owner: "@owner",
-              username: "owner",
+              username: "username",
               skill: "skill-a",
               description: "A skill",
               distTags: { latest: "1.2.3" },
@@ -264,12 +264,12 @@ test("spawned CLI: search prints dist-tag latest and caches selection for numeri
       return;
     }
 
-    if (request.method === "GET" && url.pathname === "/v1/skills/owner/skill-a") {
+    if (request.method === "GET" && url.pathname === "/v1/skills/username/skill-a") {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(
         JSON.stringify({
           owner: "@owner",
-          username: "owner",
+          username: "username",
           skill: "skill-a",
           description: "A skill",
           access: "public",
@@ -291,7 +291,7 @@ test("spawned CLI: search prints dist-tag latest and caches selection for numeri
       SKILLMD_REGISTRY_BASE_URL: baseUrl,
     });
     assert.equal(searchResult.status, 0);
-    assert.match(searchResult.stdout, /@owner\/skill-a/);
+    assert.match(searchResult.stdout, /@username\/skill-a/);
     assert.match(searchResult.stdout, /1.2.3/);
 
     const viewResult = await runCliAsync(["view", "1"], root, {
@@ -299,7 +299,7 @@ test("spawned CLI: search prints dist-tag latest and caches selection for numeri
       SKILLMD_REGISTRY_BASE_URL: baseUrl,
     });
     assert.equal(viewResult.status, 0);
-    assert.match(viewResult.stdout, /Skill: @owner\/skill-a/);
+    assert.match(viewResult.stdout, /Skill: @username\/skill-a/);
     assert.match(viewResult.stdout, /Dist-Tags:/);
   } finally {
     await mockRegistry.close();
@@ -315,6 +315,24 @@ test("spawned CLI: tag ls/add/rm manages dist-tags via strict v1 endpoints", asy
 
   const mockRegistry = await startMockRegistry((request, response) => {
     const url = new URL(request.url, "http://127.0.0.1");
+    if (request.method === "GET" && url.pathname === "/v1/auth/whoami") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          uid: "uid-1",
+          email: "core@example.com",
+          owner: "@core",
+          username: "core",
+          projectId: "skillmarkdown-development",
+          authType: "firebase",
+          scope: "admin",
+          plan: "pro",
+          entitlements: { privateSkills: true },
+          teams: [],
+        }),
+      );
+      return;
+    }
     if (request.method === "GET" && url.pathname === "/v1/skills/core/tag-skill/dist-tags") {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(
@@ -505,14 +523,14 @@ test("spawned CLI: update --all uses skills-lock.json and rewrites resolved vers
     const url = new URL(request.url, "http://127.0.0.1");
     if (
       request.method === "GET" &&
-      url.pathname === "/v1/skills/owner/skill-a/resolve" &&
+      url.pathname === "/v1/skills/username/skill-a/resolve" &&
       url.searchParams.get("spec") === "latest"
     ) {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(
         JSON.stringify({
           owner: "@owner",
-          username: "owner",
+          username: "username",
           skill: "skill-a",
           spec: "latest",
           version: "1.1.0",
@@ -523,13 +541,13 @@ test("spawned CLI: update --all uses skills-lock.json and rewrites resolved vers
 
     if (
       request.method === "GET" &&
-      url.pathname === "/v1/skills/owner/skill-a/versions/1.1.0/artifact"
+      url.pathname === "/v1/skills/username/skill-a/versions/1.1.0/artifact"
     ) {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(
         JSON.stringify({
           owner: "@owner",
-          username: "owner",
+          username: "username",
           skill: "skill-a",
           version: "1.1.0",
           digest: archive.digest,
@@ -563,8 +581,8 @@ test("spawned CLI: update --all uses skills-lock.json and rewrites resolved vers
         generatedAt: "2026-03-01T00:00:00.000Z",
         entries: {
           a: {
-            skillId: "@owner/skill-a",
-            username: "owner",
+            skillId: "@username/skill-a",
+            username: "username",
             skill: "skill-a",
             selectorSpec: "latest",
             resolvedVersion: "1.0.0",
@@ -574,7 +592,7 @@ test("spawned CLI: update --all uses skills-lock.json and rewrites resolved vers
             installedPath,
             registryBaseUrl: baseUrl,
             installedAt: "2026-03-01T00:00:00.000Z",
-            sourceCommand: "skillmd use @owner/skill-a",
+            sourceCommand: "skillmd use @username/skill-a",
             downloadedFrom: "https://storage.example.com",
             agentTarget: "skillmd",
           },
@@ -616,14 +634,14 @@ test("spawned CLI: install reads skills.json and writes skills-lock.json", async
     const url = new URL(request.url, "http://127.0.0.1");
     if (
       request.method === "GET" &&
-      url.pathname === "/v1/skills/owner/skill-a/resolve" &&
+      url.pathname === "/v1/skills/username/skill-a/resolve" &&
       url.searchParams.get("spec") === "latest"
     ) {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(
         JSON.stringify({
           owner: "@owner",
-          username: "owner",
+          username: "username",
           skill: "skill-a",
           spec: "latest",
           version: "1.2.3",
@@ -634,13 +652,13 @@ test("spawned CLI: install reads skills.json and writes skills-lock.json", async
 
     if (
       request.method === "GET" &&
-      url.pathname === "/v1/skills/owner/skill-a/versions/1.2.3/artifact"
+      url.pathname === "/v1/skills/username/skill-a/versions/1.2.3/artifact"
     ) {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(
         JSON.stringify({
           owner: "@owner",
-          username: "owner",
+          username: "username",
           skill: "skill-a",
           version: "1.2.3",
           digest: archive.digest,
@@ -676,7 +694,7 @@ test("spawned CLI: install reads skills.json and writes skills-lock.json", async
           agentTarget: "skillmd",
         },
         dependencies: {
-          "@owner/skill-a": {
+          "@username/skill-a": {
             spec: "latest",
           },
         },
@@ -703,7 +721,7 @@ test("spawned CLI: install reads skills.json and writes skills-lock.json", async
     assert.equal(lock.lockfileVersion, 1);
     assert.equal(Object.keys(lock.entries).length, 1);
     const [entry] = Object.values(lock.entries);
-    assert.equal(entry.skillId, "@owner/skill-a");
+    assert.equal(entry.skillId, "@username/skill-a");
     assert.equal(entry.selectorSpec, "latest");
     assert.equal(entry.resolvedVersion, "1.2.3");
     assert.equal(entry.sourceCommand, "skillmd install");
@@ -817,7 +835,7 @@ test("spawned CLI: team lifecycle commands use v1 team endpoints", async () => {
             team: "core-team",
             members: [
               {
-                owner: "@core",
+                usernameHandle: "@core",
                 username: "core",
                 role: "owner",
                 addedAt: "2026-03-04T00:00:00.000Z",
@@ -836,7 +854,7 @@ test("spawned CLI: team lifecycle commands use v1 team endpoints", async () => {
             team: "core-team",
             status: "added",
             member: {
-              owner: "@alice",
+              usernameHandle: "@alice",
               username: "alice",
               role: "member",
             },
@@ -852,7 +870,7 @@ test("spawned CLI: team lifecycle commands use v1 team endpoints", async () => {
             team: "core-team",
             status: "updated",
             member: {
-              owner: "@alice",
+              usernameHandle: "@alice",
               username: "alice",
               role: "admin",
             },

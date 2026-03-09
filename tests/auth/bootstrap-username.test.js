@@ -1,8 +1,9 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+const assert = require("node:assert/strict");
+const test = require("node:test");
 
-import { mockJsonResponse, withMockedFetch } from "../helpers/fetch-test-utils.js";
-import { bootstrapUsername } from "../../src/lib/auth/bootstrap-username.ts";
+const { mockJsonResponse, withMockedFetch } = require("../helpers/fetch-test-utils.js");
+const { requireDist } = require("../helpers/dist-imports.js");
+const { bootstrapUsername } = requireDist("lib/auth/bootstrap-username.js");
 
 test("bootstrapUsername posts username payload and parses success", async () => {
   await withMockedFetch(
@@ -10,7 +11,7 @@ test("bootstrapUsername posts username payload and parses success", async () => 
       const url = new URL(String(input));
       assert.equal(url.pathname, "/v1/auth/bootstrap-username");
       assert.equal(init?.method, "POST");
-      assert.equal((init?.headers as Record<string, string>).Authorization, "Bearer id-token");
+      assert.equal(init?.headers.Authorization, "Bearer id-token");
       assert.deepEqual(JSON.parse(String(init?.body)), { username: "core" });
       return mockJsonResponse(200, {
         status: "bootstrapped",

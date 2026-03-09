@@ -11,10 +11,10 @@ test("listDistTags returns parsed payload", async () => {
   const payload = await withMockedFetch(
     async (input) => {
       const url = new URL(String(input));
-      assert.equal(url.pathname, "/v1/skills/owner/test-skill/dist-tags");
+      assert.equal(url.pathname, "/v1/skills/username/test-skill/dist-tags");
       return mockJsonResponse(200, {
         owner: "@owner",
-        username: "owner",
+        username: "username",
         skill: "test-skill",
         distTags: { latest: "1.2.3" },
         updatedAt: "2026-03-03T12:00:00.000Z",
@@ -22,12 +22,12 @@ test("listDistTags returns parsed payload", async () => {
     },
     () =>
       listDistTags("https://registry.example.com", {
-        username: "owner",
+        username: "username",
         skillSlug: "test-skill",
       }),
   );
 
-  assert.equal(payload.username, "owner");
+  assert.equal(payload.username, "username");
   assert.equal(payload.distTags.latest, "1.2.3");
 });
 
@@ -43,7 +43,7 @@ test("listDistTags surfaces strict route errors without fallback", async () => {
     async () => {
       await assert.rejects(
         listDistTags("https://registry.example.com", {
-          username: "owner",
+          username: "username",
           skillSlug: "test-skill",
         }),
         (error) => {
@@ -62,7 +62,7 @@ test("setDistTag sends PUT payload and parses response", async () => {
   const payload = await withMockedFetch(
     async (input, init) => {
       const url = new URL(String(input));
-      assert.equal(url.pathname, "/v1/skills/owner/test-skill/dist-tags/beta");
+      assert.equal(url.pathname, "/v1/skills/username/test-skill/dist-tags/beta");
       assert.equal(init.method, "PUT");
       assert.match(String(init.headers.Authorization), /^Bearer /);
       assert.deepEqual(JSON.parse(String(init.body)), { version: "1.2.3" });
@@ -75,7 +75,7 @@ test("setDistTag sends PUT payload and parses response", async () => {
     },
     () =>
       setDistTag("https://registry.example.com", "id-token", {
-        username: "owner",
+        username: "username",
         skillSlug: "test-skill",
         tag: "beta",
         version: "1.2.3",
@@ -90,7 +90,7 @@ test("removeDistTag sends DELETE and parses response", async () => {
   const payload = await withMockedFetch(
     async (input, init) => {
       const url = new URL(String(input));
-      assert.equal(url.pathname, "/v1/skills/owner/test-skill/dist-tags/beta");
+      assert.equal(url.pathname, "/v1/skills/username/test-skill/dist-tags/beta");
       assert.equal(init.method, "DELETE");
       assert.match(String(init.headers.Authorization), /^Bearer /);
       return mockJsonResponse(200, {
@@ -101,7 +101,7 @@ test("removeDistTag sends DELETE and parses response", async () => {
     },
     () =>
       removeDistTag("https://registry.example.com", "id-token", {
-        username: "owner",
+        username: "username",
         skillSlug: "test-skill",
         tag: "beta",
       }),
@@ -123,7 +123,7 @@ test("tag client maps API errors", async () => {
     async () => {
       await assert.rejects(
         listDistTags("https://registry.example.com", {
-          username: "owner",
+          username: "username",
           skillSlug: "missing",
         }),
         (error) => {

@@ -524,6 +524,10 @@ function rewriteTemplateFiles(skillDir, scenario) {
     skillContent +=
       "\n\n## Localization notes\n\nThis generated package includes unicode text such as café, naïve, and 東京 to verify registry rendering and search token stability.\n";
   }
+  skillContent = skillContent.replace(
+    "## Limitations / Failure modes",
+    `${buildDiscoverCoverageSection(scenario)}\n\n## Limitations / Failure modes`,
+  );
   writeFileSync(skillFile, skillContent, "utf8");
 
   let readmeContent = readFileSync(readmeFile, "utf8");
@@ -533,7 +537,7 @@ function rewriteTemplateFiles(skillDir, scenario) {
     "Skill for using `@skillmarkdown/cli` with current v1 command contracts across authoring, discovery, auth, release operations, and consumption workflows.",
     `${title}. ${longDescription}`,
   );
-  readmeContent = replaceAll(readmeContent, "@owner/skillmd-cli-skill", handle);
+  readmeContent = replaceAll(readmeContent, "@username/skillmd-cli-skill", handle);
   readmeContent = replaceAll(readmeContent, "@skillmarkdown/skillmd-cli-skill", handle);
   readmeContent += `\n\n## Generated scenario\n\n- Agent target: \`${scenario.target}\`\n- Content mode: \`${scenario.contentMode}\`\n- License mode: \`${scenario.licenseMode}\`\n- Publish sequence: ${scenario.publishes.map(({ version, tag }) => `\`${version}\` (tag \`${tag}\`)`).join(", ")}\n`;
   writeFileSync(readmeFile, readmeContent, "utf8");
@@ -601,11 +605,6 @@ function rewriteTemplateFiles(skillDir, scenario) {
   } else {
     rmSync(assetDataFile, { force: true });
   }
-
-  skillContent = skillContent.replace(
-    "## Limitations / Failure modes",
-    `${buildDiscoverCoverageSection(scenario)}\n\n## Limitations / Failure modes`,
-  );
 
   if (scenario.includeWorkflowNotes) {
     writeFileSync(

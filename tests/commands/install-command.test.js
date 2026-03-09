@@ -8,11 +8,11 @@ const { runInstallCommand } = requireDist("commands/install.js");
 const { UseApiError } = requireDist("lib/use/errors.js");
 
 function lockEntry(overrides = {}) {
-  const skillId = overrides.skillId ?? "@owner/skill-a";
+  const skillId = overrides.skillId ?? "@username/skill-a";
   const skill = skillId.split("/")[1];
   return {
     skillId,
-    username: "owner",
+    username: "username",
     skill,
     selectorSpec: "latest",
     resolvedVersion: "1.0.0",
@@ -21,7 +21,7 @@ function lockEntry(overrides = {}) {
     mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
     installedPath:
       overrides.installedPath ??
-      `/workspace/project/.agent/skills/registry.skillmarkdown.com/owner/${skill}`,
+      `/workspace/project/.agent/skills/registry.skillmarkdown.com/username/${skill}`,
     registryBaseUrl: "https://registry.example.com",
     installedAt: "2026-03-01T00:00:00.000Z",
     sourceCommand: `skillmd use ${skillId}`,
@@ -59,8 +59,8 @@ function baseOptions(overrides = {}) {
       defaults: { agentTarget: "skillmd" },
       dependencies: [
         {
-          skillId: "@owner/skill-a",
-          username: "owner",
+          skillId: "@username/skill-a",
+          username: "username",
           skillSlug: "skill-a",
           spec: "latest",
         },
@@ -68,7 +68,7 @@ function baseOptions(overrides = {}) {
     }),
     loadSkillsLock: async () =>
       lockFile({
-        a: lockEntry({ skillId: "@owner/skill-a", resolvedVersion: "1.0.0" }),
+        a: lockEntry({ skillId: "@username/skill-a", resolvedVersion: "1.0.0" }),
       }),
     saveSkillsLock: async () => {},
     installFromRegistry: async (input) => ({
@@ -115,7 +115,7 @@ function baseOptions(overrides = {}) {
 }
 
 test("fails with usage on unsupported args", async () => {
-  const exitCode = await runInstallCommand(["@owner/skill"]);
+  const exitCode = await runInstallCommand(["@username/skill"]);
   assert.equal(exitCode, 1);
 });
 
@@ -148,14 +148,14 @@ test("installs dependencies and writes lockfile entries", async () => {
           defaults: { agentTarget: "skillmd" },
           dependencies: [
             {
-              skillId: "@owner/skill-a",
-              username: "owner",
+              skillId: "@username/skill-a",
+              username: "username",
               skillSlug: "skill-a",
               spec: "latest",
             },
             {
-              skillId: "@owner/skill-b",
-              username: "owner",
+              skillId: "@username/skill-b",
+              username: "username",
               skillSlug: "skill-b",
               spec: "^1.2.0",
               agentTarget: "claude",
@@ -174,7 +174,7 @@ test("installs dependencies and writes lockfile entries", async () => {
   );
 
   assert.equal(result, 0);
-  assert.deepEqual(installCalls, ["owner/skill-a:skillmd", "owner/skill-b:claude"]);
+  assert.deepEqual(installCalls, ["username/skill-a:skillmd", "username/skill-b:claude"]);
 
   const payload = JSON.parse(logs.join("\n"));
   assert.equal(payload.total, 2);
@@ -199,14 +199,14 @@ test("continues after dependency failure and exits non-zero", async () => {
           defaults: {},
           dependencies: [
             {
-              skillId: "@owner/skill-a",
-              username: "owner",
+              skillId: "@username/skill-a",
+              username: "username",
               skillSlug: "skill-a",
               spec: "latest",
             },
             {
-              skillId: "@owner/skill-b",
-              username: "owner",
+              skillId: "@username/skill-b",
+              username: "username",
               skillSlug: "skill-b",
               spec: "latest",
             },
@@ -240,8 +240,8 @@ test("global --agent-target accepts new builtin targets", async () => {
           defaults: { agentTarget: "skillmd" },
           dependencies: [
             {
-              skillId: "@owner/skill-a",
-              username: "owner",
+              skillId: "@username/skill-a",
+              username: "username",
               skillSlug: "skill-a",
               spec: "latest",
             },
@@ -269,8 +269,8 @@ test("global --agent-target overrides dependency/default targets", async () => {
           defaults: { agentTarget: "skillmd" },
           dependencies: [
             {
-              skillId: "@owner/skill-a",
-              username: "owner",
+              skillId: "@username/skill-a",
+              username: "username",
               skillSlug: "skill-a",
               spec: "latest",
               agentTarget: "claude",
@@ -301,8 +301,8 @@ test("prunes undeclared lock entries when --prune is set", async () => {
           defaults: {},
           dependencies: [
             {
-              skillId: "@owner/skill-a",
-              username: "owner",
+              skillId: "@username/skill-a",
+              username: "username",
               skillSlug: "skill-a",
               spec: "latest",
             },
@@ -310,12 +310,12 @@ test("prunes undeclared lock entries when --prune is set", async () => {
         }),
         loadSkillsLock: async () =>
           lockFile({
-            a: lockEntry({ skillId: "@owner/skill-a", resolvedVersion: "1.0.0" }),
+            a: lockEntry({ skillId: "@username/skill-a", resolvedVersion: "1.0.0" }),
             b: lockEntry({
-              skillId: "@owner/skill-b",
+              skillId: "@username/skill-b",
               resolvedVersion: "1.0.0",
               installedPath:
-                "/workspace/project/.agent/skills/registry.skillmarkdown.com/owner/skill-b",
+                "/workspace/project/.agent/skills/registry.skillmarkdown.com/username/skill-b",
             }),
           }),
         removePath: async (installedPath) => {
@@ -330,7 +330,7 @@ test("prunes undeclared lock entries when --prune is set", async () => {
 
   assert.equal(result, 0);
   assert.deepEqual(removedPaths, [
-    "/workspace/project/.agent/skills/registry.skillmarkdown.com/owner/skill-b",
+    "/workspace/project/.agent/skills/registry.skillmarkdown.com/username/skill-b",
   ]);
 
   const payload = JSON.parse(logs.join("\n"));
@@ -352,8 +352,8 @@ test("rejects pruning non-canonical install paths from lockfile", async () => {
           defaults: {},
           dependencies: [
             {
-              skillId: "@owner/skill-a",
-              username: "owner",
+              skillId: "@username/skill-a",
+              username: "username",
               skillSlug: "skill-a",
               spec: "latest",
             },
@@ -361,9 +361,9 @@ test("rejects pruning non-canonical install paths from lockfile", async () => {
         }),
         loadSkillsLock: async () =>
           lockFile({
-            a: lockEntry({ skillId: "@owner/skill-a", resolvedVersion: "1.0.0" }),
+            a: lockEntry({ skillId: "@username/skill-a", resolvedVersion: "1.0.0" }),
             b: lockEntry({
-              skillId: "@owner/skill-b",
+              skillId: "@username/skill-b",
               resolvedVersion: "1.0.0",
               installedPath: "/tmp/unsafe-prune-target",
             }),

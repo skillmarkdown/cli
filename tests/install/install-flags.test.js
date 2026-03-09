@@ -29,7 +29,7 @@ for (const args of [
   ["--bad"],
   ["--agent-target"],
   ["--agent-target", "custom:UPPER"],
-  ["@owner/skill"],
+  ["@username/skill"],
 ]) {
   test(`rejects invalid args: ${args.join(" ")}`, () => {
     const parsed = parseInstallFlags(args);
