@@ -8,7 +8,7 @@ async function loadModule() {
 test("parsePackJson parses direct npm --json payload", async () => {
   const { parsePackJson } = await loadModule();
   const parsed = parsePackJson(
-    JSON.stringify([{ name: "@skillmarkdown/cli", unpackedSize: 123, files: [] }]),
+    JSON.stringify([{ name: "skillmarkdown", unpackedSize: 123, files: [] }]),
   );
   assert.equal(parsed.unpackedSize, 123);
 });
@@ -17,7 +17,7 @@ test("parsePackJson parses payload with log prefix noise", async () => {
   const { parsePackJson } = await loadModule();
   const parsed = parsePackJson(
     "npm notice something\\n" +
-      JSON.stringify([{ name: "@skillmarkdown/cli", unpackedSize: 321, files: [] }]),
+      JSON.stringify([{ name: "skillmarkdown", unpackedSize: 321, files: [] }]),
   );
   assert.equal(parsed.unpackedSize, 321);
 });

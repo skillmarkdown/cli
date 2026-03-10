@@ -1,6 +1,6 @@
 # Production-Ready Checklist
 
-Use this checklist before releasing `@skillmarkdown/cli`.
+Use this checklist before releasing `skillmarkdown`.
 
 ## Release gate
 
@@ -71,7 +71,7 @@ Checklist:
 
 ## Post-release smoke
 
-- [ ] `npx @skillmarkdown/cli --help` works.
+- [ ] `npx skillmarkdown --help` works.
 - [ ] Fresh global install works.
 - [ ] One-off `npx` execution works.
 - [ ] Login, publish, search, and install succeed in the intended environment.

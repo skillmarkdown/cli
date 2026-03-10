@@ -1,6 +1,6 @@
 # AGENTS
 
-This repo builds `@skillmarkdown/cli` (binary: `skillmd`).
+This repo builds `skillmarkdown` (binary: `skillmd`).
 
 ## Current scope
 

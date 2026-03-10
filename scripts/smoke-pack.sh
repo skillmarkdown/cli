@@ -11,7 +11,7 @@ PACK_FILE="$(npm pack --silent)"
 TMP_DIR="$(mktemp -d)"
 INSTALL_DIR="$TMP_DIR/install"
 SKILL_DIR="$TMP_DIR/packed-skill"
-PACKAGE_CLI_PATH="$INSTALL_DIR/node_modules/@skillmarkdown/cli/dist/cli.js"
+PACKAGE_CLI_PATH="$INSTALL_DIR/node_modules/skillmarkdown/dist/cli.js"
 
 cleanup() {
   rm -rf "$TMP_DIR"

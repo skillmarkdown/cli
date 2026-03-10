@@ -21,7 +21,6 @@ interface LoginConfigOptions {
 
 const USER_ENV_RELATIVE_PATH = ".skillmd/.env";
 const LOCAL_DEV_DEFAULT_PROJECT_ID = DEVELOPMENT_LOGIN_AUTH_CONFIG.firebaseProjectId;
-const CLI_PACKAGE_NAME = "@skillmarkdown/cli";
 const CLI_SCRIPT_BASENAME = "cli.js";
 
 function parseDotEnv(content: string): Record<string, string> {
@@ -79,12 +78,11 @@ function resolvePackageRoot(executionPath: string): string | null {
     return null;
   }
 
-  const packageRoot = dirname(executionDir);
-  if (basename(packageRoot) !== CLI_PACKAGE_NAME.split("/").pop()) {
+  if (basename(executionDir) !== "dist") {
     return null;
   }
 
-  return packageRoot;
+  return dirname(executionDir);
 }
 
 function resolveDefaultProjectId(options: LoginConfigOptions = {}): string {
