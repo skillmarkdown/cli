@@ -43,7 +43,6 @@ function baseOptions(overrides = {}) {
       scope: "admin",
       plan: "pro",
       entitlements: { privateSkills: true },
-      teams: [],
     }),
     listDistTags: async () => ({
       owner: "@core",

@@ -28,12 +28,6 @@ function printWhoamiHuman(result: WhoamiResponse): void {
   if (result.plan) {
     console.log(`Plan: ${result.plan}`);
   }
-  if (result.teams) {
-    console.log(`Teams: ${result.teams.length}`);
-    for (const membership of result.teams) {
-      console.log(`- ${membership.team} (${membership.role})`);
-    }
-  }
 }
 
 export async function runWhoamiCommand(

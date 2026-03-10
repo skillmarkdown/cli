@@ -22,12 +22,11 @@ test("getWhoami sends auth header and parses response", async () => {
         projectId: "skillmarkdown-development",
         authType: "firebase",
         scope: "admin",
-        plan: "teams",
+        plan: "pro",
         entitlements: {
           canUsePrivateSkills: true,
           canPublishPrivateSkills: true,
         },
-        teams: [{ team: "core-team", role: "owner" }],
       });
     },
     () => getWhoami("https://registry.example.com", "id-token"),
@@ -35,8 +34,7 @@ test("getWhoami sends auth header and parses response", async () => {
 
   assert.equal(payload.uid, "uid-1");
   assert.equal(payload.owner, "@core");
-  assert.equal(payload.plan, "teams");
-  assert.equal(payload.teams[0].team, "core-team");
+  assert.equal(payload.plan, "pro");
 });
 
 test("getWhoami maps API errors", async () => {

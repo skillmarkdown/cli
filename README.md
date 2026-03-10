@@ -146,15 +146,6 @@ Token scope model:
 - `skillmd token add <name> [--scope <read|publish|admin>] [--days <1-365>] [--json]`
 - `skillmd token rm <token-id> [--json]`
 
-### Teams operations (preview)
-
-- `skillmd team create <team-slug> [--display-name <name>] [--json]`
-- `skillmd team view <team-slug> [--json]`
-- `skillmd team members ls <team-slug> [--json]`
-- `skillmd team members add <team-slug> <username> [--role <admin|member>] [--json]`
-- `skillmd team members set-role <team-slug> <username> <admin|member> [--json]`
-- `skillmd team members rm <team-slug> <username> [--json]`
-
 ### Private skills and plan gating
 
 - `free`: public skills only
@@ -171,12 +162,6 @@ Token scope model:
 Run `npm run test:coverage` to execute the full CLI test suite with Node's built-in coverage. The command writes V8 artifacts to `coverage/v8/` and prints a console summary. Coverage work in this repo is intended to protect `src/` behavior, not generated `dist/` output or test helpers.
 
 ## Troubleshooting
-
-### Teams commands in production
-
-Symptom: `skillmd team ...` returns a `not_found` style response.
-
-Current status: teams endpoints are intentionally disabled in production while coverage and hardening are finalized.
 
 ### Scope errors with automation token
 

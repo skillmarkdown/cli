@@ -42,7 +42,6 @@ function baseOptions(overrides = {}) {
       scope: "admin",
       plan: "pro",
       entitlements: { privateSkills: true },
-      teams: [],
     }),
     unpublishVersion: async () => ({
       status: "unpublished",

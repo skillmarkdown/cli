@@ -328,7 +328,6 @@ test("spawned CLI: tag ls/add/rm manages dist-tags via strict v1 endpoints", asy
           scope: "admin",
           plan: "pro",
           entitlements: { privateSkills: true },
-          teams: [],
         }),
       );
       return;
@@ -752,12 +751,11 @@ test("spawned CLI: global --auth-token works with whoami", async () => {
           projectId: "skillmarkdown-development",
           authType: "token",
           scope: "admin",
-          plan: "teams",
+          plan: "pro",
           entitlements: {
             canUsePrivateSkills: true,
             canPublishPrivateSkills: true,
           },
-          teams: [{ team: "core-team", role: "owner" }],
         }),
       );
       return;
@@ -783,177 +781,7 @@ test("spawned CLI: global --auth-token works with whoami", async () => {
     const payload = JSON.parse(result.stdout);
     assert.equal(payload.authType, "token");
     assert.equal(payload.scope, "admin");
-    assert.equal(payload.plan, "teams");
-    assert.equal(payload.teams[0].team, "core-team");
-  } finally {
-    await mockRegistry.close();
-    cleanupDirectory(root);
-  }
-});
-
-test("spawned CLI: team lifecycle commands use v1 team endpoints", async () => {
-  const root = makeTempDirectory(CLI_TEST_PREFIX);
-  const seen = [];
-
-  const mockRegistry = await startMockRegistry((request, response) => {
-    const url = new URL(request.url, "http://127.0.0.1");
-    const bodyChunks = [];
-    request.on("data", (chunk) => bodyChunks.push(Buffer.from(chunk)));
-    request.on("end", () => {
-      if (request.method === "POST" && url.pathname === "/v1/teams") {
-        seen.push("create");
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(
-          JSON.stringify({
-            team: "core-team",
-            displayName: "Core Team",
-            createdAt: "2026-03-04T00:00:00.000Z",
-            role: "owner",
-          }),
-        );
-        return;
-      }
-      if (request.method === "GET" && url.pathname === "/v1/teams/core-team") {
-        seen.push("view");
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(
-          JSON.stringify({
-            team: "core-team",
-            displayName: "Core Team",
-            createdAt: "2026-03-04T00:00:00.000Z",
-            updatedAt: "2026-03-04T00:00:00.000Z",
-            role: "admin",
-          }),
-        );
-        return;
-      }
-      if (request.method === "GET" && url.pathname === "/v1/teams/core-team/members") {
-        seen.push("members-ls");
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(
-          JSON.stringify({
-            team: "core-team",
-            members: [
-              {
-                usernameHandle: "@core",
-                username: "core",
-                role: "owner",
-                addedAt: "2026-03-04T00:00:00.000Z",
-                updatedAt: "2026-03-04T00:00:00.000Z",
-              },
-            ],
-          }),
-        );
-        return;
-      }
-      if (request.method === "POST" && url.pathname === "/v1/teams/core-team/members") {
-        seen.push("members-add");
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(
-          JSON.stringify({
-            team: "core-team",
-            status: "added",
-            member: {
-              usernameHandle: "@alice",
-              username: "alice",
-              role: "member",
-            },
-          }),
-        );
-        return;
-      }
-      if (request.method === "PATCH" && url.pathname === "/v1/teams/core-team/members/alice") {
-        seen.push("members-set-role");
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(
-          JSON.stringify({
-            team: "core-team",
-            status: "updated",
-            member: {
-              usernameHandle: "@alice",
-              username: "alice",
-              role: "admin",
-            },
-          }),
-        );
-        return;
-      }
-      if (request.method === "DELETE" && url.pathname === "/v1/teams/core-team/members/alice") {
-        seen.push("members-rm");
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(
-          JSON.stringify({
-            team: "core-team",
-            username: "alice",
-            status: "removed",
-          }),
-        );
-        return;
-      }
-
-      response.writeHead(404, { "content-type": "application/json" });
-      response.end(JSON.stringify({ error: { code: "not_found", message: "not found" } }));
-    });
-  });
-
-  try {
-    const env = {
-      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
-      SKILLMD_FIREBASE_API_KEY: "api-key",
-      SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
-    };
-    const token = "skmd_dev_tok_abc123abc123abc123abc123.secret";
-
-    const createResult = await runCliAsync(
-      ["--auth-token", token, "team", "create", "core-team", "--json"],
-      root,
-      env,
-    );
-    assert.equal(createResult.status, 0);
-
-    const viewResult = await runCliAsync(
-      ["--auth-token", token, "team", "view", "core-team"],
-      root,
-      env,
-    );
-    assert.equal(viewResult.status, 0);
-
-    const lsResult = await runCliAsync(
-      ["--auth-token", token, "team", "members", "ls", "core-team", "--json"],
-      root,
-      env,
-    );
-    assert.equal(lsResult.status, 0);
-
-    const addResult = await runCliAsync(
-      ["--auth-token", token, "team", "members", "add", "core-team", "alice", "--role", "member"],
-      root,
-      env,
-    );
-    assert.equal(addResult.status, 0);
-
-    const setRoleResult = await runCliAsync(
-      ["--auth-token", token, "team", "members", "set-role", "core-team", "alice", "admin"],
-      root,
-      env,
-    );
-    assert.equal(setRoleResult.status, 0);
-
-    const rmResult = await runCliAsync(
-      ["--auth-token", token, "team", "members", "rm", "core-team", "alice"],
-      root,
-      env,
-    );
-    assert.equal(rmResult.status, 0);
-
-    assert.deepEqual(seen, [
-      "create",
-      "view",
-      "members-ls",
-      "members-add",
-      "members-set-role",
-      "members-rm",
-    ]);
+    assert.equal(payload.plan, "pro");
   } finally {
     await mockRegistry.close();
     cleanupDirectory(root);

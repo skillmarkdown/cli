@@ -77,7 +77,6 @@ function baseOptions(overrides = {}) {
       scope: "admin",
       plan: "pro",
       entitlements: { privateSkills: true },
-      teams: [],
     }),
     preparePublish: async () => ({
       status: "upload_required",

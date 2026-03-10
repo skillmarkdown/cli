@@ -28,12 +28,11 @@ function baseOptions(overrides = {}) {
       projectId: "skillmarkdown-development",
       authType: "firebase",
       scope: "admin",
-      plan: "teams",
+      plan: "pro",
       entitlements: {
         canUsePrivateSkills: true,
         canPublishPrivateSkills: true,
       },
-      teams: [{ team: "core-team", role: "owner" }],
     }),
     ...overrides,
   };
@@ -63,9 +62,9 @@ test("prints whoami payload in human format", async () => {
   assert.equal(result, 0);
   assert.match(logs.join("\n"), /Owner: @core \(core\)/);
   assert.match(logs.join("\n"), /Auth: account session/);
-  assert.match(logs.join("\n"), /Plan: teams/);
+  assert.match(logs.join("\n"), /Plan: pro/);
   assert.doesNotMatch(logs.join("\n"), /Entitlements:/);
-  assert.match(logs.join("\n"), /Teams: 1/);
+  assert.doesNotMatch(logs.join("\n"), /Teams:/);
 });
 
 test("prints json payload with --json", async () => {
@@ -111,7 +110,6 @@ test("prints free plan without entitlements in human format", async () => {
             canUsePrivateSkills: false,
             canPublishPrivateSkills: false,
           },
-          teams: [],
         }),
       }),
     ),
