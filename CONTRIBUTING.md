@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for contributing to `@skillmarkdown/cli`.
+Thanks for contributing to `skillmarkdown`.
 
 ## Local setup
 

@@ -488,7 +488,7 @@ function rewriteTemplateFiles(skillDir, scenario) {
   skillContent = replaceAll(skillContent, "name: skillmd-cli-skill", `name: ${scenario.skillSlug}`);
   skillContent = replaceAll(
     skillContent,
-    "description: Use @skillmarkdown/cli to scaffold, validate, publish, discover, install, and operate full v1 skill lifecycle workflows with deterministic command sequences.",
+    "description: Use skillmarkdown to scaffold, validate, publish, discover, install, and operate full v1 skill lifecycle workflows with deterministic command sequences.",
     `description: ${longDescription}`,
   );
   skillContent = replaceAll(
@@ -499,8 +499,8 @@ function rewriteTemplateFiles(skillDir, scenario) {
   skillContent = replaceAll(skillContent, "license: MIT", buildLicenseLine(scenario.licenseMode));
   skillContent = replaceAll(
     skillContent,
-    "This skill covers end-to-end usage of `@skillmarkdown/cli` for v1 lifecycle operations:",
-    `This generated skill covers end-to-end usage of \`@skillmarkdown/cli\` for ${scenario.target} lifecycle operations and intentionally exercises edge-case rendering, package metadata, and release permutations:`,
+    "This skill covers end-to-end usage of `skillmarkdown` for v1 lifecycle operations:",
+    `This generated skill covers end-to-end usage of \`skillmarkdown\` for ${scenario.target} lifecycle operations and intentionally exercises edge-case rendering, package metadata, and release permutations:`,
   );
   skillContent = skillContent.replace(
     /## Examples[\s\S]*?## Limitations \/ Failure modes/u,
@@ -534,7 +534,7 @@ function rewriteTemplateFiles(skillDir, scenario) {
   readmeContent = replaceAll(readmeContent, "# skillmd-cli-skill", `# ${scenario.skillSlug}`);
   readmeContent = replaceAll(
     readmeContent,
-    "Skill for using `@skillmarkdown/cli` with current v1 command contracts across authoring, discovery, auth, release operations, and consumption workflows.",
+    "Skill for using `skillmarkdown` with current v1 command contracts across authoring, discovery, auth, release operations, and consumption workflows.",
     `${title}. ${longDescription}`,
   );
   readmeContent = replaceAll(readmeContent, "@username/skillmd-cli-skill", handle);

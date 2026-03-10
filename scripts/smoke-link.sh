@@ -13,7 +13,7 @@ SKILL_DIR="$TMP_DIR/linked-skill"
 
 cleanup() {
   rm -rf "$TMP_DIR"
-  npm unlink -g @skillmarkdown/cli >/dev/null 2>&1 || true
+  npm unlink -g skillmarkdown >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 

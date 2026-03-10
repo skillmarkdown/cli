@@ -1,8 +1,8 @@
-# @skillmarkdown/cli
+# skillmarkdown
 
 [![CI](https://github.com/skillmarkdown/cli/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/skillmarkdown/cli/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/%40skillmarkdown%2Fcli)](https://www.npmjs.com/package/@skillmarkdown/cli)
-[![npm downloads](https://img.shields.io/npm/dm/%40skillmarkdown%2Fcli)](https://www.npmjs.com/package/@skillmarkdown/cli)
+[![npm version](https://img.shields.io/npm/v/skillmarkdown)](https://www.npmjs.com/package/skillmarkdown)
+[![npm downloads](https://img.shields.io/npm/dm/skillmarkdown)](https://www.npmjs.com/package/skillmarkdown)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 npm-like lifecycle for agent skills: create, publish, install, tag, deprecate, and unpublish.
@@ -21,13 +21,13 @@ npm-like lifecycle for agent skills: create, publish, install, tag, deprecate, a
 ## Install
 
 ```bash
-npm i -g @skillmarkdown/cli
+npm i -g skillmarkdown
 ```
 
 Or run one-off commands with:
 
 ```bash
-npx @skillmarkdown/cli <command>
+npx skillmarkdown <command>
 ```
 
 ## Quickstart (60 seconds)
