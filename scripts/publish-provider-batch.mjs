@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { BUILTIN_AGENT_TARGETS } from "../dist/lib/shared/agent-target.js";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -9,7 +8,16 @@ import { spawnSync } from "node:child_process";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cliPath = join(repoRoot, "dist", "cli.js");
-const providerTargets = [...BUILTIN_AGENT_TARGETS];
+const providerTargets = [
+  "skillmd",
+  "openai",
+  "claude",
+  "gemini",
+  "meta",
+  "mistral",
+  "deepseek",
+  "perplexity",
+];
 const backendBuiltinTargets = new Set(["skillmd", "claude", "gemini"]);
 
 function resolvePublishTarget(target) {
