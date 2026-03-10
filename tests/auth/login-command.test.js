@@ -26,14 +26,11 @@ test("login uses built-in defaults when env vars are missing", async () => {
   const { result } = await run([], {
     readSession: () => null,
     env: {},
-    promptForCredentials: async () => ({ username: "core", password: "password123" }),
-    resolveUsernameEmail: async (_baseUrl, username) => {
-      assert.equal(username, "core");
-      return "user@example.com";
-    },
-    signInWithEmailAndPassword: async (apiKey) => {
+    promptForCredentials: async () => ({ email: "user@example.com", password: "password123" }),
+    signInWithEmailAndPassword: async (apiKey, email) => {
       called = true;
       assert.equal(apiKey, "AIzaSyAkaZRmpCvZasFjeRAfW_b0V0nUcGOTjok");
+      assert.equal(email, "user@example.com");
       return { localId: "uid-1", email: "user@example.com", refreshToken: "refresh-1" };
     },
     writeSession: () => {},
@@ -67,11 +64,7 @@ test("login succeeds and writes session", async () => {
       SKILLMD_FIREBASE_API_KEY: "firebase-key",
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown",
     },
-    promptForCredentials: async () => ({ username: "core", password: "password123" }),
-    resolveUsernameEmail: async (_baseUrl, username) => {
-      assert.equal(username, "core");
-      return "user@example.com";
-    },
+    promptForCredentials: async () => ({ email: "user@example.com", password: "password123" }),
     signInWithEmailAndPassword: async (apiKey, email, password) => {
       assert.equal(apiKey, "firebase-key");
       assert.equal(email, "user@example.com");
@@ -114,7 +107,7 @@ test("login does not restart auth flow when already logged in", async () => {
     readSession: () => makeSession(),
     promptForCredentials: async () => {
       prompted = true;
-      return { username: "core", password: "password123" };
+      return { email: "user@example.com", password: "password123" };
     },
     verifyRefreshToken: async () => ({ valid: true }),
   });
@@ -132,11 +125,7 @@ test("login clears stale session and reauthenticates", async () => {
       cleared = true;
       return true;
     },
-    promptForCredentials: async () => ({ username: "new-user", password: "password123" }),
-    resolveUsernameEmail: async (_baseUrl, username) => {
-      assert.equal(username, "new-user");
-      return "new@example.com";
-    },
+    promptForCredentials: async () => ({ email: "new@example.com", password: "password123" }),
     signInWithEmailAndPassword: async () => ({
       localId: "uid-new",
       email: "new@example.com",
@@ -174,17 +163,17 @@ test("login fails when refresh token verification errors", async () => {
   assert.equal(result, 1);
 });
 
-test("login fails when username lookup fails", async () => {
+test("login fails when sign-in rejects the provided email", async () => {
   const { result, errors } = await run([], {
     readSession: () => null,
-    promptForCredentials: async () => ({ username: "missing-user", password: "password123" }),
-    resolveUsernameEmail: async () => {
-      throw new Error("username not found");
+    promptForCredentials: async () => ({ email: "missing@example.com", password: "password123" }),
+    signInWithEmailAndPassword: async () => {
+      throw new Error("invalid email or password");
     },
   });
 
   assert.equal(result, 1);
-  assert.match(errors.join("\n"), /username not found/);
+  assert.match(errors.join("\n"), /invalid email or password/);
 });
 
 test("login fails and clears session when owner profile is missing", async () => {
@@ -192,8 +181,7 @@ test("login fails and clears session when owner profile is missing", async () =>
   let currentSession = null;
   const { result, errors } = await run([], {
     readSession: () => currentSession,
-    promptForCredentials: async () => ({ username: "core", password: "password123" }),
-    resolveUsernameEmail: async () => "user@example.com",
+    promptForCredentials: async () => ({ email: "user@example.com", password: "password123" }),
     signInWithEmailAndPassword: async () => ({
       localId: "uid-1",
       email: "user@example.com",
@@ -212,11 +200,11 @@ test("login fails and clears session when owner profile is missing", async () =>
       expiresInSeconds: 3600,
     }),
     getWhoami: async () => {
-      throw new Error("username profile not found");
+      throw new Error("account profile not found");
     },
   });
 
   assert.equal(result, 1);
   assert.equal(cleared, true);
-  assert.match(errors.join("\n"), /Complete sign-up on the web/);
+  assert.match(errors.join("\n"), /account profile not found/);
 });

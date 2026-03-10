@@ -39,7 +39,7 @@ skillmd init --template minimal
 skillmd validate --strict
 
 # 2) Authenticate and publish
-skillmd login    # prompts for Username and a hidden Password
+skillmd login    # prompts for Email and a hidden Password
 skillmd publish --version 1.0.0 --tag latest --access public
 
 # 3) Discover and inspect
@@ -92,7 +92,7 @@ Notes:
 
 ## Authentication modes
 
-`skillmd login` uses interactive `username + password` sign-in. The CLI resolves your username to the account email on the registry, then signs in with Firebase.
+`skillmd login` uses interactive `email + password` sign-in against Firebase and then validates the registry-backed account profile.
 
 For API-calling commands, auth precedence is:
 
@@ -140,7 +140,7 @@ Token scope model:
 
 ### Auth operations
 
-- `skillmd login [--status|--reauth]` — prompts for username and a hidden password
+- `skillmd login [--status|--reauth]` — prompts for email and a hidden password
 - `skillmd whoami [--json]`
 - `skillmd token ls [--json]`
 - `skillmd token add <name> [--scope <read|publish|admin>] [--days <1-365>] [--json]`

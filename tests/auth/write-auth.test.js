@@ -59,7 +59,7 @@ test("fails when owner profile is missing for owner-scoped commands", async () =
       expiresInSeconds: 3600,
     }),
     getWhoami: async () => {
-      throw new Error("username profile not found");
+      throw new Error("account profile not found");
     },
     requireOwner: true,
   });
@@ -67,7 +67,7 @@ test("fails when owner profile is missing for owner-scoped commands", async () =
   assert.deepEqual(result, {
     ok: false,
     message:
-      "skillmd tag: username profile not found. Complete sign-up on the web before using this command.",
+      "skillmd tag: account profile not found. Complete sign-up on the web before using this command.",
   });
 });
 

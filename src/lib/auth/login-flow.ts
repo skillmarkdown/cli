@@ -7,17 +7,10 @@ import { type LoginEnvConfig } from "./config";
 import { type AuthSession } from "./session";
 
 export interface LoginFlowDependencies {
-  registryBaseUrl: string;
-  requestTimeoutMs: number;
   readSession: () => AuthSession | null;
   writeSession: (session: AuthSession) => void;
   clearSession: () => boolean;
-  promptForCredentials: () => Promise<{ username: string; password: string }>;
-  resolveUsernameEmail: (
-    baseUrl: string,
-    username: string,
-    options?: { timeoutMs?: number },
-  ) => Promise<string>;
+  promptForCredentials: () => Promise<{ email: string; password: string }>;
   signInWithEmailAndPassword: (
     apiKey: string,
     email: string,
@@ -84,10 +77,7 @@ export async function executeLoginFlow(
     }
   }
 
-  const { username, password } = await dependencies.promptForCredentials();
-  const email = await dependencies.resolveUsernameEmail(dependencies.registryBaseUrl, username, {
-    timeoutMs: dependencies.requestTimeoutMs,
-  });
+  const { email, password } = await dependencies.promptForCredentials();
   const firebaseSession = await dependencies.signInWithEmailAndPassword(
     config.firebaseApiKey,
     email,

@@ -22,7 +22,6 @@ import { executeLoginFlow } from "../lib/auth/login-flow";
 import { parseLoginFlags } from "../lib/auth/login-flags";
 import { printSessionStatus } from "../lib/auth/login-status";
 import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
-import { resolveUsernameEmail as defaultResolveUsernameEmail } from "../lib/auth/username-lookup";
 import { getRegistryEnvConfig } from "../lib/registry/config";
 import { type WhoamiResponse } from "../lib/whoami/types";
 
@@ -31,12 +30,7 @@ interface LoginCommandOptions {
   readSession?: () => AuthSession | null;
   writeSession?: (session: AuthSession) => void;
   clearSession?: () => boolean;
-  promptForCredentials?: () => Promise<{ username: string; password: string }>;
-  resolveUsernameEmail?: (
-    baseUrl: string,
-    username: string,
-    options?: { timeoutMs?: number },
-  ) => Promise<string>;
+  promptForCredentials?: () => Promise<{ email: string; password: string }>;
   signInWithEmailAndPassword?: (
     apiKey: string,
     email: string,
@@ -121,19 +115,19 @@ function promptForHiddenPassword(prompt: string): Promise<string> {
   });
 }
 
-async function promptForCredentials(): Promise<{ username: string; password: string }> {
+async function promptForCredentials(): Promise<{ email: string; password: string }> {
   const rl = createInterface({ input, output });
   try {
-    const username = (await rl.question("Username: ")).trim();
+    const email = (await rl.question("Email: ")).trim();
     rl.close();
 
     const password = await promptForHiddenPassword("Password: ");
 
-    if (!username || !password) {
-      throw new Error("username and password are required");
+    if (!email || !password) {
+      throw new Error("email and password are required");
     }
 
-    return { username, password };
+    return { email, password };
   } catch (error) {
     rl.close();
     throw error;
@@ -165,13 +159,10 @@ export async function runLoginCommand(
     });
 
     const loginResult = await executeLoginFlow(config, reauth, {
-      registryBaseUrl: registryConfig.registryBaseUrl,
-      requestTimeoutMs: registryConfig.requestTimeoutMs,
       readSession: readSessionFn,
       writeSession: writeSessionFn,
       clearSession: clearSessionFn,
       promptForCredentials: options.promptForCredentials ?? promptForCredentials,
-      resolveUsernameEmail: options.resolveUsernameEmail ?? defaultResolveUsernameEmail,
       signInWithEmailAndPassword: options.signInWithEmailAndPassword ?? signInWithEmailAndPassword,
       verifyRefreshToken: options.verifyRefreshToken ?? verifyFirebaseRefreshToken,
     });
@@ -200,7 +191,7 @@ export async function runLoginCommand(
       );
     } catch (error) {
       clearSessionFn();
-      const message = error instanceof Error ? error.message : "username profile not found";
+      const message = error instanceof Error ? error.message : "account profile not found";
       console.error(`skillmd login: ${message}. Complete sign-up on the web before using the CLI.`);
       return 1;
     }

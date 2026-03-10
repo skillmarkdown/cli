@@ -2,32 +2,43 @@
 
 This repo builds `@skillmarkdown/cli` (binary: `skillmd`).
 
-## Goal (v0)
+## Current scope
 
-Implement `skillmd init` and `skillmd validate`:
+`skillmd` is a full registry/workspace CLI for:
 
-- `init` scaffolds a spec-aligned skill folder
-- output is deterministic (no timestamps, randomness, or machine-specific paths)
-- `validate` provides local spec checks, with strict/parity modes
-- no network calls during command execution
+- authoring: `init`, `validate`
+- auth/session: `login`, `logout`, `whoami`, `token`
+- publish/lifecycle: `publish`, `tag`, `deprecate`, `unpublish`, `history`
+- discovery/install: `search`, `view`, `use`, `install`, `list`, `remove`, `update`
 
 ## Tech
 
 - Node + TypeScript
-- Keep dependencies minimal.
+- keep dependencies minimal
+- build output is the bundled `dist/cli.js`
 
 ## Project rules
 
 - Prefer small, composable modules in `src/`.
-- Do not add new commands without updating `docs/DECISIONS.md`.
-- Templates must be stable (changes should be intentional and reviewable).
+- Keep docs and tests aligned with command behavior in the same change.
+- Do not reintroduce username-to-email lookup or team command surfaces.
+- Templates and lockfile behavior must stay deterministic and reviewable.
+- Keep built-in agent-target support aligned with backend support.
 
 ## Definition of done
 
-For v0, rely on:
+Use:
 
-- `docs/DECISIONS.md` for scope and architecture constraints.
-- The automated test suite as the behavior acceptance checklist.
+- `README.md` for public command/docs accuracy
+- `docs/production-ready-checklist.md` for release readiness
+- the automated test suite as the behavior acceptance checklist
+
+Required validation before merge:
+
+- `npm run lint`
+- `npm run format:check`
+- `npm test`
+- `npm run build`
 
 ## Release automation
 
