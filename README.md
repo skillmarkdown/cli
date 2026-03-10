@@ -108,6 +108,15 @@ Token scope model:
 - `publish`: read + publish/tag writes
 - `admin`: publish + lifecycle + token management
 
+Organization automation:
+
+- organization access tokens are created from the web organization management page
+- use them for org-owned automation with an explicit owner target, for example:
+
+```bash
+SKILLMD_AUTH_TOKEN=skmd_dev_tok_... skillmd publish --owner facebook --version 1.2.3
+```
+
 ## Command map (by outcome)
 
 ### Authoring

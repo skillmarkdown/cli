@@ -174,6 +174,35 @@ test("uses configured auth token for publish without session", async () => {
   assert.equal(prepareToken, "skmd_dev_tok_abc123abc123abc123abc123.secret");
 });
 
+test("publishes as organization with configured org token and explicit owner", async () => {
+  let preparePayload = null;
+  const options = baseOptions({
+    env: {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_FIREBASE_API_KEY: "apikey",
+      SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
+      SKILLMD_AUTH_TOKEN: "skmd_dev_tok_orgpublishorgpublish.secret",
+    },
+    readSession: () => null,
+    preparePublish: async (_baseUrl, idToken, payload) => {
+      assert.equal(idToken, "skmd_dev_tok_orgpublishorgpublish.secret");
+      preparePayload = payload;
+      return {
+        status: "idempotent",
+        publishToken: "pit-token",
+        expiresAt: "2026-03-02T00:00:00Z",
+      };
+    },
+  });
+
+  const { result } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0", "--owner", "facebook"], options),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(preparePayload.owner, "facebook");
+});
+
 test("fails on project mismatch with reauth guidance", async () => {
   const options = baseOptions({
     readSession: () => ({
