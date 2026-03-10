@@ -16,6 +16,7 @@ export function parsePublishFlags(args: string[]): PublishFlags {
     valid: false,
   });
   let pathArg: string | undefined;
+  let owner: string | undefined;
   let version: string | undefined;
   let tag: string | undefined;
   let access: PublishAccess | undefined;
@@ -74,6 +75,19 @@ export function parsePublishFlags(args: string[]): PublishFlags {
       continue;
     }
 
+    const parsedOwner = parseOptionValue(args, index, "owner");
+    if (parsedOwner.matched) {
+      if (!parsedOwner.value) {
+        return invalid();
+      }
+      owner = parsedOwner.value.replace(/^@/, "").trim().toLowerCase();
+      if (!owner) {
+        return invalid();
+      }
+      index = parsedOwner.nextIndex;
+      continue;
+    }
+
     const parsedTargetValue = parseOptionValue(args, index, "agent-target");
     if (parsedTargetValue.matched) {
       const parsedTarget = normalizeAgentTarget(parsedTargetValue.value ?? "");
@@ -102,6 +116,7 @@ export function parsePublishFlags(args: string[]): PublishFlags {
 
   return {
     pathArg,
+    owner,
     version,
     tag,
     access,

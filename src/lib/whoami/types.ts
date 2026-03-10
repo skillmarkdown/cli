@@ -13,6 +13,11 @@ export interface WhoamiResponse {
   scope: "read" | "publish" | "admin";
   plan?: "free" | "pro";
   entitlements?: Record<string, boolean | number | string | null>;
+  organizations?: Array<{
+    owner: string;
+    role: "owner" | "admin" | "member";
+    slug: string;
+  }>;
 }
 
 export interface ParsedWhoamiFlags {

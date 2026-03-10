@@ -29,6 +29,13 @@ function baseOptions(overrides = {}) {
       authType: "firebase",
       scope: "admin",
       plan: "pro",
+      organizations: [
+        {
+          slug: "facebook",
+          owner: "@facebook",
+          role: "owner",
+        },
+      ],
       entitlements: {
         canUsePrivateSkills: true,
         canPublishPrivateSkills: true,
@@ -63,6 +70,7 @@ test("prints whoami payload in human format", async () => {
   assert.match(logs.join("\n"), /Owner: @core \(core\)/);
   assert.match(logs.join("\n"), /Auth: account session/);
   assert.match(logs.join("\n"), /Plan: pro/);
+  assert.match(logs.join("\n"), /Organizations: @facebook \(owner\)/);
   assert.doesNotMatch(logs.join("\n"), /Entitlements:/);
   assert.doesNotMatch(logs.join("\n"), /Teams:/);
 });

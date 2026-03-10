@@ -71,7 +71,7 @@ test("fails when owner profile is missing for owner-scoped commands", async () =
   });
 });
 
-test("fails on owner mismatch", async () => {
+test("allows explicit non-personal owner targets and leaves authz to the backend", async () => {
   const result = await resolveWriteAuth({
     command: "skillmd tag",
     config: makeConfig(),
@@ -87,7 +87,10 @@ test("fails on owner mismatch", async () => {
   });
 
   assert.deepEqual(result, {
-    ok: false,
-    message: "skillmd tag: can only update skills owned by @testuser.",
+    ok: true,
+    value: {
+      idToken: "id-token",
+      owner: "@testuser",
+    },
   });
 });

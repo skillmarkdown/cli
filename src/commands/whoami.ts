@@ -28,6 +28,13 @@ function printWhoamiHuman(result: WhoamiResponse): void {
   if (result.plan) {
     console.log(`Plan: ${result.plan}`);
   }
+  if (result.organizations && result.organizations.length > 0) {
+    console.log(
+      `Organizations: ${result.organizations
+        .map((organization) => `${organization.owner} (${organization.role})`)
+        .join(", ")}`,
+    );
+  }
 }
 
 export async function runWhoamiCommand(

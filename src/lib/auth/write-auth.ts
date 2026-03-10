@@ -83,15 +83,6 @@ export async function resolveWriteAuth(
         message: `${options.command}: account profile not found. Complete sign-up on the web before using this command.`,
       };
     }
-
-    if (owner && options.targetOwnerSlug && `@${options.targetOwnerSlug}` !== owner) {
-      return {
-        ok: false,
-        message: options.ownerMismatchMessage
-          ? options.ownerMismatchMessage(owner)
-          : `${options.command}: can only update skills owned by ${owner}.`,
-      };
-    }
   }
 
   return { ok: true, value: { idToken: tokenSession.idToken, owner } };

@@ -10,6 +10,7 @@ test("parses required publish flags", () => {
 
   assert.deepEqual(parsed, {
     pathArg: "./my-skill",
+    owner: undefined,
     version: "1.2.3",
     tag: undefined,
     access: undefined,
@@ -32,6 +33,7 @@ test("parses tag/access/provenance/json flags", () => {
 
   assert.deepEqual(parsed, {
     pathArg: undefined,
+    owner: undefined,
     version: "1.2.3-beta.1",
     tag: "beta",
     access: "private",
@@ -47,6 +49,12 @@ test("parses optional agent target flag", () => {
   const parsed = parsePublishFlags(["--version", "1.2.3", "--agent-target", "gemini"]);
   assert.equal(parsed.valid, true);
   assert.equal(parsed.agentTarget, "gemini");
+});
+
+test("parses optional owner flag", () => {
+  const parsed = parsePublishFlags(["--version", "1.2.3", "--owner", "@facebook"]);
+  assert.equal(parsed.valid, true);
+  assert.equal(parsed.owner, "facebook");
 });
 
 test("parses new builtin agent target flag", () => {
