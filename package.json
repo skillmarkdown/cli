@@ -58,7 +58,19 @@
   "keywords": [
     "skillmarkdown",
     "skillmd",
-    "cli"
+    "cli",
+    "ai",
+    "agent",
+    "agents",
+    "skill",
+    "skills",
+    "agent-skills",
+    "ai-agent",
+    "openai",
+    "claude",
+    "anthropic",
+    "registry",
+    "workspace"
   ],
   "devDependencies": {
     "@eslint/js": "^10.0.1",
