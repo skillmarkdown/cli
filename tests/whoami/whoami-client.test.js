@@ -22,6 +22,19 @@ test("getWhoami sends auth header and parses response", async () => {
         projectId: "skillmarkdown-development",
         authType: "firebase",
         scope: "admin",
+        organizations: [
+          {
+            slug: "facebook",
+            owner: "@facebook",
+            role: "admin",
+          },
+        ],
+        organizationTeams: [
+          {
+            organizationSlug: "facebook",
+            teamSlug: "core",
+          },
+        ],
         plan: "pro",
         entitlements: {
           canUsePrivateSkills: true,
@@ -34,6 +47,8 @@ test("getWhoami sends auth header and parses response", async () => {
 
   assert.equal(payload.uid, "uid-1");
   assert.equal(payload.owner, "@core");
+  assert.equal(payload.organizations[0].slug, "facebook");
+  assert.equal(payload.organizationTeams[0].teamSlug, "core");
   assert.equal(payload.plan, "pro");
 });
 

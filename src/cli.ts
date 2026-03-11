@@ -18,6 +18,7 @@ import { runUseCommand } from "./commands/use";
 import { runValidateCommand } from "./commands/validate";
 import { runViewCommand } from "./commands/view";
 import { runWhoamiCommand } from "./commands/whoami";
+import { runOrgCommand } from "./commands/org";
 import { ROOT_USAGE } from "./lib/shared/cli-text";
 import { AUTH_TOKEN_ENV_VAR } from "./lib/auth/api-token";
 
@@ -41,6 +42,7 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   deprecate: runDeprecateCommand,
   unpublish: runUnpublishCommand,
   whoami: runWhoamiCommand,
+  org: runOrgCommand,
   token: runTokenCommand,
 };
 

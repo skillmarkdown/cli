@@ -21,7 +21,8 @@ This repo builds `skillmarkdown` (binary: `skillmd`).
 
 - Prefer small, composable modules in `src/`.
 - Keep docs and tests aligned with command behavior in the same change.
-- Do not reintroduce username-to-email lookup or team command surfaces.
+- Do not reintroduce username-to-email lookup.
+- Team command surfaces belong under `skillmd org ...`; do not add a separate top-level `team` command.
 - Templates and lockfile behavior must stay deterministic and reviewable.
 - Keep built-in agent-target support aligned with backend support.
 

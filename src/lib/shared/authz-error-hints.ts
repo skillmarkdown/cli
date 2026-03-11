@@ -11,8 +11,12 @@ export function authzHintForReason(reason?: string): string | null {
   if (reason === "forbidden_scope") {
     return "Hint: use a token with the required scope or run 'skillmd login' again.";
   }
-  if (reason === "forbidden_owner" || reason === "forbidden_role") {
-    return "Hint: verify your owner identity and memberships with 'skillmd whoami'.";
+  if (
+    reason === "forbidden_owner" ||
+    reason === "forbidden_role" ||
+    reason === "forbidden_membership"
+  ) {
+    return "Hint: verify your owner identity with 'skillmd whoami' and inspect org access with 'skillmd org ...'.";
   }
   if (reason === "forbidden_plan") {
     return "Hint: private skills require a Pro plan. Free users can only use public skills.";
