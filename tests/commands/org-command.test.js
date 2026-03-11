@@ -1,0 +1,237 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+
+const { requireDist } = require("../helpers/dist-imports.js");
+const { captureConsole } = require("../helpers/console-test-utils.js");
+
+const { runOrgCommand } = requireDist("commands/org.js");
+const { OrgApiError } = requireDist("lib/org/errors.js");
+
+function baseOptions(overrides = {}) {
+  return {
+    env: {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_FIREBASE_API_KEY: "api-key",
+      SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
+      SKILLMD_REGISTRY_TIMEOUT_MS: "10000",
+      SKILLMD_AUTH_TOKEN: "skmd_dev_tok_abc123abc123abc123abc123.secret",
+    },
+    getAuthConfig: () => ({
+      firebaseApiKey: "api-key",
+      firebaseProjectId: "skillmarkdown-development",
+      registryBaseUrl: "https://registry.example.com",
+      requestTimeoutMs: 10000,
+    }),
+    getReadConfig: () => ({
+      registryBaseUrl: "https://registry.example.com",
+      requestTimeoutMs: 10000,
+    }),
+    resolveReadIdToken: async () => "id-token",
+    getWhoami: async () => ({
+      uid: "uid-1",
+      owner: "@core",
+      username: "core",
+      email: "core@example.com",
+      projectId: "skillmarkdown-development",
+      authType: "firebase",
+      scope: "admin",
+      plan: "pro",
+      organizations: [
+        {
+          slug: "facebook",
+          owner: "@facebook",
+          role: "admin",
+        },
+      ],
+      organizationTeams: [
+        {
+          organizationSlug: "facebook",
+          teamSlug: "core",
+        },
+      ],
+    }),
+    listOrganizationMembers: async () => ({
+      slug: "facebook",
+      owner: "@facebook",
+      viewerRole: "owner",
+      members: [
+        {
+          username: "maintainer",
+          owner: "@maintainer",
+          role: "admin",
+          createdAt: "2026-03-01T00:00:00.000Z",
+          updatedAt: "2026-03-01T00:00:00.000Z",
+        },
+      ],
+    }),
+    addOrganizationMember: async (_baseUrl, _idToken, slug, request) => ({
+      slug,
+      username: request.username,
+      owner: `@${request.username}`,
+      role: request.role,
+    }),
+    removeOrganizationMember: async (_baseUrl, _idToken, slug, username) => ({
+      status: "removed",
+      slug,
+      username,
+    }),
+    listOrganizationTeams: async () => ({
+      slug: "facebook",
+      owner: "@facebook",
+      viewerRole: "owner",
+      teams: [
+        {
+          teamSlug: "core",
+          name: "Core Team",
+          createdAt: "2026-03-01T00:00:00.000Z",
+          updatedAt: "2026-03-01T00:00:00.000Z",
+          members: [
+            {
+              username: "maintainer",
+              owner: "@maintainer",
+              createdAt: "2026-03-01T00:00:00.000Z",
+              updatedAt: "2026-03-01T00:00:00.000Z",
+            },
+          ],
+        },
+      ],
+    }),
+    getOrganizationTeam: async () => ({
+      slug: "facebook",
+      owner: "@facebook",
+      viewerRole: "owner",
+      team: {
+        teamSlug: "core",
+        name: "Core Team",
+        createdAt: "2026-03-01T00:00:00.000Z",
+        updatedAt: "2026-03-01T00:00:00.000Z",
+        members: [
+          {
+            username: "maintainer",
+            owner: "@maintainer",
+            createdAt: "2026-03-01T00:00:00.000Z",
+            updatedAt: "2026-03-01T00:00:00.000Z",
+          },
+        ],
+      },
+    }),
+    createOrganizationTeam: async (_baseUrl, _idToken, slug, request) => ({
+      slug,
+      teamSlug: request.teamSlug,
+      name: request.name,
+      createdAt: "2026-03-01T00:00:00.000Z",
+      updatedAt: "2026-03-01T00:00:00.000Z",
+    }),
+    addOrganizationTeamMember: async (_baseUrl, _idToken, slug, teamSlug, request) => ({
+      slug,
+      teamSlug,
+      username: request.username,
+      owner: `@${request.username}`,
+    }),
+    removeOrganizationTeamMember: async (_baseUrl, _idToken, slug, teamSlug, username) => ({
+      status: "removed",
+      slug,
+      teamSlug,
+      username,
+    }),
+    listOrganizationSkills: async () => ({
+      slug: "facebook",
+      owner: "@facebook",
+      viewerRole: "owner",
+      skills: [
+        {
+          skillId: "@facebook/private-skill",
+          owner: "@facebook",
+          username: "facebook",
+          skill: "private-skill",
+          visibility: "private",
+          latestVersion: "1.0.0",
+          updatedAt: "2026-03-01T00:00:00.000Z",
+          teamSlug: "core",
+        },
+      ],
+    }),
+    assignOrganizationSkillTeam: async (_baseUrl, _idToken, slug, skillSlug, teamSlug) => ({
+      slug,
+      skill: {
+        skillId: `@${slug}/${skillSlug}`,
+        owner: `@${slug}`,
+        username: slug,
+        skill: skillSlug,
+        visibility: "private",
+        latestVersion: "1.0.0",
+        updatedAt: "2026-03-01T00:00:00.000Z",
+        ...(teamSlug ? { teamSlug } : {}),
+      },
+    }),
+    ...overrides,
+  };
+}
+
+test("fails with usage on invalid args", async () => {
+  const { result } = await captureConsole(() => runOrgCommand(["bad"]));
+  assert.equal(result, 1);
+});
+
+test("lists organizations in human output", async () => {
+  const { result, logs } = await captureConsole(() => runOrgCommand(["ls"], baseOptions()));
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /@facebook role=admin/);
+});
+
+test("lists organization teams in json", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runOrgCommand(["team", "ls", "facebook", "--json"], baseOptions()),
+  );
+  assert.equal(result, 0);
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.teams[0].teamSlug, "core");
+});
+
+test("adds organization member", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runOrgCommand(["members", "add", "facebook", "maintainer", "--role", "admin"], baseOptions()),
+  );
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /Added @maintainer to @facebook as admin/);
+});
+
+test("lists organization skills with full skill identity in human output", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runOrgCommand(["skills", "ls", "facebook"], baseOptions()),
+  );
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /@facebook\/private-skill visibility=private/);
+});
+
+test("assigns and clears organization skill team", async () => {
+  const addResult = await captureConsole(() =>
+    runOrgCommand(["skills", "team", "set", "facebook", "private-skill", "core"], baseOptions()),
+  );
+  assert.equal(addResult.result, 0);
+  assert.match(addResult.logs.join("\n"), /Updated @facebook\/private-skill team=core/);
+
+  const clearResult = await captureConsole(() =>
+    runOrgCommand(["skills", "team", "clear", "facebook", "private-skill"], baseOptions()),
+  );
+  assert.equal(clearResult.result, 0);
+  assert.match(clearResult.logs.join("\n"), /Updated @facebook\/private-skill team=-/);
+});
+
+test("prints helpful authz hint for membership failures", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runOrgCommand(
+      ["members", "ls", "facebook"],
+      baseOptions({
+        listOrganizationMembers: async () => {
+          throw new OrgApiError(403, "forbidden", "organization membership is not allowed", {
+            reason: "forbidden_membership",
+          });
+        },
+      }),
+    ),
+  );
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /skillmd whoami/);
+  assert.match(errors.join("\n"), /skillmd org/);
+});

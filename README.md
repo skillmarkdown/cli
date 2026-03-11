@@ -142,6 +142,10 @@ Token scope model:
 
 - `skillmd login [--status|--reauth]` — prompts for email and a hidden password
 - `skillmd whoami [--json]`
+- `skillmd org ls [--json]`
+- `skillmd org members ls <org> [--json]`
+- `skillmd org team ls <org> [--json]`
+- `skillmd org skills ls <org> [--json]`
 - `skillmd token ls [--json]`
 - `skillmd token add <name> [--scope <read|publish|admin>] [--days <1-365>] [--json]`
 - `skillmd token rm <token-id> [--json]`

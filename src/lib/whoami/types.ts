@@ -11,6 +11,15 @@ export interface WhoamiResponse {
   projectId: string | null;
   authType: "firebase" | "token";
   scope: "read" | "publish" | "admin";
+  organizations?: Array<{
+    slug: string;
+    owner: string;
+    role: "owner" | "admin" | "member";
+  }>;
+  organizationTeams?: Array<{
+    organizationSlug: string;
+    teamSlug: string;
+  }>;
   plan?: "free" | "pro";
   entitlements?: Record<string, boolean | number | string | null>;
 }

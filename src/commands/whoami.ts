@@ -28,6 +28,24 @@ function printWhoamiHuman(result: WhoamiResponse): void {
   if (result.plan) {
     console.log(`Plan: ${result.plan}`);
   }
+  if (result.organizations && result.organizations.length > 0) {
+    console.log("Organizations:");
+    for (const organization of result.organizations) {
+      console.log(`- ${organization.owner} role=${organization.role}`);
+    }
+  }
+  if (result.organizationTeams && result.organizationTeams.length > 0) {
+    const grouped = new Map<string, string[]>();
+    for (const team of result.organizationTeams) {
+      const teams = grouped.get(team.organizationSlug) ?? [];
+      teams.push(team.teamSlug);
+      grouped.set(team.organizationSlug, teams);
+    }
+    console.log("Teams:");
+    for (const [organizationSlug, teams] of grouped.entries()) {
+      console.log(`- @${organizationSlug}: ${teams.sort().join(", ")}`);
+    }
+  }
 }
 
 export async function runWhoamiCommand(

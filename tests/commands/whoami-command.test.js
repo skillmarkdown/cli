@@ -29,6 +29,19 @@ function baseOptions(overrides = {}) {
       authType: "firebase",
       scope: "admin",
       plan: "pro",
+      organizations: [
+        {
+          slug: "facebook",
+          owner: "@facebook",
+          role: "admin",
+        },
+      ],
+      organizationTeams: [
+        {
+          organizationSlug: "facebook",
+          teamSlug: "core",
+        },
+      ],
       entitlements: {
         canUsePrivateSkills: true,
         canPublishPrivateSkills: true,
@@ -63,8 +76,11 @@ test("prints whoami payload in human format", async () => {
   assert.match(logs.join("\n"), /Owner: @core \(core\)/);
   assert.match(logs.join("\n"), /Auth: account session/);
   assert.match(logs.join("\n"), /Plan: pro/);
+  assert.match(logs.join("\n"), /Organizations:/);
+  assert.match(logs.join("\n"), /@facebook role=admin/);
+  assert.match(logs.join("\n"), /Teams:/);
+  assert.match(logs.join("\n"), /@facebook: core/);
   assert.doesNotMatch(logs.join("\n"), /Entitlements:/);
-  assert.doesNotMatch(logs.join("\n"), /Teams:/);
 });
 
 test("prints json payload with --json", async () => {
@@ -74,6 +90,8 @@ test("prints json payload with --json", async () => {
   const payload = JSON.parse(logs.join("\n"));
   assert.equal(payload.uid, "uid-1");
   assert.equal(payload.owner, "@core");
+  assert.equal(payload.organizations[0].slug, "facebook");
+  assert.equal(payload.organizationTeams[0].teamSlug, "core");
 });
 
 test("maps whoami API errors", async () => {
