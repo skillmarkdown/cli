@@ -3,47 +3,28 @@ const assert = require("node:assert/strict");
 
 const { requireDist } = require("../helpers/dist-imports.js");
 const { captureConsole } = require("../helpers/console-test-utils.js");
+const {
+  makeEmailSession,
+  makeRegistryConfig,
+  makeRegistryEnv,
+  makeWhoamiOwner,
+} = require("../helpers/auth-fixtures.js");
 
 const { runTagCommand } = requireDist("commands/tag.js");
 const { TagApiError } = requireDist("lib/tag/errors.js");
 
 function baseOptions(overrides = {}) {
   return {
-    env: {
-      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
-      SKILLMD_FIREBASE_API_KEY: "api-key",
-      SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
-      SKILLMD_REGISTRY_TIMEOUT_MS: "10000",
-    },
-    getConfig: () => ({
-      firebaseApiKey: "api-key",
-      firebaseProjectId: "skillmarkdown-development",
-      registryBaseUrl: "https://registry.example.com",
-      requestTimeoutMs: 10000,
-    }),
-    readSession: () => ({
-      provider: "email",
-      uid: "uid-1",
-      refreshToken: "refresh-token",
-      projectId: "skillmarkdown-development",
-    }),
+    env: makeRegistryEnv(),
+    getConfig: () => makeRegistryConfig(),
+    readSession: () => makeEmailSession(),
     resolveReadIdToken: async () => null,
     exchangeRefreshToken: async () => ({
       idToken: "id-token",
       userId: "uid-1",
       expiresInSeconds: 3600,
     }),
-    getWhoami: async () => ({
-      uid: "uid-1",
-      owner: "@core",
-      username: "core",
-      email: "core@example.com",
-      projectId: "skillmarkdown-development",
-      authType: "firebase",
-      scope: "admin",
-      plan: "pro",
-      entitlements: { privateSkills: true },
-    }),
+    getWhoami: async () => makeWhoamiOwner(),
     listDistTags: async () => ({
       owner: "@core",
       username: "core",
@@ -166,6 +147,15 @@ test("add updates tag for owner skill", async () => {
   assert.equal(capturedRequest.skillSlug, "publish-skill");
   assert.equal(capturedRequest.version, "1.2.3");
   assert.match(logs.join("\n"), /Updated dist-tag beta -> 1.2.3/);
+});
+
+test("add preserves exact human output wording", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runTagCommand(["add", "@core/publish-skill@1.2.3", "beta"], baseOptions()),
+  );
+
+  assert.equal(result, 0);
+  assert.deepEqual(logs, ["Updated dist-tag beta -> 1.2.3 for @core/publish-skill."]);
 });
 
 test("rm deletes tag for owner skill", async () => {

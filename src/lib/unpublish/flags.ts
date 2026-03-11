@@ -1,6 +1,7 @@
 import { type ParsedUnpublishRequest, type UnpublishFlags } from "./types";
 import { isCanonicalSemver } from "../shared/semver";
 import { splitSkillAndSelector } from "../shared/skill-selector";
+import { splitJsonFlag } from "../shared/flag-parse";
 
 function splitSkillAndVersion(value: string): { skillId: string; version: string } | null {
   const split = splitSkillAndSelector(value);
@@ -11,21 +12,11 @@ function splitSkillAndVersion(value: string): { skillId: string; version: string
 }
 
 export function parseUnpublishFlags(args: string[]): UnpublishFlags {
-  let json = false;
-  const positional: string[] = [];
-
-  for (const arg of args) {
-    if (arg === "--json") {
-      json = true;
-      continue;
-    }
-
-    if (arg.startsWith("-")) {
-      return { valid: false, json: false };
-    }
-
-    positional.push(arg);
+  const parsed = splitJsonFlag(args);
+  if (!parsed) {
+    return { valid: false, json: false };
   }
+  const { json, positional } = parsed;
 
   if (positional.length !== 1) {
     return { valid: false, json: false };

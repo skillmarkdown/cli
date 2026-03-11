@@ -3,18 +3,14 @@ const assert = require("node:assert/strict");
 
 const { requireDist } = require("../helpers/dist-imports.js");
 const { captureConsole } = require("../helpers/console-test-utils.js");
+const { makeRegistryEnv } = require("../helpers/auth-fixtures.js");
 
 const { runWhoamiCommand } = requireDist("commands/whoami.js");
 const { WhoamiApiError } = requireDist("lib/whoami/errors.js");
 
 function baseOptions(overrides = {}) {
   return {
-    env: {
-      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
-      SKILLMD_FIREBASE_API_KEY: "api-key",
-      SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
-      SKILLMD_REGISTRY_TIMEOUT_MS: "10000",
-    },
+    env: makeRegistryEnv(),
     getConfig: () => ({
       registryBaseUrl: "https://registry.example.com",
       requestTimeoutMs: 10000,
@@ -92,6 +88,20 @@ test("prints json payload with --json", async () => {
   assert.equal(payload.owner, "@core");
   assert.equal(payload.organizations[0].slug, "facebook");
   assert.equal(payload.organizationTeams[0].teamSlug, "core");
+});
+
+test("whoami preserves exact auth failure wording", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runWhoamiCommand(
+      [],
+      baseOptions({
+        resolveReadIdToken: async () => null,
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.deepEqual(errors, ["skillmd whoami: not logged in. Run 'skillmd login' first."]);
 });
 
 test("maps whoami API errors", async () => {

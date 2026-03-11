@@ -298,5 +298,5 @@ test("org read commands fail when not logged in", async () => {
   );
 
   assert.equal(result, 1);
-  assert.match(errors.join("\n"), /not logged in/i);
+  assert.deepEqual(errors, ["skillmd org: not logged in. Run 'skillmd login' first."]);
 });

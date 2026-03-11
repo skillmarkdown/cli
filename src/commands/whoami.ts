@@ -1,11 +1,7 @@
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
-import {
-  failWithUsage,
-  printCommandResult,
-  printLoginRequired,
-} from "../lib/shared/command-output";
-import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
+import { failWithUsage } from "../lib/shared/command-output";
 import { WHOAMI_USAGE } from "../lib/shared/cli-text";
+import { executeReadCommand } from "../lib/shared/command-execution";
 import { getLoginScopedRegistryEnvConfig } from "../lib/shared/env-config";
 import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
 import { isWhoamiApiError } from "../lib/whoami/errors";
@@ -65,25 +61,18 @@ export async function runWhoamiCommand(
   try {
     const env = options.env ?? process.env;
     const config = (options.getConfig ?? getLoginScopedRegistryEnvConfig)(env);
-    const idToken = await (
-      options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }))
-    )();
-    if (!idToken) {
-      printLoginRequired("skillmd whoami");
-      return 1;
-    }
-
-    const result = await (options.getWhoami ?? defaultGetWhoami)(config.registryBaseUrl, idToken, {
-      timeoutMs: config.requestTimeoutMs,
+    return executeReadCommand<WhoamiResponse>({
+      command: "skillmd whoami",
+      json: parsed.json,
+      resolveIdToken: options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env })),
+      run: (idToken) =>
+        (options.getWhoami ?? defaultGetWhoami)(config.registryBaseUrl, idToken, {
+          timeoutMs: config.requestTimeoutMs,
+        }),
+      printHuman: printWhoamiHuman,
+      isApiError: isWhoamiApiError,
     });
-
-    printCommandResult(parsed.json, result, () => printWhoamiHuman(result));
-    return 0;
   } catch (error) {
-    if (isWhoamiApiError(error)) {
-      console.error(formatCliApiErrorWithHint("skillmd whoami", error));
-      return 1;
-    }
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd whoami: ${message}`);
     return 1;

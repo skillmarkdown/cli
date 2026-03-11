@@ -8,9 +8,9 @@ import { deprecateVersions as defaultDeprecateVersions } from "../lib/deprecate/
 import { isDeprecateApiError } from "../lib/deprecate/errors";
 import { type DeprecateEnvConfig, type DeprecateVersionsResponse } from "../lib/deprecate/types";
 import { parseSkillId } from "../lib/registry/skill-id";
-import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
-import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
+import { failWithUsage } from "../lib/shared/command-output";
 import { DEPRECATE_USAGE } from "../lib/shared/cli-text";
+import { executeWriteCommand } from "../lib/shared/command-execution";
 import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
 
 interface DeprecateCommandOptions {
@@ -50,44 +50,44 @@ export async function runDeprecateCommand(
     const env = options.env ?? process.env;
     const config = (options.getConfig ?? getAuthRegistryEnvConfig)(env);
     const parsedSkillId = parseSkillId(parsedRequest.skillId);
-    const auth = await resolveWriteAuth({
+    return executeWriteCommand<DeprecateVersionsResponse>({
       command: "skillmd deprecate",
-      env,
-      config,
-      readSession: options.readSession ?? readAuthSession,
-      exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
-      getWhoami: options.getWhoami ?? defaultGetWhoami,
-      requireOwner: true,
-      targetOwnerSlug: parsedSkillId.username,
-    });
-    if (!auth.ok) {
-      console.error(auth.message);
-      return 1;
-    }
-
-    const result = await (options.deprecateVersions ?? defaultDeprecateVersions)(
-      config.registryBaseUrl,
-      auth.value.idToken,
-      {
-        username: parsedSkillId.username,
-        skillSlug: parsedSkillId.skillSlug,
-        range: parsedRequest.range,
-        message: parsedRequest.message,
+      json: parsedRequest.json,
+      resolveAuth: async () => {
+        const auth = await resolveWriteAuth({
+          command: "skillmd deprecate",
+          env,
+          config,
+          readSession: options.readSession ?? readAuthSession,
+          exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
+          getWhoami: options.getWhoami ?? defaultGetWhoami,
+          requireOwner: true,
+          targetOwnerSlug: parsedSkillId.username,
+        });
+        return auth.ok
+          ? { ok: true as const, idToken: auth.value.idToken }
+          : { ok: false as const, message: auth.message };
       },
-      { timeoutMs: config.requestTimeoutMs },
-    );
-
-    printCommandResult(parsedRequest.json, result, () => {
-      console.log(
-        `Deprecated ${result.affectedVersions.length} version(s) for ${parsedSkillId.skillId} using range ${result.range}.`,
-      );
+      run: (idToken) =>
+        (options.deprecateVersions ?? defaultDeprecateVersions)(
+          config.registryBaseUrl,
+          idToken,
+          {
+            username: parsedSkillId.username,
+            skillSlug: parsedSkillId.skillSlug,
+            range: parsedRequest.range,
+            message: parsedRequest.message,
+          },
+          { timeoutMs: config.requestTimeoutMs },
+        ),
+      printHuman: (result) => {
+        console.log(
+          `Deprecated ${result.affectedVersions.length} version(s) for ${parsedSkillId.skillId} using range ${result.range}.`,
+        );
+      },
+      isApiError: isDeprecateApiError,
     });
-    return 0;
   } catch (error) {
-    if (isDeprecateApiError(error)) {
-      console.error(formatCliApiErrorWithHint("skillmd deprecate", error));
-      return 1;
-    }
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd deprecate: ${message}`);
     return 1;
