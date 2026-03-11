@@ -59,5 +59,5 @@ Packaging checks use `npm pack --json --dry-run` as the source of truth.
   - `minor` if commit messages include `feat:`
   - `patch` otherwise
 - The auto-bump commit message includes `[skip ci]` to avoid recursive workflow loops.
-- After a successful publish auto-bump, the workflow cherry-picks the bot-created release commit back onto `development` so version changes do not drift.
-- Do not manually repair version drift on `development`; inherit release bumps from the automated release-commit sync.
+- After a successful publish auto-bump, the workflow updates `development` to the published version so version changes do not drift.
+- Do not manually repair version drift on `development`; inherit release bumps from the automated version sync.

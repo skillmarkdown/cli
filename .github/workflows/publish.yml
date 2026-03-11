@@ -19,7 +19,6 @@ jobs:
     outputs:
       bumped: ${{ steps.ensure_version.outputs.bumped }}
       version: ${{ steps.ensure_version.outputs.version }}
-      release_sha: ${{ steps.ensure_version.outputs.release_sha }}
     if: github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
@@ -113,16 +112,13 @@ jobs:
           if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
             echo "Current version ${PACKAGE_NAME}@${PACKAGE_VERSION} already exists; bumping ${BUMP_TYPE}."
             npm version "${BUMP_TYPE}" -m "chore(release): %s [skip ci]"
-            RELEASE_SHA="$(git rev-parse HEAD)"
             NEW_VERSION="$(node -p "require('./package.json').version")"
             echo "bumped=true" >> "$GITHUB_OUTPUT"
             echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
-            echo "release_sha=${RELEASE_SHA}" >> "$GITHUB_OUTPUT"
             echo "message=Auto-bumped (${BUMP_TYPE}) to ${NEW_VERSION}." >> "$GITHUB_OUTPUT"
           else
             echo "bumped=false" >> "$GITHUB_OUTPUT"
             echo "version=${PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
-            echo "release_sha=" >> "$GITHUB_OUTPUT"
             echo "message=Publishing ${PACKAGE_NAME}@${PACKAGE_VERSION}." >> "$GITHUB_OUTPUT"
           fi
 
@@ -156,29 +152,39 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Sync release bump back into development
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+
+      - name: Sync published version back into development
         shell: bash
         run: |
           set -euo pipefail
 
-          git fetch origin main development --tags
+          git fetch origin development --tags
 
           if git show-ref --verify --quiet refs/remotes/origin/development; then
             git checkout -B development origin/development
           else
-            git checkout -B development origin/main
+            git checkout -B development
           fi
 
-          RELEASE_SHA="${{ needs.publish.outputs.release_sha }}"
-          if [[ -z "${RELEASE_SHA}" ]]; then
-            echo "No release bump commit to sync."
+          TARGET_VERSION="${{ needs.publish.outputs.version }}"
+          CURRENT_VERSION="$(node -p "require('./package.json').version")"
+
+          if [[ "${CURRENT_VERSION}" == "${TARGET_VERSION}" ]]; then
+            echo "development already has version ${TARGET_VERSION}."
             exit 0
           fi
 
-          if git merge-base --is-ancestor "${RELEASE_SHA}" HEAD; then
-            echo "Release bump ${RELEASE_SHA} already exists on development."
+          npm version "${TARGET_VERSION}" --no-git-tag-version --allow-same-version
+
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "No version-file changes to commit."
             exit 0
           fi
 
-          git cherry-pick "${RELEASE_SHA}"
+          git add package.json package-lock.json
+          git commit -m "chore(sync): sync release version ${TARGET_VERSION} into development [skip ci]"
           git push origin HEAD:development
