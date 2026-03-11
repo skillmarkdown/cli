@@ -9,6 +9,7 @@ export const PUBLISH_ACCESSES = ["public", "private"] as const;
 export type PublishAccess = (typeof PUBLISH_ACCESSES)[number];
 
 export interface PublishFlags {
+  owner?: string;
   pathArg?: string;
   version?: string;
   tag?: string;
@@ -60,6 +61,7 @@ export interface PublishEnvConfig {
 }
 
 export interface PreparePublishRequest {
+  owner?: string;
   skill: string;
   version: string;
   tag: string;

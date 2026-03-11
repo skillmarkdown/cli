@@ -206,7 +206,7 @@ export async function runPublishCommand(
 
   const readSessionFn = options.readSession ?? readAuthSession;
   const session = readSessionFn();
-  let owner = session ? deriveOwnerFromSession() : null;
+  let owner = parsed.owner ? `@${parsed.owner}` : session ? deriveOwnerFromSession() : null;
 
   try {
     const getConfigFn = options.getConfig ?? getPublishEnvConfig;
@@ -281,6 +281,7 @@ export async function runPublishCommand(
       exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
       getWhoami: options.getWhoami ?? defaultGetWhoami,
       requireOwner: true,
+      targetOwnerSlug: parsed.owner,
     });
     if (!auth.ok) {
       console.error(auth.message);
@@ -293,6 +294,7 @@ export async function runPublishCommand(
       auth.value.idToken,
       {
         skill,
+        owner: parsed.owner,
         version: parsed.version,
         tag,
         access,
