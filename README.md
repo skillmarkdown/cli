@@ -1,22 +1,15 @@
 # skillmarkdown
 
-[![CI](https://github.com/skillmarkdown/cli/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/skillmarkdown/cli/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/skillmarkdown)](https://www.npmjs.com/package/skillmarkdown)
-[![npm downloads](https://img.shields.io/npm/dm/skillmarkdown)](https://www.npmjs.com/package/skillmarkdown)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 npm-like lifecycle for agent skills: create, publish, install, tag, deprecate, and unpublish.
 
-![skillmd CLI command sweep demo](public/assets/images/cli-readme-sweep-v4.png)
-
 ## Why skillmd
 
-- Strict v1 registry contracts (`tag`, `access`, `spec`, `distTags`, lifecycle metadata).
-- Workspace runtime model with `skills.json` intent + `skills-lock.json` resolved state.
-- Agent-targeted installs for `skillmd`, `openai`, `claude`, `gemini`, `meta`, `mistral`, `deepseek`, `perplexity`, and `custom:<slug>`.
-- Release operations in one CLI: dist-tags, deprecation, and policy-gated unpublish.
-- Automation-friendly auth with scoped tokens (`read`, `publish`, `admin`).
-- Free/Pro plan gating for private skills; Pro enables private publish and private reads/search/install.
+- Publish and manage versioned agent skills.
+- Install directly or from a workspace `skills.json`.
+- Support built-in agent targets plus `custom:<slug>`.
 
 ## Install
 
@@ -39,7 +32,7 @@ skillmd init --template minimal
 skillmd validate --strict
 
 # 2) Authenticate and publish
-skillmd login    # prompts for Email and a hidden Password
+skillmd login
 skillmd publish --version 1.0.0 --tag latest --access public
 
 # 3) Discover and inspect
@@ -90,7 +83,7 @@ Notes:
 - `skills-lock.json` is CLI-owned resolved state, rewritten after successful installs/updates.
 - `skillmd use` remains available for one-off installs outside manifest flow.
 
-## Authentication modes
+## Authentication
 
 `skillmd login` uses interactive `email + password` sign-in against Firebase and then validates the registry-backed account profile.
 
@@ -108,112 +101,27 @@ Token scope model:
 - `publish`: read + publish/tag writes
 - `admin`: publish + lifecycle + token management
 
-## Command map (by outcome)
+Organization automation:
 
-### Authoring
-
-- `skillmd init [--template <minimal|verbose>] [--no-validate]`
-- `skillmd validate [path] [--strict] [--parity]`
-- `skillmd publish [path] --version <semver> [--tag <dist-tag>] [--access <public|private>] [--provenance] [--agent-target <target>] [--dry-run] [--json]`
-
-### Discovery
-
-- `skillmd search [query] [--limit <1-50>] [--cursor <token>] [--scope <public|private>] [--json]`
-- `skillmd view <skill-id|index> [--json]`
-- `skillmd history <skill-id> [--limit <1-50>] [--cursor <token>] [--json]`
-
-### Consumption
-
-- `skillmd use <skill-id> [--version <semver> | --spec <tag|version|range>] [--agent-target <target>] [--json]`
-- `skillmd install [--prune] [--agent-target <target>] [--json]`
-- `skillmd list [--agent-target <target>] [--json]`
-- `skillmd remove <skill-id> [--agent-target <target>] [--json]`
-- `skillmd update [skill-id ...] [--all] [--agent-target <target>] [--json]`
-
-### Release operations
-
-- `skillmd tag ls <skill-id> [--json]`
-- `skillmd tag add <skill-id>@<version> <tag> [--json]`
-- `skillmd tag rm <skill-id> <tag> [--json]`
-- `skillmd deprecate <skill-id>@<version|range> --message "<text>" [--json]`
-- `skillmd unpublish <skill-id>@<version> [--json]`
-
-### Auth operations
-
-- `skillmd login [--status|--reauth]` — prompts for email and a hidden password
-- `skillmd whoami [--json]`
-- `skillmd org ls [--json]`
-- `skillmd org members ls <org> [--json]`
-- `skillmd org team ls <org> [--json]`
-- `skillmd org skills ls <org> [--json]`
-- `skillmd token ls [--json]`
-- `skillmd token add <name> [--scope <read|publish|admin>] [--days <1-365>] [--json]`
-- `skillmd token rm <token-id> [--json]`
-
-### Private skills and plan gating
-
-- `free`: public skills only
-- `pro`: private publish plus private read/search/install
-- user plan is read from the backend user record
-- newly bootstrapped users default to `free` until an operator manually sets `users/{uid}.plan = "pro"`
-
-### Release Checklist
-
-- Production checklist: `docs/production-ready-checklist.md`
-
-## Coverage
-
-Run `npm run test:coverage` to execute the full CLI test suite with Node's built-in coverage. The command writes V8 artifacts to `coverage/v8/` and prints a console summary. Coverage work in this repo is intended to protect `src/` behavior, not generated `dist/` output or test helpers.
-
-## Troubleshooting
-
-### Scope errors with automation token
-
-Symptom: `unauthorized` or `forbidden` on write commands.
-
-Fix: create/use a token with required scope (`publish` or `admin`) and pass it via `--auth-token` or `SKILLMD_AUTH_TOKEN`.
-
-### Invalid lockfile schema
-
-Symptom: install/update fails due to malformed `skills-lock.json`.
-
-Fix: correct schema or remove file and reinstall from `skills.json`:
+- organization access tokens are created from the web organization management page
+- use them for org-owned automation with an explicit owner target, for example:
 
 ```bash
-rm -f skills-lock.json
-skillmd install
+SKILLMD_AUTH_TOKEN=skmd_dev_tok_... skillmd publish --owner facebook --version 1.2.3
 ```
 
-### `not_found` on `use`/`tag` resolution
+## Commands
 
-Symptom: version/tag pointer cannot be resolved.
+- Authoring: `init`, `validate`, `publish`
+- Discovery: `search`, `view`, `history`
+- Consumption: `use`, `install`, `list`, `remove`, `update`
+- Release: `tag`, `deprecate`, `unpublish`
+- Auth and org: `login`, `logout`, `whoami`, `token`, `org`
 
-Fix:
+## Support
 
-```bash
-skillmd view @username/skill
-skillmd history @username/skill
-skillmd tag ls @username/skill
-```
-
-Then retry with explicit selector, for example `--spec 1.2.3` or `--spec beta`.
-
-## Support and project health
-
-- Support: [SUPPORT.md](SUPPORT.md)
 - Security policy: [SECURITY.md](SECURITY.md)
-- Security model: [docs/security.md](docs/security.md)
-- Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
-- Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-- Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md)
-
-## More docs
-
-- Publish API: [docs/publish-api.md](docs/publish-api.md)
-- Publish registry model: [docs/publish-registry.md](docs/publish-registry.md)
-- CLI architecture: [docs/architecture.md](docs/architecture.md)
-- Testing strategy: [docs/testing.md](docs/testing.md)
-- Decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
+- Issues: [GitHub Issues](https://github.com/skillmarkdown/cli/issues)
 
 ## License
 

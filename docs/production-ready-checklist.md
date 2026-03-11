@@ -46,6 +46,7 @@ Checklist:
 - [ ] The `skillmd` executable works after install.
 - [ ] `prepublishOnly` succeeds from a clean state.
 - [ ] README examples match actual command behavior.
+- [ ] README command examples match `src/lib/shared/cli-text.ts` usage strings after command-surface changes.
 
 ## Auth and environment safety
 
@@ -71,7 +72,7 @@ Checklist:
 
 ## Post-release smoke
 
-- [ ] `npx skillmarkdown --help` works.
+- [ ] `npx skillmarkdown --version` works.
 - [ ] Fresh global install works.
 - [ ] One-off `npx` execution works.
 - [ ] Login, publish, search, and install succeed in the intended environment.
