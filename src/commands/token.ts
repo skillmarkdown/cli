@@ -2,6 +2,7 @@ import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../
 import { resolveWriteAuth } from "../lib/auth/write-auth";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
+import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
 import { TOKEN_USAGE } from "../lib/shared/cli-text";
 import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
 import {
@@ -124,7 +125,7 @@ export async function runTokenCommand(
     return 0;
   } catch (error) {
     if (isTokenApiError(error)) {
-      console.error(`skillmd token: ${error.message} (${error.code}, status ${error.status})`);
+      console.error(formatCliApiErrorWithHint("skillmd token", error));
       return 1;
     }
     const message = error instanceof Error ? error.message : "Unknown error";

@@ -9,6 +9,7 @@ import { isDeprecateApiError } from "../lib/deprecate/errors";
 import { type DeprecateEnvConfig, type DeprecateVersionsResponse } from "../lib/deprecate/types";
 import { parseSkillId } from "../lib/registry/skill-id";
 import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
+import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
 import { DEPRECATE_USAGE } from "../lib/shared/cli-text";
 import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
 
@@ -84,7 +85,7 @@ export async function runDeprecateCommand(
     return 0;
   } catch (error) {
     if (isDeprecateApiError(error)) {
-      console.error(`skillmd deprecate: ${error.message} (${error.code}, status ${error.status})`);
+      console.error(formatCliApiErrorWithHint("skillmd deprecate", error));
       return 1;
     }
     const message = error instanceof Error ? error.message : "Unknown error";

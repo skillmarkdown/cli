@@ -7,6 +7,7 @@ import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
 import { type WhoamiResponse } from "../lib/whoami/types";
 import { parseSkillId } from "../lib/registry/skill-id";
 import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
+import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
 import { TAG_USAGE } from "../lib/shared/cli-text";
 import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
 import { listDistTags, removeDistTag, setDistTag } from "../lib/tag/client";
@@ -170,7 +171,7 @@ export async function runTagCommand(
     return 0;
   } catch (error) {
     if (isTagApiError(error)) {
-      console.error(`skillmd tag: ${error.message} (${error.code}, status ${error.status})`);
+      console.error(formatCliApiErrorWithHint("skillmd tag", error));
       return 1;
     }
     const message = error instanceof Error ? error.message : "Unknown error";

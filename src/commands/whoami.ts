@@ -1,5 +1,10 @@
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
-import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
+import {
+  failWithUsage,
+  printCommandResult,
+  printLoginRequired,
+} from "../lib/shared/command-output";
+import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
 import { WHOAMI_USAGE } from "../lib/shared/cli-text";
 import { getLoginScopedRegistryEnvConfig } from "../lib/shared/env-config";
 import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
@@ -64,7 +69,7 @@ export async function runWhoamiCommand(
       options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }))
     )();
     if (!idToken) {
-      console.error("skillmd whoami: not logged in. Run 'skillmd login' first.");
+      printLoginRequired("skillmd whoami");
       return 1;
     }
 
@@ -76,7 +81,7 @@ export async function runWhoamiCommand(
     return 0;
   } catch (error) {
     if (isWhoamiApiError(error)) {
-      console.error(`skillmd whoami: ${error.message} (${error.code}, status ${error.status})`);
+      console.error(formatCliApiErrorWithHint("skillmd whoami", error));
       return 1;
     }
     const message = error instanceof Error ? error.message : "Unknown error";

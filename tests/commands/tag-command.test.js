@@ -192,3 +192,19 @@ test("maps tag API errors", async () => {
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /missing/);
 });
+
+test("prints request id for tag API errors", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runTagCommand(
+      ["add", "@core/publish-skill@1.2.3", "beta"],
+      baseOptions({
+        setDistTag: async () => {
+          throw new TagApiError(404, "not_found", "missing", { requestId: "req_tag_123" });
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /request req_tag_123/);
+});

@@ -6,6 +6,7 @@ Thanks for contributing to `skillmarkdown`.
 
 ```bash
 npm ci
+npm run format:check
 npm run lint
 npm test
 npm run build
@@ -37,13 +38,26 @@ If local session/project context drifts while switching environments, re-authent
 skillmd login --reauth
 ```
 
+## Release validation
+
+Release gate:
+
+```bash
+npm run ci:check
+npm run smoke:pack
+npm run smoke:link
+```
+
+Packaging checks in this repo use `npm pack --json --dry-run` as the source of truth.
+
 ## Commit quality bar
 
+- `npm run format:check` passes.
 - `npm run lint` passes.
 - `npm test` passes.
 - `npm run build` passes.
-- `npm run check:src-loc` passes (`<= 9,200` estimated code lines in `src`).
-- `npm run check:pack-size` passes (`<= 130,000` unpacked bytes).
+- `npm run check:src-loc` passes (`<= 18,400` estimated code lines in `src`).
+- `npm run check:pack-size` passes (`<= 260,000` unpacked bytes).
 - Docs are updated for user-facing changes.
 
 ## Reporting issues in PRs

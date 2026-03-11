@@ -14,7 +14,7 @@ import {
   type UpdateJsonResult,
   type UpdateMode,
 } from "../lib/update/types";
-import { failWithUsage } from "../lib/shared/command-output";
+import { failWithUsage, printSummary, printWarnings } from "../lib/shared/command-output";
 import { UPDATE_USAGE } from "../lib/shared/cli-text";
 import { printJson } from "../lib/shared/json-output";
 import { upsertInstalledLockEntry } from "../lib/shared/lock-entry";
@@ -104,9 +104,12 @@ function printHumanResults(entries: UpdateCommandEntry[]): void {
   const updated = countByStatus(entries, "updated");
   const skipped = countByStatus(entries, "skipped_pinned");
   const failed = countByStatus(entries, "failed");
-  console.log(
-    `Summary: total=${entries.length} updated=${updated} skipped=${skipped} failed=${failed}`,
-  );
+  printSummary("Summary", [
+    `total=${entries.length}`,
+    `updated=${updated}`,
+    `skipped=${skipped}`,
+    `failed=${failed}`,
+  ]);
 }
 
 function dedupeByKey(entries: SelectedLockEntry[]): SelectedLockEntry[] {
@@ -313,9 +316,7 @@ export async function runUpdateCommand(
         );
         const { result, lockEntry } = workflow;
         const warnings = workflow.warnings ?? [];
-        for (const warning of warnings) {
-          console.error(`Warning: ${entry.skillId}: ${warning}`);
-        }
+        printWarnings(warnings.map((warning) => `${entry.skillId}: ${warning}`));
 
         lock = upsertInstalledLockEntry(lock, lockEntry, now(), entry.selectorSpec);
 

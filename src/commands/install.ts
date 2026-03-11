@@ -10,7 +10,7 @@ import {
 } from "../lib/install/types";
 import { getUseEnvConfig, type UseEnvConfig } from "../lib/use/config";
 import { DEFAULT_AGENT_TARGET, type AgentTarget } from "../lib/shared/agent-target";
-import { failWithUsage } from "../lib/shared/command-output";
+import { failWithUsage, printSummary, printWarnings } from "../lib/shared/command-output";
 import { INSTALL_USAGE } from "../lib/shared/cli-text";
 import { printJson } from "../lib/shared/json-output";
 import { upsertInstalledLockEntry } from "../lib/shared/lock-entry";
@@ -83,17 +83,22 @@ function printHuman(
   const installed = countByStatus(entries, "installed");
   const skipped = countByStatus(entries, "skipped");
   const failed = countByStatus(entries, "failed");
-  console.log(
-    `Summary: total=${entries.length} installed=${installed} skipped=${skipped} failed=${failed}`,
-  );
+  printSummary("Summary", [
+    `total=${entries.length}`,
+    `installed=${installed}`,
+    `skipped=${skipped}`,
+    `failed=${failed}`,
+  ]);
 
   if (pruneEntries) {
     printPruneTable(pruneEntries);
     const pruned = countByStatus(pruneEntries, "pruned");
     const pruneFailed = countByStatus(pruneEntries, "failed");
-    console.log(
-      `Prune summary: total=${pruneEntries.length} pruned=${pruned} failed=${pruneFailed}`,
-    );
+    printSummary("Prune summary", [
+      `total=${pruneEntries.length}`,
+      `pruned=${pruned}`,
+      `failed=${pruneFailed}`,
+    ]);
   }
 }
 
@@ -275,9 +280,9 @@ export async function runInstallCommand(
           {},
         );
 
-        for (const warning of workflow.warnings ?? []) {
-          console.error(`Warning: ${dependency.skillId}: ${warning}`);
-        }
+        printWarnings(
+          (workflow.warnings ?? []).map((warning) => `${dependency.skillId}: ${warning}`),
+        );
 
         const { lockEntry, result } = workflow;
         lock = upsertInstalledLockEntry(lock, lockEntry, now(), dependency.spec);

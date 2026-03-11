@@ -1,6 +1,6 @@
 import { getUseEnvConfig, type UseEnvConfig } from "../lib/use/config";
 import { type AgentTarget, normalizeAgentTarget } from "../lib/shared/agent-target";
-import { failWithUsage } from "../lib/shared/command-output";
+import { failWithUsage, printSummary } from "../lib/shared/command-output";
 import { LIST_USAGE } from "../lib/shared/cli-text";
 import { printJson } from "../lib/shared/json-output";
 import { renderTable } from "../lib/shared/table";
@@ -146,7 +146,7 @@ export async function runListCommand(
       console.log("No installed skills found.");
     } else {
       printListTable(rows);
-      console.log(`Summary: scope=${scope} total=${rows.length}`);
+      printSummary("Summary", [`scope=${scope}`, `total=${rows.length}`]);
     }
     return 0;
   } catch (error) {

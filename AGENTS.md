@@ -41,6 +41,14 @@ Required validation before merge:
 - `npm test`
 - `npm run build`
 
+Release validation:
+
+- `npm run ci:check`
+- `npm run smoke:pack`
+- `npm run smoke:link`
+
+Packaging checks use `npm pack --json --dry-run` as the source of truth.
+
 ## Release automation
 
 - Publishing is automated by `.github/workflows/publish.yml` on pushes to `main`.

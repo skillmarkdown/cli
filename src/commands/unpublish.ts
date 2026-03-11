@@ -5,6 +5,7 @@ import { type WhoamiResponse } from "../lib/whoami/types";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { parseSkillId } from "../lib/registry/skill-id";
 import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
+import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
 import { UNPUBLISH_USAGE } from "../lib/shared/cli-text";
 import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
 import { isUnpublishApiError } from "../lib/unpublish/errors";
@@ -83,7 +84,7 @@ export async function runUnpublishCommand(
     return 0;
   } catch (error) {
     if (isUnpublishApiError(error)) {
-      console.error(`skillmd unpublish: ${error.message} (${error.code}, status ${error.status})`);
+      console.error(formatCliApiErrorWithHint("skillmd unpublish", error));
       return 1;
     }
     const message = error instanceof Error ? error.message : "Unknown error";

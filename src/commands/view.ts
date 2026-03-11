@@ -1,6 +1,6 @@
 import { parseSkillId } from "../lib/registry/skill-id";
 import { readSearchSelectionCache, type SearchSelectionCache } from "../lib/search/selection-cache";
-import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
+import { failWithUsage, printCommandResult, printNextStep } from "../lib/shared/command-output";
 import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
 import { VIEW_USAGE } from "../lib/shared/cli-text";
 import { getSkillView } from "../lib/view/client";
@@ -45,7 +45,7 @@ function printHumanResult(payload: ViewResponse): void {
       console.log(`  ${tag}: ${version}`);
     }
   }
-  console.log(`Next: skillmd history ${canonicalSkillId} --limit 20`);
+  printNextStep(`skillmd history ${canonicalSkillId} --limit 20`);
 }
 
 function normalizeRegistryBaseUrl(value: string): string {
