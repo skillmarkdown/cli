@@ -18,6 +18,7 @@ npm run check:pack-size
 
 - Keep PRs scoped and atomic.
 - Base PRs on `development` unless maintainers request otherwise.
+- Release merges flow from `development` into `main`.
 - Include test updates with behavior changes.
 - Keep strict-v1 terminology and contracts in docs and tests.
 
@@ -49,6 +50,7 @@ npm run smoke:link
 ```
 
 Packaging checks in this repo use `npm pack --json --dry-run` as the source of truth.
+Successful publishes on `main` auto-sync back into `development`; do not manually bump or backport `package.json` version changes into `development`.
 
 Coverage reporting is available through `npm run test:coverage` and is informational in this repo today. Do not treat coverage percentage as a failing merge gate.
 

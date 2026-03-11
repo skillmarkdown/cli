@@ -52,9 +52,12 @@ Packaging checks use `npm pack --json --dry-run` as the source of truth.
 ## Release automation
 
 - Publishing is automated by `.github/workflows/publish.yml` on pushes to `main`.
+- The expected branch flow is `development -> main` for releases.
 - The workflow uses npm Trusted Publishing (OIDC) and publishes with provenance.
 - If the current `package.json` version is already on npm, the workflow auto-bumps:
   - `major` if commit messages include `BREAKING CHANGE` or `type!:`
   - `minor` if commit messages include `feat:`
   - `patch` otherwise
 - The auto-bump commit message includes `[skip ci]` to avoid recursive workflow loops.
+- After a successful publish, the workflow syncs `main` back into `development` so release/version commits do not drift.
+- Do not manually repair version drift on `development`; inherit release bumps from the automated mergeback.
