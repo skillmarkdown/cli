@@ -16,6 +16,10 @@ permissions:
 
 jobs:
   publish:
+    outputs:
+      bumped: ${{ steps.ensure_version.outputs.bumped }}
+      version: ${{ steps.ensure_version.outputs.version }}
+      release_sha: ${{ steps.ensure_version.outputs.release_sha }}
     if: github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
@@ -109,13 +113,16 @@ jobs:
           if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
             echo "Current version ${PACKAGE_NAME}@${PACKAGE_VERSION} already exists; bumping ${BUMP_TYPE}."
             npm version "${BUMP_TYPE}" -m "chore(release): %s [skip ci]"
+            RELEASE_SHA="$(git rev-parse HEAD)"
             NEW_VERSION="$(node -p "require('./package.json').version")"
             echo "bumped=true" >> "$GITHUB_OUTPUT"
             echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "release_sha=${RELEASE_SHA}" >> "$GITHUB_OUTPUT"
             echo "message=Auto-bumped (${BUMP_TYPE}) to ${NEW_VERSION}." >> "$GITHUB_OUTPUT"
           else
             echo "bumped=false" >> "$GITHUB_OUTPUT"
             echo "version=${PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "release_sha=" >> "$GITHUB_OUTPUT"
             echo "message=Publishing ${PACKAGE_NAME}@${PACKAGE_VERSION}." >> "$GITHUB_OUTPUT"
           fi
 
@@ -133,21 +140,23 @@ jobs:
 
   sync-development:
     needs: publish
-    if: needs.publish.result == 'success'
+    if: needs.publish.result == 'success' && needs.publish.outputs.bumped == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      synced_version: ${{ needs.publish.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: main
+          ref: development
 
       - name: Configure git user
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Sync main back into development
+      - name: Sync release bump back into development
         shell: bash
         run: |
           set -euo pipefail
@@ -160,15 +169,16 @@ jobs:
             git checkout -B development origin/main
           fi
 
-          if git merge-base --is-ancestor HEAD origin/main; then
-            git merge --ff-only origin/main
-          else
-            git merge --no-ff origin/main -m "chore(sync): merge main back into development [skip ci]"
-          fi
-
-          if git diff --quiet origin/development...HEAD 2>/dev/null; then
-            echo "development is already in sync with main."
+          RELEASE_SHA="${{ needs.publish.outputs.release_sha }}"
+          if [[ -z "${RELEASE_SHA}" ]]; then
+            echo "No release bump commit to sync."
             exit 0
           fi
 
+          if git merge-base --is-ancestor "${RELEASE_SHA}" HEAD; then
+            echo "Release bump ${RELEASE_SHA} already exists on development."
+            exit 0
+          fi
+
+          git cherry-pick "${RELEASE_SHA}"
           git push origin HEAD:development
