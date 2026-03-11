@@ -8,8 +8,13 @@ const { OrgApiError } = requireDist("lib/org/errors.js");
 const {
   listOrganizationMembers,
   listOrganizationSkills,
+  listOrganizationTeams,
   createOrganizationTeam,
   getOrganizationTeam,
+  addOrganizationMember,
+  removeOrganizationMember,
+  addOrganizationTeamMember,
+  removeOrganizationTeamMember,
   assignOrganizationSkillTeam,
 } = requireDist("lib/org/client.js");
 
@@ -67,6 +72,84 @@ test("createOrganizationTeam sends payload and parses response", async () => {
   );
 
   assert.equal(payload.teamSlug, "core");
+});
+
+test("addOrganizationMember sends payload and parses response", async () => {
+  const payload = await withMockedFetch(
+    async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/organizations/facebook/members");
+      assert.equal(init.method, "POST");
+      assert.deepEqual(JSON.parse(String(init.body)), {
+        username: "maintainer",
+        role: "admin",
+      });
+      return mockJsonResponse(200, {
+        slug: "facebook",
+        username: "maintainer",
+        owner: "@maintainer",
+        role: "admin",
+      });
+    },
+    () =>
+      addOrganizationMember("https://registry.example.com", "id-token", "facebook", {
+        username: "maintainer",
+        role: "admin",
+      }),
+  );
+
+  assert.equal(payload.owner, "@maintainer");
+});
+
+test("removeOrganizationMember sends delete request", async () => {
+  const payload = await withMockedFetch(
+    async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/organizations/facebook/members/maintainer");
+      assert.equal(init.method, "DELETE");
+      return mockJsonResponse(200, {
+        status: "removed",
+        slug: "facebook",
+        username: "maintainer",
+      });
+    },
+    () =>
+      removeOrganizationMember(
+        "https://registry.example.com",
+        "id-token",
+        "facebook",
+        "maintainer",
+      ),
+  );
+
+  assert.equal(payload.status, "removed");
+});
+
+test("listOrganizationTeams parses response", async () => {
+  const payload = await withMockedFetch(
+    async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/organizations/facebook/teams");
+      assert.equal(init.method, "GET");
+      return mockJsonResponse(200, {
+        slug: "facebook",
+        owner: "@facebook",
+        viewerRole: "owner",
+        teams: [
+          {
+            teamSlug: "core",
+            name: "Core Team",
+            createdAt: "2026-03-01T00:00:00.000Z",
+            updatedAt: "2026-03-01T00:00:00.000Z",
+            members: [],
+          },
+        ],
+      });
+    },
+    () => listOrganizationTeams("https://registry.example.com", "id-token", "facebook"),
+  );
+
+  assert.equal(payload.teams[0].name, "Core Team");
 });
 
 test("getOrganizationTeam parses team members", async () => {
@@ -134,6 +217,57 @@ test("assignOrganizationSkillTeam sends null when clearing", async () => {
 
   assert.equal(payload.skill.teamSlug, undefined);
   assert.equal(payload.skill.skillId, "@facebook/private-skill");
+});
+
+test("addOrganizationTeamMember sends payload and parses response", async () => {
+  const payload = await withMockedFetch(
+    async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/organizations/facebook/teams/core/members");
+      assert.equal(init.method, "POST");
+      assert.deepEqual(JSON.parse(String(init.body)), {
+        username: "maintainer",
+      });
+      return mockJsonResponse(200, {
+        slug: "facebook",
+        teamSlug: "core",
+        username: "maintainer",
+        owner: "@maintainer",
+      });
+    },
+    () =>
+      addOrganizationTeamMember("https://registry.example.com", "id-token", "facebook", "core", {
+        username: "maintainer",
+      }),
+  );
+
+  assert.equal(payload.teamSlug, "core");
+});
+
+test("removeOrganizationTeamMember sends delete request", async () => {
+  const payload = await withMockedFetch(
+    async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/organizations/facebook/teams/core/members/maintainer");
+      assert.equal(init.method, "DELETE");
+      return mockJsonResponse(200, {
+        status: "removed",
+        slug: "facebook",
+        teamSlug: "core",
+        username: "maintainer",
+      });
+    },
+    () =>
+      removeOrganizationTeamMember(
+        "https://registry.example.com",
+        "id-token",
+        "facebook",
+        "core",
+        "maintainer",
+      ),
+  );
+
+  assert.equal(payload.status, "removed");
 });
 
 test("listOrganizationSkills accepts real backend skill payload shape", async () => {

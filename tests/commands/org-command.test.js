@@ -188,12 +188,63 @@ test("lists organization teams in json", async () => {
   assert.equal(payload.teams[0].teamSlug, "core");
 });
 
+test("lists organization members in human output", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runOrgCommand(["members", "ls", "facebook"], baseOptions()),
+  );
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /Organization: @facebook/);
+  assert.match(logs.join("\n"), /- @maintainer role=admin/);
+});
+
 test("adds organization member", async () => {
   const { result, logs } = await captureConsole(() =>
     runOrgCommand(["members", "add", "facebook", "maintainer", "--role", "admin"], baseOptions()),
   );
   assert.equal(result, 0);
   assert.match(logs.join("\n"), /Added @maintainer to @facebook as admin/);
+});
+
+test("removes organization member", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runOrgCommand(["members", "rm", "facebook", "maintainer"], baseOptions()),
+  );
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /Removed @maintainer from @facebook/);
+});
+
+test("creates organization team", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runOrgCommand(
+      ["team", "add", "facebook", "platform", "--name", "Platform Team"],
+      baseOptions(),
+    ),
+  );
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /Created team platform in @facebook/);
+});
+
+test("lists organization team members in human output", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runOrgCommand(["team", "members", "ls", "facebook", "core"], baseOptions()),
+  );
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /Team: core \(Core Team\)/);
+  assert.match(logs.join("\n"), /- @maintainer/);
+});
+
+test("adds and removes organization team members", async () => {
+  const addResult = await captureConsole(() =>
+    runOrgCommand(["team", "members", "add", "facebook", "core", "maintainer"], baseOptions()),
+  );
+  assert.equal(addResult.result, 0);
+  assert.match(addResult.logs.join("\n"), /Added @maintainer to team core in @facebook/);
+
+  const removeResult = await captureConsole(() =>
+    runOrgCommand(["team", "members", "rm", "facebook", "core", "maintainer"], baseOptions()),
+  );
+  assert.equal(removeResult.result, 0);
+  assert.match(removeResult.logs.join("\n"), /Removed @maintainer from team core in @facebook/);
 });
 
 test("lists organization skills with full skill identity in human output", async () => {
@@ -234,4 +285,18 @@ test("prints helpful authz hint for membership failures", async () => {
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /skillmd whoami/);
   assert.match(errors.join("\n"), /skillmd org/);
+});
+
+test("org read commands fail when not logged in", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runOrgCommand(
+      ["team", "ls", "facebook"],
+      baseOptions({
+        resolveReadIdToken: async () => null,
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /not logged in/i);
 });

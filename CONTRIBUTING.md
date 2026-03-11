@@ -50,6 +50,8 @@ npm run smoke:link
 
 Packaging checks in this repo use `npm pack --json --dry-run` as the source of truth.
 
+Coverage reporting is available through `npm run test:coverage` and is informational in this repo today. Do not treat coverage percentage as a failing merge gate.
+
 ## Commit quality bar
 
 - `npm run format:check` passes.
