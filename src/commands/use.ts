@@ -1,7 +1,7 @@
 import { parseSkillId } from "../lib/registry/skill-id";
 import { DEFAULT_AGENT_TARGET } from "../lib/shared/agent-target";
 import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
-import { failWithUsage } from "../lib/shared/command-output";
+import { failWithUsage, printNextStep, printWarnings } from "../lib/shared/command-output";
 import { USE_USAGE } from "../lib/shared/cli-text";
 import { printJson } from "../lib/shared/json-output";
 import { getUseEnvConfig, type UseEnvConfig } from "../lib/use/config";
@@ -55,14 +55,12 @@ function shouldWarnProductionRegistry(registryBaseUrl: string): boolean {
 }
 
 function printHumanResult(result: UseCommandResult, warnings: string[]): void {
-  for (const warning of warnings) {
-    console.error(`Warning: ${warning}`);
-  }
+  printWarnings(warnings);
   const scopeLabel = result.installScope === "global" ? " globally" : "";
   console.log(
     `Installed ${result.skillId}@${result.version}${scopeLabel} to ${result.installedPath} (digest=${result.digest}).`,
   );
-  console.log(`Next: skillmd history ${result.skillId} --limit 20`);
+  printNextStep(`skillmd history ${result.skillId} --limit 20`);
 }
 
 export async function runUseCommand(

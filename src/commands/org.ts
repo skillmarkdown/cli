@@ -1,12 +1,12 @@
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 import { resolveWriteAuth } from "../lib/auth/write-auth";
-import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
+import { failWithUsage } from "../lib/shared/command-output";
 import {
   getAuthRegistryEnvConfig,
   getLoginScopedRegistryEnvConfig,
 } from "../lib/shared/env-config";
-import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
 import { ORG_USAGE } from "../lib/shared/cli-text";
+import { executeReadCommand, executeWriteCommand } from "../lib/shared/command-execution";
 import {
   addOrganizationMember as defaultAddOrganizationMember,
   addOrganizationTeamMember as defaultAddOrganizationTeamMember,
@@ -201,185 +201,237 @@ export async function runOrgCommand(
   try {
     if (parsed.action === "ls") {
       const config = (options.getReadConfig ?? getLoginScopedRegistryEnvConfig)(env);
-      const idToken = await (
-        options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }))
-      )();
-      if (!idToken) {
-        console.error("skillmd org: not logged in. Run 'skillmd login' first.");
-        return 1;
-      }
-
-      const result = await (options.getWhoami ?? defaultGetWhoami)(
-        config.registryBaseUrl,
-        idToken,
-        {
-          timeoutMs: config.requestTimeoutMs,
+      return executeReadCommand<{ organizations: OrganizationMembership[] }>({
+        command: "skillmd org",
+        json: parsed.json,
+        resolveIdToken: options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env })),
+        run: async (idToken) => {
+          const result = await (options.getWhoami ?? defaultGetWhoami)(
+            config.registryBaseUrl,
+            idToken,
+            {
+              timeoutMs: config.requestTimeoutMs,
+            },
+          );
+          return { organizations: result.organizations ?? [] };
         },
-      );
-      printCommandResult(parsed.json, { organizations: result.organizations ?? [] }, () =>
-        printOrganizationListHuman(result.organizations ?? []),
-      );
-      return 0;
+        printHuman: (result) => printOrganizationListHuman(result.organizations),
+        isApiError: isOrgApiError,
+      });
     }
 
     const readActions = new Set(["members.ls", "team.ls", "team.members.ls", "skills.ls"]);
     if (readActions.has(parsed.action)) {
       const config = (options.getReadConfig ?? getLoginScopedRegistryEnvConfig)(env);
-      const idToken = await (
-        options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }))
-      )();
-      if (!idToken) {
-        console.error("skillmd org: not logged in. Run 'skillmd login' first.");
-        return 1;
-      }
-
       if (parsed.action === "members.ls") {
-        const result = await (options.listOrganizationMembers ?? defaultListOrganizationMembers)(
-          config.registryBaseUrl,
-          idToken,
-          parsed.slug,
-          { timeoutMs: config.requestTimeoutMs },
-        );
-        printCommandResult(parsed.json, result, () => printOrganizationMembersHuman(result));
-        return 0;
+        return executeReadCommand<OrganizationMembersResponse>({
+          command: "skillmd org",
+          json: parsed.json,
+          resolveIdToken: options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env })),
+          run: (idToken) =>
+            (options.listOrganizationMembers ?? defaultListOrganizationMembers)(
+              config.registryBaseUrl,
+              idToken,
+              parsed.slug,
+              { timeoutMs: config.requestTimeoutMs },
+            ),
+          printHuman: printOrganizationMembersHuman,
+          isApiError: isOrgApiError,
+        });
       }
 
       if (parsed.action === "team.ls") {
-        const result = await (options.listOrganizationTeams ?? defaultListOrganizationTeams)(
-          config.registryBaseUrl,
-          idToken,
-          parsed.slug,
-          { timeoutMs: config.requestTimeoutMs },
-        );
-        printCommandResult(parsed.json, result, () => printOrganizationTeamsHuman(result));
-        return 0;
+        return executeReadCommand<OrganizationTeamsResponse>({
+          command: "skillmd org",
+          json: parsed.json,
+          resolveIdToken: options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env })),
+          run: (idToken) =>
+            (options.listOrganizationTeams ?? defaultListOrganizationTeams)(
+              config.registryBaseUrl,
+              idToken,
+              parsed.slug,
+              { timeoutMs: config.requestTimeoutMs },
+            ),
+          printHuman: printOrganizationTeamsHuman,
+          isApiError: isOrgApiError,
+        });
       }
 
       if (parsed.action === "team.members.ls") {
-        const result = await (options.getOrganizationTeam ?? defaultGetOrganizationTeam)(
-          config.registryBaseUrl,
-          idToken,
-          parsed.slug,
-          parsed.teamSlug,
-          { timeoutMs: config.requestTimeoutMs },
-        );
-        printCommandResult(parsed.json, result, () => printOrganizationTeamHuman(result));
-        return 0;
+        return executeReadCommand<OrganizationTeamResponse>({
+          command: "skillmd org",
+          json: parsed.json,
+          resolveIdToken: options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env })),
+          run: (idToken) =>
+            (options.getOrganizationTeam ?? defaultGetOrganizationTeam)(
+              config.registryBaseUrl,
+              idToken,
+              parsed.slug,
+              parsed.teamSlug,
+              { timeoutMs: config.requestTimeoutMs },
+            ),
+          printHuman: printOrganizationTeamHuman,
+          isApiError: isOrgApiError,
+        });
       }
 
-      const result = await (options.listOrganizationSkills ?? defaultListOrganizationSkills)(
-        config.registryBaseUrl,
-        idToken,
-        parsed.slug,
-        { timeoutMs: config.requestTimeoutMs },
-      );
-      printCommandResult(parsed.json, result, () => printOrganizationSkillsHuman(result));
-      return 0;
+      return executeReadCommand<OrganizationSkillsResponse>({
+        command: "skillmd org",
+        json: parsed.json,
+        resolveIdToken: options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env })),
+        run: (idToken) =>
+          (options.listOrganizationSkills ?? defaultListOrganizationSkills)(
+            config.registryBaseUrl,
+            idToken,
+            parsed.slug,
+            { timeoutMs: config.requestTimeoutMs },
+          ),
+        printHuman: printOrganizationSkillsHuman,
+        isApiError: isOrgApiError,
+      });
     }
 
     const config = (options.getAuthConfig ?? getAuthRegistryEnvConfig)(env);
-    const auth = await resolveWriteAuth({
-      command: "skillmd org",
-      env,
-      config,
-    });
-    if (!auth.ok) {
-      console.error(auth.message);
-      return 1;
-    }
+    const resolveOrgWriteAuth = async () => {
+      const auth = await resolveWriteAuth({
+        command: "skillmd org",
+        env,
+        config,
+      });
+      return auth.ok
+        ? { ok: true as const, idToken: auth.value.idToken }
+        : { ok: false as const, message: auth.message };
+    };
 
     if (parsed.action === "members.add") {
-      const result = await (options.addOrganizationMember ?? defaultAddOrganizationMember)(
-        config.registryBaseUrl,
-        auth.value.idToken,
-        parsed.slug,
-        { username: parsed.username, role: parsed.role },
-        { timeoutMs: config.requestTimeoutMs },
-      );
-      printCommandResult(parsed.json, result, () => {
-        console.log(`Added ${result.owner} to @${result.slug} as ${result.role}.`);
+      return executeWriteCommand<OrganizationMemberMutationResponse>({
+        command: "skillmd org",
+        json: parsed.json,
+        resolveAuth: resolveOrgWriteAuth,
+        run: (idToken) =>
+          (options.addOrganizationMember ?? defaultAddOrganizationMember)(
+            config.registryBaseUrl,
+            idToken,
+            parsed.slug,
+            { username: parsed.username, role: parsed.role },
+            { timeoutMs: config.requestTimeoutMs },
+          ),
+        printHuman: (result) => {
+          console.log(`Added ${result.owner} to @${result.slug} as ${result.role}.`);
+        },
+        isApiError: isOrgApiError,
       });
-      return 0;
     }
 
     if (parsed.action === "members.rm") {
-      const result = await (options.removeOrganizationMember ?? defaultRemoveOrganizationMember)(
-        config.registryBaseUrl,
-        auth.value.idToken,
-        parsed.slug,
-        parsed.username,
-        { timeoutMs: config.requestTimeoutMs },
-      );
-      printCommandResult(parsed.json, result, () => {
-        console.log(`Removed @${result.username} from @${result.slug}.`);
+      return executeWriteCommand<OrganizationMemberRemoveResponse>({
+        command: "skillmd org",
+        json: parsed.json,
+        resolveAuth: resolveOrgWriteAuth,
+        run: (idToken) =>
+          (options.removeOrganizationMember ?? defaultRemoveOrganizationMember)(
+            config.registryBaseUrl,
+            idToken,
+            parsed.slug,
+            parsed.username,
+            { timeoutMs: config.requestTimeoutMs },
+          ),
+        printHuman: (result) => {
+          console.log(`Removed @${result.username} from @${result.slug}.`);
+        },
+        isApiError: isOrgApiError,
       });
-      return 0;
     }
 
     if (parsed.action === "team.add") {
-      const result = await (options.createOrganizationTeam ?? defaultCreateOrganizationTeam)(
-        config.registryBaseUrl,
-        auth.value.idToken,
-        parsed.slug,
-        { teamSlug: parsed.teamSlug, name: parsed.name },
-        { timeoutMs: config.requestTimeoutMs },
-      );
-      printCommandResult(parsed.json, result, () => {
-        console.log(`Created team ${result.teamSlug} in @${result.slug}.`);
+      return executeWriteCommand<OrganizationTeamCreateResponse>({
+        command: "skillmd org",
+        json: parsed.json,
+        resolveAuth: resolveOrgWriteAuth,
+        run: (idToken) =>
+          (options.createOrganizationTeam ?? defaultCreateOrganizationTeam)(
+            config.registryBaseUrl,
+            idToken,
+            parsed.slug,
+            { teamSlug: parsed.teamSlug, name: parsed.name },
+            { timeoutMs: config.requestTimeoutMs },
+          ),
+        printHuman: (result) => {
+          console.log(`Created team ${result.teamSlug} in @${result.slug}.`);
+        },
+        isApiError: isOrgApiError,
       });
-      return 0;
     }
 
     if (parsed.action === "team.members.add") {
-      const result = await (options.addOrganizationTeamMember ?? defaultAddOrganizationTeamMember)(
-        config.registryBaseUrl,
-        auth.value.idToken,
-        parsed.slug,
-        parsed.teamSlug,
-        { username: parsed.username },
-        { timeoutMs: config.requestTimeoutMs },
-      );
-      printCommandResult(parsed.json, result, () => {
-        console.log(`Added ${result.owner} to team ${result.teamSlug} in @${result.slug}.`);
+      return executeWriteCommand<OrganizationTeamMemberMutationResponse>({
+        command: "skillmd org",
+        json: parsed.json,
+        resolveAuth: resolveOrgWriteAuth,
+        run: (idToken) =>
+          (options.addOrganizationTeamMember ?? defaultAddOrganizationTeamMember)(
+            config.registryBaseUrl,
+            idToken,
+            parsed.slug,
+            parsed.teamSlug,
+            { username: parsed.username },
+            { timeoutMs: config.requestTimeoutMs },
+          ),
+        printHuman: (result) => {
+          console.log(`Added ${result.owner} to team ${result.teamSlug} in @${result.slug}.`);
+        },
+        isApiError: isOrgApiError,
       });
-      return 0;
     }
 
     if (parsed.action === "team.members.rm") {
-      const result = await (
-        options.removeOrganizationTeamMember ?? defaultRemoveOrganizationTeamMember
-      )(config.registryBaseUrl, auth.value.idToken, parsed.slug, parsed.teamSlug, parsed.username, {
-        timeoutMs: config.requestTimeoutMs,
+      return executeWriteCommand<OrganizationTeamMemberRemoveResponse>({
+        command: "skillmd org",
+        json: parsed.json,
+        resolveAuth: resolveOrgWriteAuth,
+        run: (idToken) =>
+          (options.removeOrganizationTeamMember ?? defaultRemoveOrganizationTeamMember)(
+            config.registryBaseUrl,
+            idToken,
+            parsed.slug,
+            parsed.teamSlug,
+            parsed.username,
+            {
+              timeoutMs: config.requestTimeoutMs,
+            },
+          ),
+        printHuman: (result) => {
+          console.log(
+            `Removed @${result.username} from team ${result.teamSlug} in @${result.slug}.`,
+          );
+        },
+        isApiError: isOrgApiError,
       });
-      printCommandResult(parsed.json, result, () => {
-        console.log(`Removed @${result.username} from team ${result.teamSlug} in @${result.slug}.`);
-      });
-      return 0;
     }
 
     if (parsed.action === "skills.team.set" || parsed.action === "skills.team.clear") {
-      const result = await (
-        options.assignOrganizationSkillTeam ?? defaultAssignOrganizationSkillTeam
-      )(
-        config.registryBaseUrl,
-        auth.value.idToken,
-        parsed.slug,
-        parsed.skillSlug,
-        parsed.action === "skills.team.set" ? parsed.teamSlug : null,
-        { timeoutMs: config.requestTimeoutMs },
-      );
-      printCommandResult(parsed.json, result, () => {
-        console.log(`Updated ${result.skill.skillId} team=${result.skill.teamSlug ?? "-"}.`);
+      return executeWriteCommand<OrganizationSkillTeamUpdateResponse>({
+        command: "skillmd org",
+        json: parsed.json,
+        resolveAuth: resolveOrgWriteAuth,
+        run: (idToken) =>
+          (options.assignOrganizationSkillTeam ?? defaultAssignOrganizationSkillTeam)(
+            config.registryBaseUrl,
+            idToken,
+            parsed.slug,
+            parsed.skillSlug,
+            parsed.action === "skills.team.set" ? parsed.teamSlug : null,
+            { timeoutMs: config.requestTimeoutMs },
+          ),
+        printHuman: (result) => {
+          console.log(`Updated ${result.skill.skillId} team=${result.skill.teamSlug ?? "-"}.`);
+        },
+        isApiError: isOrgApiError,
       });
-      return 0;
     }
 
     return failWithUsage("skillmd org: unsupported argument(s)", ORG_USAGE);
   } catch (error) {
-    if (isOrgApiError(error)) {
-      console.error(formatCliApiErrorWithHint("skillmd org", error));
-      return 1;
-    }
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd org: ${message}`);
     return 1;

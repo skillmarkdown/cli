@@ -154,3 +154,23 @@ test("maps token API errors", async () => {
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /insufficient token scope/);
 });
+
+test("prints request id and scope hint for token API errors", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runTokenCommand(
+      ["ls"],
+      baseOptions({
+        listTokens: async () => {
+          throw new TokenApiError(403, "forbidden", "insufficient token scope", {
+            reason: "forbidden_scope",
+            requestId: "req_tok_123",
+          });
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /request req_tok_123/);
+  assert.match(errors.join("\n"), /use a token with the required scope/i);
+});

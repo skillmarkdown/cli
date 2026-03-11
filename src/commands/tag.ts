@@ -8,6 +8,7 @@ import { type WhoamiResponse } from "../lib/whoami/types";
 import { parseSkillId } from "../lib/registry/skill-id";
 import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
 import { TAG_USAGE } from "../lib/shared/cli-text";
+import { executeWriteCommand } from "../lib/shared/command-execution";
 import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
 import { listDistTags, removeDistTag, setDistTag } from "../lib/tag/client";
 import { isTagApiError } from "../lib/tag/errors";
@@ -115,64 +116,85 @@ export async function runTagCommand(
       return 0;
     }
 
-    const auth = await resolveWriteAuth({
-      command: "skillmd tag",
-      env,
-      config,
-      readSession: options.readSession ?? readAuthSession,
-      exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
-      getWhoami: options.getWhoami ?? defaultGetWhoami,
-      requireOwner: true,
-      targetOwnerSlug: parsedSkillId.username,
-      ownerMismatchMessage: (owner) =>
-        `skillmd tag: can only update tags for skills owned by ${owner}.`,
-    });
-    if (!auth.ok) {
-      console.error(auth.message);
-      return 1;
-    }
-
     if (parsed.action === "add") {
-      const setDistTagFn = options.setDistTag ?? setDistTag;
-      const result = await setDistTagFn(
-        config.registryBaseUrl,
-        auth.value.idToken,
-        {
-          username: parsedSkillId.username,
-          skillSlug: parsedSkillId.skillSlug,
-          tag: parsed.tag,
-          version: parsed.version,
+      return executeWriteCommand<DistTagUpdateResponse>({
+        command: "skillmd tag",
+        json: parsed.json,
+        resolveAuth: async () => {
+          const auth = await resolveWriteAuth({
+            command: "skillmd tag",
+            env,
+            config,
+            readSession: options.readSession ?? readAuthSession,
+            exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
+            getWhoami: options.getWhoami ?? defaultGetWhoami,
+            requireOwner: true,
+            targetOwnerSlug: parsedSkillId.username,
+            ownerMismatchMessage: (owner) =>
+              `skillmd tag: can only update tags for skills owned by ${owner}.`,
+          });
+          return auth.ok
+            ? { ok: true as const, idToken: auth.value.idToken }
+            : { ok: false as const, message: auth.message };
         },
-        { timeoutMs: config.requestTimeoutMs },
-      );
-      printCommandResult(parsed.json, result, () => {
-        console.log(
-          `Updated dist-tag ${result.tag} -> ${result.version} for ${parsedSkillId.skillId}.`,
-        );
+        run: (idToken) =>
+          (options.setDistTag ?? setDistTag)(
+            config.registryBaseUrl,
+            idToken,
+            {
+              username: parsedSkillId.username,
+              skillSlug: parsedSkillId.skillSlug,
+              tag: parsed.tag,
+              version: parsed.version,
+            },
+            { timeoutMs: config.requestTimeoutMs },
+          ),
+        printHuman: (result) => {
+          console.log(
+            `Updated dist-tag ${result.tag} -> ${result.version} for ${parsedSkillId.skillId}.`,
+          );
+        },
+        isApiError: isTagApiError,
       });
-      return 0;
     }
 
-    const removeDistTagFn = options.removeDistTag ?? removeDistTag;
-    const result = await removeDistTagFn(
-      config.registryBaseUrl,
-      auth.value.idToken,
-      {
-        username: parsedSkillId.username,
-        skillSlug: parsedSkillId.skillSlug,
-        tag: parsed.tag,
+    return executeWriteCommand<DistTagDeleteResponse>({
+      command: "skillmd tag",
+      json: parsed.json,
+      resolveAuth: async () => {
+        const auth = await resolveWriteAuth({
+          command: "skillmd tag",
+          env,
+          config,
+          readSession: options.readSession ?? readAuthSession,
+          exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
+          getWhoami: options.getWhoami ?? defaultGetWhoami,
+          requireOwner: true,
+          targetOwnerSlug: parsedSkillId.username,
+          ownerMismatchMessage: (owner) =>
+            `skillmd tag: can only update tags for skills owned by ${owner}.`,
+        });
+        return auth.ok
+          ? { ok: true as const, idToken: auth.value.idToken }
+          : { ok: false as const, message: auth.message };
       },
-      { timeoutMs: config.requestTimeoutMs },
-    );
-    printCommandResult(parsed.json, result, () => {
-      console.log(`Removed dist-tag ${result.tag} from ${parsedSkillId.skillId}.`);
+      run: (idToken) =>
+        (options.removeDistTag ?? removeDistTag)(
+          config.registryBaseUrl,
+          idToken,
+          {
+            username: parsedSkillId.username,
+            skillSlug: parsedSkillId.skillSlug,
+            tag: parsed.tag,
+          },
+          { timeoutMs: config.requestTimeoutMs },
+        ),
+      printHuman: (result) => {
+        console.log(`Removed dist-tag ${result.tag} from ${parsedSkillId.skillId}.`);
+      },
+      isApiError: isTagApiError,
     });
-    return 0;
   } catch (error) {
-    if (isTagApiError(error)) {
-      console.error(`skillmd tag: ${error.message} (${error.code}, status ${error.status})`);
-      return 1;
-    }
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd tag: ${message}`);
     return 1;

@@ -8,6 +8,24 @@ interface ParseOptionValueOptions extends ParseValueArgOptions {
   allowEmptyValue?: boolean;
 }
 
+export function splitJsonFlag(args: string[]): { json: boolean; positional: string[] } | null {
+  const positional: string[] = [];
+  let json = false;
+
+  for (const arg of args) {
+    if (arg === "--json") {
+      json = true;
+      continue;
+    }
+    if (arg.startsWith("-")) {
+      return null;
+    }
+    positional.push(arg);
+  }
+
+  return { json, positional };
+}
+
 export function parseValueArg(
   args: string[],
   index: number,

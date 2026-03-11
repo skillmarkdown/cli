@@ -1,4 +1,4 @@
-import { parseOptionValue } from "../shared/flag-parse";
+import { parseOptionValue, splitJsonFlag } from "../shared/flag-parse";
 import { type OrganizationRole, type ParsedOrgFlags } from "./types";
 
 function isRole(value: string): value is OrganizationRole {
@@ -6,16 +6,7 @@ function isRole(value: string): value is OrganizationRole {
 }
 
 function parseJson(positionalArgs: string[]): { positional: string[]; json: boolean } | null {
-  const positional: string[] = [];
-  let json = false;
-  for (const arg of positionalArgs) {
-    if (arg === "--json") {
-      json = true;
-      continue;
-    }
-    positional.push(arg);
-  }
-  return { positional, json };
+  return splitJsonFlag(positionalArgs);
 }
 
 export function parseOrgFlags(args: string[]): ParsedOrgFlags {

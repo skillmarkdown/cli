@@ -208,3 +208,138 @@ test("login fails and clears session when owner profile is missing", async () =>
   assert.equal(cleared, true);
   assert.match(errors.join("\n"), /account profile not found/);
 });
+
+test("login fails with usage on unsupported flags", async () => {
+  const { result, errors } = await run(["--bad-flag"]);
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /unsupported argument/);
+  assert.match(errors.join("\n"), /Usage: skillmd login/);
+});
+
+test("login --status prints session status without prompting", async () => {
+  let prompted = false;
+  const { result, logs } = await run(["--status"], {
+    readSession: () => makeSession(),
+    promptForCredentials: async () => {
+      prompted = true;
+      return { email: "user@example.com", password: "password123" };
+    },
+  });
+
+  assert.equal(result, 0);
+  assert.equal(prompted, false);
+  assert.match(logs.join("\n"), /Logged in as user@example.com/);
+});
+
+test("login --reauth bypasses an existing valid session", async () => {
+  let prompted = false;
+  let verified = false;
+  let currentSession = makeSession();
+
+  const { result } = await run(["--reauth"], {
+    readSession: () => currentSession,
+    verifyRefreshToken: async () => {
+      verified = true;
+      return { valid: true };
+    },
+    clearSession: () => true,
+    promptForCredentials: async () => {
+      prompted = true;
+      return { email: "reauth@example.com", password: "password123" };
+    },
+    signInWithEmailAndPassword: async () => ({
+      localId: "uid-reauth",
+      email: "reauth@example.com",
+      refreshToken: "refresh-reauth",
+    }),
+    writeSession: (session) => {
+      currentSession = session;
+    },
+    exchangeRefreshToken: async () => ({
+      idToken: "id-token",
+      userId: "uid-reauth",
+      expiresInSeconds: 3600,
+    }),
+    getWhoami: async () => ({
+      uid: "uid-reauth",
+      owner: "@core",
+      username: "core",
+      email: "reauth@example.com",
+      projectId: "skillmarkdown",
+      authType: "firebase",
+      scope: "admin",
+    }),
+  });
+
+  assert.equal(result, 0);
+  assert.equal(verified, false);
+  assert.equal(prompted, true);
+  assert.equal(currentSession.email, "reauth@example.com");
+});
+
+test("login clears session when token exchange succeeds but no session remains", async () => {
+  const { result } = await run([], {
+    readSession: () => null,
+    promptForCredentials: async () => ({ email: "user@example.com", password: "password123" }),
+    signInWithEmailAndPassword: async () => ({
+      localId: "uid-1",
+      email: "user@example.com",
+      refreshToken: "refresh-1",
+    }),
+    writeSession: () => {},
+  });
+
+  assert.equal(result, 0);
+});
+
+test("login reports username bootstrap failure and clears session", async () => {
+  let cleared = false;
+  let currentSession = null;
+
+  const { result, errors } = await run([], {
+    readSession: () => currentSession,
+    promptForCredentials: async () => ({ email: "user@example.com", password: "password123" }),
+    signInWithEmailAndPassword: async () => ({
+      localId: "uid-1",
+      email: "user@example.com",
+      refreshToken: "refresh-1",
+    }),
+    writeSession: (session) => {
+      currentSession = session;
+    },
+    clearSession: () => {
+      cleared = true;
+      currentSession = null;
+      return true;
+    },
+    exchangeRefreshToken: async () => ({
+      idToken: "id-token",
+      userId: "uid-1",
+      expiresInSeconds: 3600,
+    }),
+    getWhoami: async () => {
+      throw "signup incomplete";
+    },
+  });
+
+  assert.equal(result, 1);
+  assert.equal(cleared, true);
+  assert.match(errors.join("\n"), /account profile not found/);
+});
+
+test("login reports non-Error failures with fallback text", async () => {
+  const { result, errors } = await run([], {
+    env: {
+      SKILLMD_FIREBASE_API_KEY: "firebase-key",
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown",
+    },
+    readSession: () => null,
+    promptForCredentials: async () => {
+      throw "cancelled";
+    },
+  });
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /skillmd login: Unknown error/);
+});

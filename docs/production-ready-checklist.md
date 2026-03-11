@@ -19,6 +19,10 @@ npm run smoke:pack
 npm run smoke:link
 ```
 
+Packaging source of truth:
+
+- [ ] `npm pack --json --dry-run` reports the intended published files, including `dist/cli.js`.
+
 Recommended command sweeps before release:
 
 ```bash
@@ -44,6 +48,7 @@ Checklist:
 - [ ] `dist/` is reproducible from a clean build.
 - [ ] The published package contains required runtime files only.
 - [ ] The `skillmd` executable works after install.
+- [ ] Pack verification uses `npm pack --json --dry-run`, not the human-readable `npm pack` summary.
 - [ ] `prepublishOnly` succeeds from a clean state.
 - [ ] README examples match actual command behavior.
 - [ ] README command examples match `src/lib/shared/cli-text.ts` usage strings after command-surface changes.

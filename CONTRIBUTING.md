@@ -6,6 +6,7 @@ Thanks for contributing to `skillmarkdown`.
 
 ```bash
 npm ci
+npm run format:check
 npm run lint
 npm test
 npm run build
@@ -17,6 +18,7 @@ npm run check:pack-size
 
 - Keep PRs scoped and atomic.
 - Base PRs on `development` unless maintainers request otherwise.
+- Release merges flow from `development` into `main`.
 - Include test updates with behavior changes.
 - Keep strict-v1 terminology and contracts in docs and tests.
 
@@ -37,13 +39,29 @@ If local session/project context drifts while switching environments, re-authent
 skillmd login --reauth
 ```
 
+## Release validation
+
+Release gate:
+
+```bash
+npm run ci:check
+npm run smoke:pack
+npm run smoke:link
+```
+
+Packaging checks in this repo use `npm pack --json --dry-run` as the source of truth.
+Successful publishes on `main` auto-sync back into `development`; do not manually bump or backport `package.json` version changes into `development`.
+
+Coverage reporting is available through `npm run test:coverage` and is informational in this repo today. Do not treat coverage percentage as a failing merge gate.
+
 ## Commit quality bar
 
+- `npm run format:check` passes.
 - `npm run lint` passes.
 - `npm test` passes.
 - `npm run build` passes.
-- `npm run check:src-loc` passes (`<= 9,200` estimated code lines in `src`).
-- `npm run check:pack-size` passes (`<= 130,000` unpacked bytes).
+- `npm run check:src-loc` passes (`<= 18,400` estimated code lines in `src`).
+- `npm run check:pack-size` passes (`<= 260,000` unpacked bytes).
 - Docs are updated for user-facing changes.
 
 ## Reporting issues in PRs

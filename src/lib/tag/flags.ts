@@ -2,6 +2,7 @@ import { type ParsedTagFlags } from "./types";
 import { isCanonicalSemver } from "../shared/semver";
 import { splitSkillAndSelector } from "../shared/skill-selector";
 import { parseStrictDistTag } from "../shared/tag-validation";
+import { splitJsonFlag } from "../shared/flag-parse";
 
 function splitSkillAndVersion(value: string): { skillId: string; version: string } | null {
   const split = splitSkillAndSelector(value);
@@ -16,20 +17,11 @@ export function parseTagFlags(args: string[]): ParsedTagFlags {
     return { valid: false, json: false };
   }
 
-  let json = false;
-  const positional: string[] = [];
-  for (const arg of args) {
-    if (arg === "--json") {
-      json = true;
-      continue;
-    }
-
-    if (arg.startsWith("-")) {
-      return { valid: false, json: false };
-    }
-
-    positional.push(arg);
+  const parsedArgs = splitJsonFlag(args);
+  if (!parsedArgs) {
+    return { valid: false, json: false };
   }
+  const { json, positional } = parsedArgs;
 
   if (positional.length === 0) {
     return { valid: false, json: false };

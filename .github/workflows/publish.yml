@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: publish-main
+  cancel-in-progress: false
+
 permissions:
   contents: write
   id-token: write
@@ -126,3 +130,45 @@ jobs:
         run: |
           echo "${{ steps.ensure_version.outputs.message }}"
           echo "Published version: ${{ steps.ensure_version.outputs.version }}"
+
+  sync-development:
+    needs: publish
+    if: needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Configure git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync main back into development
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch origin main development --tags
+
+          if git show-ref --verify --quiet refs/remotes/origin/development; then
+            git checkout -B development origin/development
+          else
+            git checkout -B development origin/main
+          fi
+
+          if git merge-base --is-ancestor HEAD origin/main; then
+            git merge --ff-only origin/main
+          else
+            git merge --no-ff origin/main -m "chore(sync): merge main back into development [skip ci]"
+          fi
+
+          if git diff --quiet origin/development...HEAD 2>/dev/null; then
+            echo "development is already in sync with main."
+            exit 0
+          fi
+
+          git push origin HEAD:development

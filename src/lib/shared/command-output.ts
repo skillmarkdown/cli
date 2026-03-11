@@ -23,3 +23,21 @@ export function printCommandResult(json: boolean, payload: unknown, human: () =>
   }
   human();
 }
+
+export function printWarnings(warnings: string[]): void {
+  for (const warning of warnings) {
+    console.error(`Warning: ${warning}`);
+  }
+}
+
+export function printNextStep(command: string): void {
+  console.log(`Next: ${command}`);
+}
+
+export function printSummary(label: string, parts: string[]): void {
+  console.log(`${label}: ${parts.join(" ")}`);
+}
+
+export function printLoginRequired(prefix: string, reason = "not logged in"): void {
+  console.error(`${prefix}: ${reason}. Run 'skillmd login' first.`);
+}

@@ -4,8 +4,9 @@ import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
 import { type WhoamiResponse } from "../lib/whoami/types";
 import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { parseSkillId } from "../lib/registry/skill-id";
-import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
+import { failWithUsage } from "../lib/shared/command-output";
 import { UNPUBLISH_USAGE } from "../lib/shared/cli-text";
+import { executeWriteCommand } from "../lib/shared/command-execution";
 import { getAuthRegistryEnvConfig } from "../lib/shared/env-config";
 import { isUnpublishApiError } from "../lib/unpublish/errors";
 import { parseUnpublishFlags, parseUnpublishRequest } from "../lib/unpublish/flags";
@@ -48,44 +49,44 @@ export async function runUnpublishCommand(
     const env = options.env ?? process.env;
     const config = (options.getConfig ?? getAuthRegistryEnvConfig)(env);
     const parsedSkillId = parseSkillId(parsedRequest.skillId);
-    const auth = await resolveWriteAuth({
+    return executeWriteCommand<UnpublishVersionResponse>({
       command: "skillmd unpublish",
-      env,
-      config,
-      readSession: options.readSession ?? readAuthSession,
-      exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
-      getWhoami: options.getWhoami ?? defaultGetWhoami,
-      requireOwner: true,
-      targetOwnerSlug: parsedSkillId.username,
-    });
-    if (!auth.ok) {
-      console.error(auth.message);
-      return 1;
-    }
-
-    const result = await (options.unpublishVersion ?? defaultUnpublishVersion)(
-      config.registryBaseUrl,
-      auth.value.idToken,
-      {
-        username: parsedSkillId.username,
-        skillSlug: parsedSkillId.skillSlug,
-        version: parsedRequest.version,
+      json: parsedRequest.json,
+      resolveAuth: async () => {
+        const auth = await resolveWriteAuth({
+          command: "skillmd unpublish",
+          env,
+          config,
+          readSession: options.readSession ?? readAuthSession,
+          exchangeRefreshToken: options.exchangeRefreshToken ?? exchangeRefreshTokenForIdToken,
+          getWhoami: options.getWhoami ?? defaultGetWhoami,
+          requireOwner: true,
+          targetOwnerSlug: parsedSkillId.username,
+        });
+        return auth.ok
+          ? { ok: true as const, idToken: auth.value.idToken }
+          : { ok: false as const, message: auth.message };
       },
-      { timeoutMs: config.requestTimeoutMs },
-    );
-
-    printCommandResult(parsedRequest.json, result, () => {
-      const removedTags = result.removedTags.length > 0 ? result.removedTags.join(",") : "none";
-      console.log(
-        `Unpublished ${parsedSkillId.skillId}@${result.version}. Removed tags: ${removedTags}.`,
-      );
+      run: (idToken) =>
+        (options.unpublishVersion ?? defaultUnpublishVersion)(
+          config.registryBaseUrl,
+          idToken,
+          {
+            username: parsedSkillId.username,
+            skillSlug: parsedSkillId.skillSlug,
+            version: parsedRequest.version,
+          },
+          { timeoutMs: config.requestTimeoutMs },
+        ),
+      printHuman: (result) => {
+        const removedTags = result.removedTags.length > 0 ? result.removedTags.join(",") : "none";
+        console.log(
+          `Unpublished ${parsedSkillId.skillId}@${result.version}. Removed tags: ${removedTags}.`,
+        );
+      },
+      isApiError: isUnpublishApiError,
     });
-    return 0;
   } catch (error) {
-    if (isUnpublishApiError(error)) {
-      console.error(`skillmd unpublish: ${error.message} (${error.code}, status ${error.status})`);
-      return 1;
-    }
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`skillmd unpublish: ${message}`);
     return 1;

@@ -3,46 +3,27 @@ const assert = require("node:assert/strict");
 
 const { requireDist } = require("../helpers/dist-imports.js");
 const { captureConsole } = require("../helpers/console-test-utils.js");
+const {
+  makeEmailSession,
+  makeRegistryConfig,
+  makeRegistryEnv,
+  makeWhoamiOwner,
+} = require("../helpers/auth-fixtures.js");
 
 const { runDeprecateCommand } = requireDist("commands/deprecate.js");
 const { DeprecateApiError } = requireDist("lib/deprecate/errors.js");
 
 function baseOptions(overrides = {}) {
   return {
-    env: {
-      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
-      SKILLMD_FIREBASE_API_KEY: "api-key",
-      SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
-      SKILLMD_REGISTRY_TIMEOUT_MS: "10000",
-    },
-    getConfig: () => ({
-      firebaseApiKey: "api-key",
-      firebaseProjectId: "skillmarkdown-development",
-      registryBaseUrl: "https://registry.example.com",
-      requestTimeoutMs: 10000,
-    }),
-    readSession: () => ({
-      provider: "email",
-      uid: "uid-1",
-      refreshToken: "refresh-token",
-      projectId: "skillmarkdown-development",
-    }),
+    env: makeRegistryEnv(),
+    getConfig: () => makeRegistryConfig(),
+    readSession: () => makeEmailSession(),
     exchangeRefreshToken: async () => ({
       idToken: "id-token",
       userId: "uid-1",
       expiresInSeconds: 3600,
     }),
-    getWhoami: async () => ({
-      uid: "uid-1",
-      owner: "@core",
-      username: "core",
-      email: "core@example.com",
-      projectId: "skillmarkdown-development",
-      authType: "firebase",
-      scope: "admin",
-      plan: "pro",
-      entitlements: { privateSkills: true },
-    }),
+    getWhoami: async () => makeWhoamiOwner(),
     deprecateVersions: async () => ({
       status: "updated",
       range: "^1.2.0",
@@ -97,6 +78,15 @@ test("deprecates versions for owner skill", async () => {
     message: "Use 2.x",
   });
   assert.match(logs.join("\n"), /Deprecated 2 version\(s\) for @core\/test-skill/i);
+});
+
+test("deprecate preserves exact human output wording", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runDeprecateCommand(["@core/test-skill@^1.2.0", "--message", "Use 2.x"], baseOptions()),
+  );
+
+  assert.equal(result, 0);
+  assert.deepEqual(logs, ["Deprecated 2 version(s) for @core/test-skill using range ^1.2.0."]);
 });
 
 test("uses configured auth token without session", async () => {

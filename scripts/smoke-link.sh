@@ -6,7 +6,8 @@ cd "$REPO_ROOT"
 
 npm run clean
 npm run build
-npm link >/dev/null
+npm unlink -g skillmarkdown >/dev/null 2>&1 || true
+npm link --force >/dev/null
 
 TMP_DIR="$(mktemp -d)"
 SKILL_DIR="$TMP_DIR/linked-skill"
