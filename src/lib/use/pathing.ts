@@ -8,7 +8,7 @@ import {
   type BuiltinAgentTarget,
 } from "../shared/agent-target";
 
-const INSTALL_REGISTRY_HOST = "registry.skillmarkdown.com";
+const LEGACY_REGISTRY_HOST = "registry.skillmarkdown.com";
 
 export type InstallScope = "workspace" | "global";
 
@@ -55,7 +55,7 @@ const GLOBAL_KNOWN_ALIAS_DIRS = new Map<string, string>([
 
 export function resolveRegistryHost(baseUrl: string): string {
   void baseUrl;
-  return INSTALL_REGISTRY_HOST;
+  return LEGACY_REGISTRY_HOST;
 }
 
 function resolveScopeRoot(cwd: string, options: PathingOptions = {}): string {
@@ -113,13 +113,45 @@ export function resolveInstalledSkillPath(
   agentTarget: AgentTarget = DEFAULT_AGENT_TARGET,
   options: PathingOptions = {},
 ): string {
+  void username;
+  void registryBaseUrl;
+  return join(
+    resolveInstalledSkillsHostRoot(cwd, registryBaseUrl, agentTarget, options),
+    skillSlug,
+  );
+}
+
+export function resolveLegacyInstalledSkillPath(
+  cwd: string,
+  registryBaseUrl: string,
+  username: string,
+  skillSlug: string,
+  agentTarget: AgentTarget = DEFAULT_AGENT_TARGET,
+  options: PathingOptions = {},
+): string {
+  void registryBaseUrl;
+  return join(
+    resolveLegacyInstalledSkillsHostRoot(cwd, registryBaseUrl, agentTarget, options),
+    username,
+    skillSlug,
+  );
+}
+
+export function resolveLegacyFlatInstalledSkillPath(
+  cwd: string,
+  registryBaseUrl: string,
+  username: string,
+  skillSlug: string,
+  agentTarget: AgentTarget = DEFAULT_AGENT_TARGET,
+  options: PathingOptions = {},
+): string {
+  void registryBaseUrl;
   return join(
     resolveInstalledSkillsHostRoot(cwd, registryBaseUrl, agentTarget, options),
     username,
     skillSlug,
   );
 }
-
 export function resolveInstallTempRoot(
   cwd: string,
   agentTarget: AgentTarget = DEFAULT_AGENT_TARGET,
@@ -146,6 +178,16 @@ export function resolveInstallTempRoot(
 }
 
 export function resolveInstalledSkillsHostRoot(
+  cwd: string,
+  registryBaseUrl: string,
+  agentTarget: AgentTarget = DEFAULT_AGENT_TARGET,
+  options: PathingOptions = {},
+): string {
+  void registryBaseUrl;
+  return resolveSkillsTargetRoot(cwd, agentTarget, options);
+}
+
+export function resolveLegacyInstalledSkillsHostRoot(
   cwd: string,
   registryBaseUrl: string,
   agentTarget: AgentTarget = DEFAULT_AGENT_TARGET,
