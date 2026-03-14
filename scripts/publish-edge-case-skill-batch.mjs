@@ -127,6 +127,7 @@ function parseArgs(argv) {
     targets: [...defaultTargets],
     dryRun: false,
     verbose: false,
+    skipDiscoverCoverage: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -242,6 +243,10 @@ function parseArgs(argv) {
       parsed.verbose = true;
       continue;
     }
+    if (arg === "--skip-discover-coverage") {
+      parsed.skipDiscoverCoverage = true;
+      continue;
+    }
     if (arg === "--help" || arg === "-h") {
       printUsage(0);
     }
@@ -329,6 +334,7 @@ function printUsage(code) {
       "  --keep-workspace          Keep generated workspace after completion",
       "  --dry-run                 Validate and dry-run publish instead of live publish",
       "  --verbose                 Print every publish command before running",
+      "  --skip-discover-coverage  Skip discover coverage validation (for small batches)",
       "  --help                    Show this help",
       "",
       "Examples:",
@@ -343,6 +349,7 @@ function printUsage(code) {
       "  - private publish requires a Pro-capable account",
       "  - uses /skillmd-cli-skill as the source template for wholeness",
       "  - writes a summary manifest to edge-case-publish-report.json in the workspace",
+      "  - use --skip-discover-coverage when seeding a subset of skills",
     ].join("\n"),
   );
   process.exit(code);
@@ -751,7 +758,9 @@ function main() {
   const scenarios = Array.from({ length: options.count }, (_, index) =>
     buildScenario(index, options),
   );
-  validateDiscoverCoverage(scenarios);
+  if (!options.skipDiscoverCoverage) {
+    validateDiscoverCoverage(scenarios);
+  }
 
   const report = {
     templateRoot,
