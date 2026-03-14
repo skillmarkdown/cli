@@ -1,6 +1,6 @@
 {
   "name": "skillmarkdown",
-  "version": "0.16.8",
+  "version": "0.16.9",
   "description": "Registry and workspace CLI for authoring, publishing, and installing SKILL.md-based AI skills",
   "license": "MIT",
   "type": "commonjs",
