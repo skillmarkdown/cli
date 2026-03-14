@@ -19,9 +19,7 @@ function lockEntry(overrides = {}) {
     digest: "sha256:old",
     sizeBytes: 5,
     mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-    installedPath:
-      overrides.installedPath ??
-      `/workspace/project/.agent/skills/registry.skillmarkdown.com/username/${skill}`,
+    installedPath: overrides.installedPath ?? `/workspace/project/.agent/skills/${skill}`,
     registryBaseUrl: "https://registry.example.com",
     installedAt: "2026-03-01T00:00:00.000Z",
     sourceCommand: `skillmd use ${skillId}`,
@@ -80,9 +78,7 @@ function baseOptions(overrides = {}) {
         digest: "sha256:new",
         sizeBytes: 6,
         mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-        installedPath:
-          `/workspace/project/.agent/skills/registry.skillmarkdown.com/` +
-          `${input.username}/${input.skillSlug}`,
+        installedPath: `/workspace/project/.agent/skills/${input.skillSlug}`,
         registryBaseUrl: "https://registry.example.com",
         installedAt: "2026-03-02T12:34:56.000Z",
         source: "registry",
@@ -97,9 +93,7 @@ function baseOptions(overrides = {}) {
         digest: "sha256:new",
         sizeBytes: 6,
         mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-        installedPath:
-          `/workspace/project/.agent/skills/registry.skillmarkdown.com/` +
-          `${input.username}/${input.skillSlug}`,
+        installedPath: `/workspace/project/.agent/skills/${input.skillSlug}`,
         registryBaseUrl: "https://registry.example.com",
         downloadedFrom: "https://storage.example.com",
         installedAt: "2026-03-02T12:34:56.000Z",
@@ -314,8 +308,7 @@ test("prunes undeclared lock entries when --prune is set", async () => {
             b: lockEntry({
               skillId: "@username/skill-b",
               resolvedVersion: "1.0.0",
-              installedPath:
-                "/workspace/project/.agent/skills/registry.skillmarkdown.com/username/skill-b",
+              installedPath: "/workspace/project/.agent/skills/skill-b",
             }),
           }),
         removePath: async (installedPath) => {
@@ -329,9 +322,7 @@ test("prunes undeclared lock entries when --prune is set", async () => {
   );
 
   assert.equal(result, 0);
-  assert.deepEqual(removedPaths, [
-    "/workspace/project/.agent/skills/registry.skillmarkdown.com/username/skill-b",
-  ]);
+  assert.deepEqual(removedPaths, ["/workspace/project/.agent/skills/skill-b"]);
 
   const payload = JSON.parse(logs.join("\n"));
   assert.equal(Array.isArray(payload.pruned), true);

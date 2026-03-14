@@ -139,10 +139,7 @@ test("readInstalledSkillMetadata resolves entry by installed path via workspace 
   const root = makeTempDirectory(TEST_PREFIX);
 
   try {
-    const installedPath = path.join(
-      root,
-      ".agent/skills/registry.skillmarkdown.com/owner-a/skill-a",
-    );
+    const installedPath = path.join(root, ".agent/skills/skill-a");
     fs.mkdirSync(installedPath, { recursive: true });
 
     writeLockfile(root, {
@@ -183,8 +180,5 @@ test("toInstalledSkillTarget computes canonical install path for target", () => 
 
   assert.equal(target.skillId, "@owner-a/skill-a");
   assert.equal(target.agentTarget, "claude");
-  assert.equal(
-    target.installedPath,
-    "/workspace/.claude/skills/registry.skillmarkdown.com/owner-a/skill-a",
-  );
+  assert.equal(target.installedPath, "/workspace/.claude/skills/skill-a");
 });

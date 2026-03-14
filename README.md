@@ -84,7 +84,7 @@ Notes:
 - `skills-lock.json` is CLI-owned resolved state, rewritten after successful installs/updates.
 - `skillmd use` remains available for one-off installs outside manifest flow.
 - Use `skillmd use -g <skill-id>` for global installs, which is useful for internal/shared skills outside a single workspace.
-- For the default `skillmd` target, global installs go under `~/.agent/skills/...`.
+- For the default `skillmd` target, global installs go under `~/.agent/skills/<skill>`.
 - The CLI still keeps auth/session/config and the global lockfile under `~/.skillmd/...`; that is metadata, not the installed skill location.
 
 ## Authentication

@@ -18,9 +18,7 @@ function lockEntry(overrides = {}) {
     digest: "sha256:test",
     sizeBytes: 1,
     mediaType: "application/octet-stream",
-    installedPath:
-      overrides.installedPath ??
-      `/workspace/.agent/skills/registry.skillmarkdown.com/username/${skill}`,
+    installedPath: overrides.installedPath ?? `/workspace/.agent/skills/${skill}`,
     registryBaseUrl: "https://registry.example.com",
     installedAt: "2026-03-01T00:00:00.000Z",
     sourceCommand: "skillmd use @username/skill",
@@ -83,7 +81,7 @@ test("removes installed skill and updates lock", async () => {
     }),
   );
   assert.equal(result, 0);
-  assert.equal(removedPath, "/workspace/.agent/skills/registry.skillmarkdown.com/username/skill-a");
+  assert.equal(removedPath, "/workspace/.agent/skills/skill-a");
   assert.equal(Object.keys(savedLock.entries).length, 0);
   assert.match(logs.join("\n"), /Removed 1 install/);
 });
@@ -146,8 +144,7 @@ test("remove --global validates and removes global install paths", async () => {
             digest: "sha256:test",
             sizeBytes: 1,
             mediaType: "application/test",
-            installedPath:
-              "/Users/tester/.codex/skills/registry.skillmarkdown.com/username/skill-a",
+            installedPath: "/Users/tester/.codex/skills/skill-a",
             registryBaseUrl: "https://registry.skillmarkdown.com",
             installedAt: "2026-03-02T00:00:00.000Z",
             sourceCommand: "skillmd use --global @username/skill-a --agent-target openai",
@@ -166,9 +163,6 @@ test("remove --global validates and removes global install paths", async () => {
   );
 
   assert.equal(result, 0);
-  assert.equal(
-    removedPath,
-    "/Users/tester/.codex/skills/registry.skillmarkdown.com/username/skill-a",
-  );
+  assert.equal(removedPath, "/Users/tester/.codex/skills/skill-a");
   assert.equal(saveArgs[3].scope, "global");
 });

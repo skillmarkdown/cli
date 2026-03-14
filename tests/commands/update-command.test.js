@@ -11,9 +11,7 @@ function lockEntry(overrides = {}) {
   const skillId = overrides.skillId ?? "@username/skill-a";
   const skill = skillId.split("/")[1];
   const agentTarget = overrides.agentTarget ?? "skillmd";
-  const installedPath =
-    overrides.installedPath ??
-    `/workspace/project/.agent/skills/registry.skillmarkdown.com/username/${skill}`;
+  const installedPath = overrides.installedPath ?? `/workspace/project/.agent/skills/${skill}`;
   return {
     skillId,
     username: "username",
@@ -70,9 +68,7 @@ function baseOptions(overrides = {}) {
         digest: "sha256:new",
         sizeBytes: 6,
         mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-        installedPath:
-          `/workspace/project/.agent/skills/registry.skillmarkdown.com/` +
-          `${input.username}/${input.skillSlug}`,
+        installedPath: `/workspace/project/.agent/skills/${input.skillSlug}`,
         registryBaseUrl: "https://registry.example.com",
         installedAt: "2026-03-02T12:34:56.000Z",
         source: "registry",
@@ -87,9 +83,7 @@ function baseOptions(overrides = {}) {
         digest: "sha256:new",
         sizeBytes: 6,
         mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
-        installedPath:
-          `/workspace/project/.agent/skills/registry.skillmarkdown.com/` +
-          `${input.username}/${input.skillSlug}`,
+        installedPath: `/workspace/project/.agent/skills/${input.skillSlug}`,
         registryBaseUrl: "https://registry.example.com",
         downloadedFrom: "https://storage.example.com",
         installedAt: "2026-03-02T12:34:56.000Z",
@@ -119,8 +113,7 @@ test("updates all lockfile entries by default", async () => {
             a: lockEntry({ skillId: "@username/skill-a" }),
             b: lockEntry({
               skillId: "@username/skill-b",
-              installedPath:
-                "/workspace/project/.claude/skills/registry.skillmarkdown.com/username/skill-b",
+              installedPath: "/workspace/project/.claude/skills/skill-b",
               agentTarget: "claude",
             }),
           }),
@@ -153,8 +146,7 @@ test("filters --all by --agent-target", async () => {
             a: lockEntry({ skillId: "@username/skill-a", agentTarget: "skillmd" }),
             b: lockEntry({
               skillId: "@username/skill-b",
-              installedPath:
-                "/workspace/project/.claude/skills/registry.skillmarkdown.com/username/skill-b",
+              installedPath: "/workspace/project/.claude/skills/skill-b",
               agentTarget: "claude",
             }),
           }),
@@ -181,8 +173,7 @@ test("filters --all by new builtin agent target", async () => {
             a: lockEntry({ skillId: "@username/skill-a", agentTarget: "skillmd" }),
             b: lockEntry({
               skillId: "@username/skill-b",
-              installedPath:
-                "/workspace/project/.deepseek/skills/registry.skillmarkdown.com/username/skill-b",
+              installedPath: "/workspace/project/.deepseek/skills/skill-b",
               agentTarget: "deepseek",
             }),
           }),
@@ -286,8 +277,7 @@ test("update --global reads global lock scope and preserves global source comman
           return lockFile({
             a: lockEntry({
               skillId: "@username/skill-a",
-              installedPath:
-                "/Users/tester/.codex/skills/registry.skillmarkdown.com/username/skill-a",
+              installedPath: "/Users/tester/.codex/skills/skill-a",
               agentTarget: "openai",
             }),
           });
