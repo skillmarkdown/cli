@@ -3,7 +3,11 @@ import { resolve as resolvePath } from "node:path";
 
 import { parseSkillId } from "../lib/registry/skill-id";
 import { getUseEnvConfig, type UseEnvConfig } from "../lib/use/config";
-import { resolveInstalledSkillPath, type InstallScope } from "../lib/use/pathing";
+import {
+  resolveInstalledSkillPath,
+  resolveLegacyInstalledSkillPath,
+  type InstallScope,
+} from "../lib/use/pathing";
 import { type AgentTarget, normalizeAgentTarget } from "../lib/shared/agent-target";
 import { failWithUsage } from "../lib/shared/command-output";
 import { REMOVE_USAGE } from "../lib/shared/cli-text";
@@ -96,7 +100,16 @@ function validateCanonicalPath(
       entry.agentTarget,
       { scope, homeDir },
     );
-    return resolvePath(expectedPath) === resolvePath(entry.installedPath)
+    const legacyPath = resolveLegacyInstalledSkillPath(
+      cwd,
+      entry.registryBaseUrl,
+      parsedSkillId.username,
+      parsedSkillId.skillSlug,
+      entry.agentTarget,
+      { scope, homeDir },
+    );
+    const installedPath = resolvePath(entry.installedPath);
+    return installedPath === resolvePath(expectedPath) || installedPath === resolvePath(legacyPath)
       ? true
       : "refusing to remove non-canonical install path";
   } catch (error) {

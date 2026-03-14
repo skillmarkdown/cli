@@ -36,7 +36,7 @@ import {
   printSkillStatusTable,
   toUseApiErrorReason,
 } from "../lib/shared/install-update-output";
-import { resolveInstalledSkillPath } from "../lib/use/pathing";
+import { resolveInstalledSkillPath, resolveLegacyInstalledSkillPath } from "../lib/use/pathing";
 import { installFromRegistry as defaultInstallFromRegistry } from "../lib/use/workflow";
 
 interface InstallCommandOptions {
@@ -111,9 +111,17 @@ function validatePrunePath(
   entry: SkillsLockEntry,
 ): { valid: true } | { valid: false; reason: string } {
   let expectedPath: string;
+  let legacyPath: string;
   try {
     const parsedSkillId = parseSkillId(entry.skillId);
     expectedPath = resolveInstalledSkillPath(
+      cwd,
+      entry.registryBaseUrl,
+      parsedSkillId.username,
+      parsedSkillId.skillSlug,
+      entry.agentTarget,
+    );
+    legacyPath = resolveLegacyInstalledSkillPath(
       cwd,
       entry.registryBaseUrl,
       parsedSkillId.username,
@@ -127,7 +135,11 @@ function validatePrunePath(
     };
   }
 
-  if (resolvePath(entry.installedPath) !== resolvePath(expectedPath)) {
+  const resolvedInstalledPath = resolvePath(entry.installedPath);
+  if (
+    resolvedInstalledPath !== resolvePath(expectedPath) &&
+    resolvedInstalledPath !== resolvePath(legacyPath)
+  ) {
     return {
       valid: false,
       reason: "refusing to prune non-canonical install path",
