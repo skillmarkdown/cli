@@ -113,9 +113,10 @@ export function resolveInstalledSkillPath(
   agentTarget: AgentTarget = DEFAULT_AGENT_TARGET,
   options: PathingOptions = {},
 ): string {
+  void username;
+  void registryBaseUrl;
   return join(
     resolveInstalledSkillsHostRoot(cwd, registryBaseUrl, agentTarget, options),
-    username,
     skillSlug,
   );
 }
@@ -128,6 +129,7 @@ export function resolveLegacyInstalledSkillPath(
   agentTarget: AgentTarget = DEFAULT_AGENT_TARGET,
   options: PathingOptions = {},
 ): string {
+  void registryBaseUrl;
   return join(
     resolveLegacyInstalledSkillsHostRoot(cwd, registryBaseUrl, agentTarget, options),
     username,

@@ -112,6 +112,7 @@ function validatePrunePath(
 ): { valid: true } | { valid: false; reason: string } {
   let expectedPath: string;
   let legacyPath: string;
+  let legacyFlatPath: string;
   try {
     const parsedSkillId = parseSkillId(entry.skillId);
     expectedPath = resolveInstalledSkillPath(
@@ -128,6 +129,14 @@ function validatePrunePath(
       parsedSkillId.skillSlug,
       entry.agentTarget,
     );
+    legacyFlatPath = resolveInstalledSkillPath(
+      cwd,
+      entry.registryBaseUrl,
+      parsedSkillId.username,
+      parsedSkillId.skillSlug,
+      entry.agentTarget,
+      { scope: "workspace" },
+    );
   } catch (error) {
     return {
       valid: false,
@@ -138,7 +147,8 @@ function validatePrunePath(
   const resolvedInstalledPath = resolvePath(entry.installedPath);
   if (
     resolvedInstalledPath !== resolvePath(expectedPath) &&
-    resolvedInstalledPath !== resolvePath(legacyPath)
+    resolvedInstalledPath !== resolvePath(legacyPath) &&
+    resolvedInstalledPath !== resolvePath(legacyFlatPath)
   ) {
     return {
       valid: false,

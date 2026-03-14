@@ -108,8 +108,18 @@ function validateCanonicalPath(
       entry.agentTarget,
       { scope, homeDir },
     );
+    const legacyFlatPath = resolveInstalledSkillPath(
+      cwd,
+      entry.registryBaseUrl,
+      parsedSkillId.username,
+      parsedSkillId.skillSlug,
+      entry.agentTarget,
+      { scope, homeDir },
+    );
     const installedPath = resolvePath(entry.installedPath);
-    return installedPath === resolvePath(expectedPath) || installedPath === resolvePath(legacyPath)
+    return installedPath === resolvePath(expectedPath) ||
+      installedPath === resolvePath(legacyPath) ||
+      installedPath === resolvePath(legacyFlatPath)
       ? true
       : "refusing to remove non-canonical install path";
   } catch (error) {
