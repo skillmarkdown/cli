@@ -50,7 +50,7 @@ npm run smoke:link
 ```
 
 Packaging checks in this repo use `npm pack --json --dry-run` as the source of truth.
-Successful publishes on `main` auto-sync back into `development`; do not manually bump or backport `package.json` version changes into `development`.
+Successful publishes on `main` sync the published version back into `development`; do not manually bump or backport `package.json` version changes into `development`.
 
 Coverage reporting is available through `npm run test:coverage` and is informational in this repo today. Do not treat coverage percentage as a failing merge gate.
 

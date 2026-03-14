@@ -15,17 +15,14 @@ test("resolveRegistryHost always returns canonical install host", () => {
   assert.equal(host, "registry.skillmarkdown.com");
 });
 
-test("resolveInstalledSkillPath builds project-local host/username/skill path", () => {
+test("resolveInstalledSkillPath builds project-local skill path", () => {
   const path = resolveInstalledSkillPath(
     "/workspace/project",
     "https://registryapi-sm46rm3rja-uc.a.run.app/",
     "stefdevscore",
     "pagetest-01",
   );
-  assert.equal(
-    path,
-    "/workspace/project/.agent/skills/registry.skillmarkdown.com/stefdevscore/pagetest-01",
-  );
+  assert.equal(path, "/workspace/project/.agent/skills/pagetest-01");
 });
 
 test("resolveInstallTempRoot builds .agent temp root", () => {
@@ -58,22 +55,22 @@ test("resolveInstallTempRoot supports provider-specific temp roots", () => {
 test("resolveInstalledSkillsHostRoot builds canonical host root", () => {
   assert.equal(
     resolveInstalledSkillsHostRoot("/workspace/project", "https://registry.example.com"),
-    "/workspace/project/.agent/skills/registry.skillmarkdown.com",
+    "/workspace/project/.agent/skills",
   );
 });
 
 test("resolveInstalledSkillsHostRoot supports provider-specific roots", () => {
   assert.equal(
     resolveInstalledSkillsHostRoot("/workspace/project", "https://registry.example.com", "claude"),
-    "/workspace/project/.claude/skills/registry.skillmarkdown.com",
+    "/workspace/project/.claude/skills",
   );
   assert.equal(
     resolveInstalledSkillsHostRoot("/workspace/project", "https://registry.example.com", "gemini"),
-    "/workspace/project/.gemini/skills/registry.skillmarkdown.com",
+    "/workspace/project/.gemini/skills",
   );
   assert.equal(
     resolveInstalledSkillsHostRoot("/workspace/project", "https://registry.example.com", "meta"),
-    "/workspace/project/.meta/skills/registry.skillmarkdown.com",
+    "/workspace/project/.meta/skills",
   );
   assert.equal(
     resolveInstalledSkillsHostRoot(
@@ -81,7 +78,7 @@ test("resolveInstalledSkillsHostRoot supports provider-specific roots", () => {
       "https://registry.example.com",
       "perplexity",
     ),
-    "/workspace/project/.perplexity/skills/registry.skillmarkdown.com",
+    "/workspace/project/.perplexity/skills",
   );
   assert.equal(
     resolveInstalledSkillsHostRoot(
@@ -89,7 +86,7 @@ test("resolveInstalledSkillsHostRoot supports provider-specific roots", () => {
       "https://registry.example.com",
       "custom:myagent",
     ),
-    "/workspace/project/.agents/skills/myagent/registry.skillmarkdown.com",
+    "/workspace/project/.agents/skills/myagent",
   );
 });
 
@@ -103,7 +100,7 @@ test("resolveInstalledSkillPath supports global builtin homes", () => {
       "openai",
       { scope: "global", homeDir: "/Users/tester" },
     ),
-    "/Users/tester/.codex/skills/registry.skillmarkdown.com/stefdevscore/pagetest-01",
+    "/Users/tester/.codex/skills/pagetest-01",
   );
   assert.equal(
     resolveInstalledSkillPath(
@@ -114,7 +111,7 @@ test("resolveInstalledSkillPath supports global builtin homes", () => {
       "claude",
       { scope: "global", homeDir: "/Users/tester" },
     ),
-    "/Users/tester/.claude/skills/registry.skillmarkdown.com/stefdevscore/pagetest-01",
+    "/Users/tester/.claude/skills/pagetest-01",
   );
 });
 
@@ -128,7 +125,7 @@ test("resolveInstalledSkillPath maps known global aliases to canonical homes", (
       "custom:chatgpt",
       { scope: "global", homeDir: "/Users/tester" },
     ),
-    "/Users/tester/.codex/skills/registry.skillmarkdown.com/stefdevscore/pagetest-01",
+    "/Users/tester/.codex/skills/pagetest-01",
   );
   assert.equal(
     resolveInstalledSkillPath(
@@ -139,7 +136,7 @@ test("resolveInstalledSkillPath maps known global aliases to canonical homes", (
       "custom:anthropic",
       { scope: "global", homeDir: "/Users/tester" },
     ),
-    "/Users/tester/.claude/skills/registry.skillmarkdown.com/stefdevscore/pagetest-01",
+    "/Users/tester/.claude/skills/pagetest-01",
   );
 });
 
@@ -153,7 +150,7 @@ test("resolveInstalledSkillPath keeps unknown custom targets under .agents globa
       "custom:myagent",
       { scope: "global", homeDir: "/Users/tester" },
     ),
-    "/Users/tester/.agents/skills/myagent/registry.skillmarkdown.com/stefdevscore/pagetest-01",
+    "/Users/tester/.agents/skills/myagent/pagetest-01",
   );
 });
 

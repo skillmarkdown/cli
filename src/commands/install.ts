@@ -36,7 +36,11 @@ import {
   printSkillStatusTable,
   toUseApiErrorReason,
 } from "../lib/shared/install-update-output";
-import { resolveInstalledSkillPath, resolveLegacyInstalledSkillPath } from "../lib/use/pathing";
+import {
+  resolveInstalledSkillPath,
+  resolveLegacyFlatInstalledSkillPath,
+  resolveLegacyInstalledSkillPath,
+} from "../lib/use/pathing";
 import { installFromRegistry as defaultInstallFromRegistry } from "../lib/use/workflow";
 
 interface InstallCommandOptions {
@@ -129,13 +133,12 @@ function validatePrunePath(
       parsedSkillId.skillSlug,
       entry.agentTarget,
     );
-    legacyFlatPath = resolveInstalledSkillPath(
+    legacyFlatPath = resolveLegacyFlatInstalledSkillPath(
       cwd,
       entry.registryBaseUrl,
       parsedSkillId.username,
       parsedSkillId.skillSlug,
       entry.agentTarget,
-      { scope: "workspace" },
     );
   } catch (error) {
     return {

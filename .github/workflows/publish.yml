@@ -16,6 +16,9 @@ permissions:
 
 jobs:
   publish:
+    outputs:
+      bumped: ${{ steps.ensure_version.outputs.bumped }}
+      version: ${{ steps.ensure_version.outputs.version }}
     if: github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
@@ -133,42 +136,55 @@ jobs:
 
   sync-development:
     needs: publish
-    if: needs.publish.result == 'success'
+    if: needs.publish.result == 'success' && needs.publish.outputs.bumped == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      synced_version: ${{ needs.publish.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: main
+          ref: development
 
       - name: Configure git user
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Sync main back into development
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+
+      - name: Sync published version back into development
         shell: bash
         run: |
           set -euo pipefail
 
-          git fetch origin main development --tags
+          git fetch origin development --tags
 
           if git show-ref --verify --quiet refs/remotes/origin/development; then
             git checkout -B development origin/development
           else
-            git checkout -B development origin/main
+            git checkout -B development
           fi
 
-          if git merge-base --is-ancestor HEAD origin/main; then
-            git merge --ff-only origin/main
-          else
-            git merge --no-ff origin/main -m "chore(sync): merge main back into development [skip ci]"
-          fi
+          TARGET_VERSION="${{ needs.publish.outputs.version }}"
+          CURRENT_VERSION="$(node -p "require('./package.json').version")"
 
-          if git diff --quiet origin/development...HEAD 2>/dev/null; then
-            echo "development is already in sync with main."
+          if [[ "${CURRENT_VERSION}" == "${TARGET_VERSION}" ]]; then
+            echo "development already has version ${TARGET_VERSION}."
             exit 0
           fi
 
+          npm version "${TARGET_VERSION}" --no-git-tag-version --allow-same-version
+
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "No version-file changes to commit."
+            exit 0
+          fi
+
+          git add package.json package-lock.json
+          git commit -m "chore(sync): sync release version ${TARGET_VERSION} into development [skip ci]"
           git push origin HEAD:development

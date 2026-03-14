@@ -137,6 +137,21 @@ export function resolveLegacyInstalledSkillPath(
   );
 }
 
+export function resolveLegacyFlatInstalledSkillPath(
+  cwd: string,
+  registryBaseUrl: string,
+  username: string,
+  skillSlug: string,
+  agentTarget: AgentTarget = DEFAULT_AGENT_TARGET,
+  options: PathingOptions = {},
+): string {
+  void registryBaseUrl;
+  return join(
+    resolveInstalledSkillsHostRoot(cwd, registryBaseUrl, agentTarget, options),
+    username,
+    skillSlug,
+  );
+}
 export function resolveInstallTempRoot(
   cwd: string,
   agentTarget: AgentTarget = DEFAULT_AGENT_TARGET,

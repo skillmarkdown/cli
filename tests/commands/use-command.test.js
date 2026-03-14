@@ -127,7 +127,7 @@ test("uses descriptor agent target when flag is omitted", async () => {
   );
 
   assert.equal(result, 0);
-  assert.ok(installInput.targetPath.includes("/.claude/skills/registry.skillmarkdown.com/"));
+  assert.ok(installInput.targetPath.includes("/.claude/skills/"));
 });
 
 test("explicit --agent-target overrides descriptor target", async () => {
@@ -159,7 +159,7 @@ test("explicit --agent-target overrides descriptor target", async () => {
   );
 
   assert.equal(result, 0);
-  assert.ok(installInput.targetPath.includes("/.gemini/skills/registry.skillmarkdown.com/"));
+  assert.ok(installInput.targetPath.includes("/.gemini/skills/"));
 });
 
 test("save persists explicitly selected agent target", async () => {
@@ -574,10 +574,7 @@ test("global use installs to provider home and writes global lock", async () => 
   );
 
   assert.equal(result, 0);
-  assert.equal(
-    installInput.targetPath,
-    "/Users/tester/.codex/skills/registry.skillmarkdown.com/stefdevscore/test-skill",
-  );
+  assert.equal(installInput.targetPath, "/Users/tester/.codex/skills/test-skill");
   assert.equal(saveArgs[3].scope, "global");
 });
 

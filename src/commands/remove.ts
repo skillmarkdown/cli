@@ -5,6 +5,7 @@ import { parseSkillId } from "../lib/registry/skill-id";
 import { getUseEnvConfig, type UseEnvConfig } from "../lib/use/config";
 import {
   resolveInstalledSkillPath,
+  resolveLegacyFlatInstalledSkillPath,
   resolveLegacyInstalledSkillPath,
   type InstallScope,
 } from "../lib/use/pathing";
@@ -108,7 +109,7 @@ function validateCanonicalPath(
       entry.agentTarget,
       { scope, homeDir },
     );
-    const legacyFlatPath = resolveInstalledSkillPath(
+    const legacyFlatPath = resolveLegacyFlatInstalledSkillPath(
       cwd,
       entry.registryBaseUrl,
       parsedSkillId.username,
