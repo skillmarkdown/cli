@@ -89,15 +89,15 @@ Notes:
 
 ## Authentication
 
-`skillmd login` uses interactive `email + password` sign-in against Firebase and then validates the registry-backed account profile.
+`skillmd login` signs you in to your Skillmarkdown account so the CLI can publish skills, manage installs, and access private or organization-scoped features.
 
 For API-calling commands, auth precedence is:
 
-| Priority | Source              | Example                                                |
-| -------- | ------------------- | ------------------------------------------------------ |
-| 1        | CLI flag            | `skillmd --auth-token <token> publish --version 1.2.3` |
-| 2        | Environment         | `export SKILLMD_AUTH_TOKEN=<token>`                    |
-| 3        | Interactive session | `skillmd login`                                        |
+| Priority | Source            | Example                                                |
+| -------- | ----------------- | ------------------------------------------------------ |
+| 1        | CLI flag          | `skillmd --auth-token <token> publish --version 1.2.3` |
+| 2        | Environment       | `export SKILLMD_AUTH_TOKEN=<token>`                    |
+| 3        | Signed-in session | `skillmd login`                                        |
 
 Token scope model:
 
@@ -107,8 +107,8 @@ Token scope model:
 
 Organization automation:
 
-- organization access tokens can be managed from the CLI or the web organization management page
-- use them for org-owned automation with an explicit owner target, for example:
+- you can manage organization access tokens from the CLI or from the Skillmarkdown web app
+- use them for organization-owned automation with an explicit owner target, for example:
 
 ```bash
 skillmd org tokens add facebook deploy --scope admin
@@ -122,6 +122,12 @@ SKILLMD_AUTH_TOKEN=skmd_dev_tok_... skillmd publish --owner facebook --version 1
 - Consumption: `use`, `install`, `list`, `remove`, `update`
 - Release: `tag`, `deprecate`, `unpublish`
 - Auth and org: `login`, `logout`, `whoami`, `token`, `org`
+
+## Accounts And Tokens
+
+- Use `skillmd login` when you want to work as yourself from the CLI.
+- Use `skillmd token` to create personal access tokens for scripts and automation.
+- Use `skillmd org tokens` when automation should act on behalf of an organization instead of an individual account.
 
 ## Support
 
