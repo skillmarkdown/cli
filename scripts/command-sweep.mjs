@@ -1033,6 +1033,23 @@ function runExtendedTier({ state, env, strict, allowAuthBlocked }) {
     allowAuthBlocked,
     skipReason: tokenId ? null : "token add did not return tokenId",
   });
+  runScenarioStep(state, {
+    name: "token-ls-after-rm",
+    args: ["token", "ls", "--json"],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    skipReason: tokenId ? null : "token add did not return tokenId",
+    validate: (raw) => {
+      const payload = parseJsonPayload(raw.stdout);
+      assert(payload && Array.isArray(payload.tokens), "token ls invalid");
+      assert(
+        !payload.tokens.some((token) => token && token.tokenId === tokenId),
+        "token still present after revoke",
+      );
+    },
+  });
 
   runScenarioStep(state, {
     name: "org-ls",
@@ -1161,6 +1178,72 @@ function runExtendedTier({ state, env, strict, allowAuthBlocked }) {
       assert(
         payload.skill.teamSlug === null || payload.skill.teamSlug === undefined,
         "org skill team not cleared",
+      );
+    },
+  });
+  runScenarioStep(state, {
+    name: "org-tokens-add",
+    args: [
+      "org",
+      "tokens",
+      "add",
+      orgSlug,
+      `sweep-org-${RUN_ID}`,
+      "--scope",
+      "admin",
+      "--days",
+      "1",
+      "--json",
+    ],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+  });
+  let orgTokenId = null;
+  const orgTokenAddStep = state.steps[state.steps.length - 1];
+  if (orgTokenAddStep.status === "pass") {
+    orgTokenId = parseJsonPayload(orgTokenAddStep.stdout)?.tokenId ?? null;
+  }
+  runScenarioStep(state, {
+    name: "org-tokens-ls",
+    args: ["org", "tokens", "ls", orgSlug, "--json"],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    validate: (raw) => {
+      const payload = parseJsonPayload(raw.stdout);
+      assert(payload && Array.isArray(payload.tokens), "org tokens ls invalid");
+      assert(
+        orgTokenId && payload.tokens.some((token) => token && token.tokenId === orgTokenId),
+        "org token missing from list",
+      );
+    },
+  });
+  runScenarioStep(state, {
+    name: "org-tokens-rm",
+    args: ["org", "tokens", "rm", orgSlug, orgTokenId ?? "missing-token", "--json"],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    skipReason: orgTokenId ? null : "org token add did not return tokenId",
+  });
+  runScenarioStep(state, {
+    name: "org-tokens-ls-after-rm",
+    args: ["org", "tokens", "ls", orgSlug, "--json"],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    skipReason: orgTokenId ? null : "org token add did not return tokenId",
+    validate: (raw) => {
+      const payload = parseJsonPayload(raw.stdout);
+      assert(payload && Array.isArray(payload.tokens), "org tokens ls invalid");
+      assert(
+        !payload.tokens.some((token) => token && token.tokenId === orgTokenId),
+        "org token still present after revoke",
       );
     },
   });

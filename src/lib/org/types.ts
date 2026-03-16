@@ -120,6 +120,36 @@ export interface OrganizationSkillTeamUpdateResponse {
   skill: OrganizationSkill;
 }
 
+export type OrganizationTokenScope = "publish" | "admin";
+
+export interface CreatedOrganizationTokenResponse {
+  tokenId: string;
+  token: string;
+  name: string;
+  scope: OrganizationTokenScope;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface ListedOrganizationToken {
+  tokenId: string;
+  name: string;
+  scope: OrganizationTokenScope;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt?: string;
+  lastUsedAt?: string;
+}
+
+export interface OrganizationTokensResponse {
+  tokens: ListedOrganizationToken[];
+}
+
+export interface OrganizationTokenRevokeResponse {
+  status: "revoked";
+  tokenId: string;
+}
+
 export type ParsedOrgFlags =
   | { valid: true; action: "ls"; json: boolean }
   | { valid: true; action: "members.ls"; slug: string; json: boolean }
@@ -172,6 +202,23 @@ export type ParsedOrgFlags =
       action: "skills.team.clear";
       slug: string;
       skillSlug: string;
+      json: boolean;
+    }
+  | { valid: true; action: "tokens.ls"; slug: string; json: boolean }
+  | {
+      valid: true;
+      action: "tokens.add";
+      slug: string;
+      name: string;
+      scope: OrganizationTokenScope;
+      days: number;
+      json: boolean;
+    }
+  | {
+      valid: true;
+      action: "tokens.rm";
+      slug: string;
+      tokenId: string;
       json: boolean;
     }
   | { valid: false; json: false };

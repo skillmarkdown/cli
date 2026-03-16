@@ -64,6 +64,34 @@ test("parses skill team set and clear", () => {
   });
 });
 
+test("parses organization token commands", () => {
+  assert.deepEqual(parseOrgFlags(["tokens", "ls", "facebook", "--json"]), {
+    valid: true,
+    action: "tokens.ls",
+    slug: "facebook",
+    json: true,
+  });
+  assert.deepEqual(
+    parseOrgFlags(["tokens", "add", "facebook", "deploy", "--scope", "admin", "--days", "7"]),
+    {
+      valid: true,
+      action: "tokens.add",
+      slug: "facebook",
+      name: "deploy",
+      scope: "admin",
+      days: 7,
+      json: false,
+    },
+  );
+  assert.deepEqual(parseOrgFlags(["tokens", "rm", "facebook", "tok_abc123abc123abc123abc123"]), {
+    valid: true,
+    action: "tokens.rm",
+    slug: "facebook",
+    tokenId: "tok_abc123abc123abc123abc123",
+    json: false,
+  });
+});
+
 test("rejects invalid org args", () => {
   for (const args of [
     [],
@@ -71,6 +99,8 @@ test("rejects invalid org args", () => {
     ["team", "add", "facebook", "core"],
     ["members", "add", "facebook", "maintainer", "--role", "bad"],
     ["skills", "team", "set", "facebook", "private-skill"],
+    ["tokens", "add", "facebook", "deploy", "--scope", "read"],
+    ["tokens", "rm", "facebook", "bad"],
   ]) {
     assert.deepEqual(parseOrgFlags(args), { valid: false, json: false });
   }

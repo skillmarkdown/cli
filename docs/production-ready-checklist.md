@@ -39,6 +39,7 @@ Checklist:
 - [ ] Pack size check passes.
 - [ ] Core release E2E passes.
 - [ ] Extended/admin release E2E passes.
+- [ ] Contract/local release E2E passes.
 
 ## Packaging and publishability
 
@@ -67,6 +68,7 @@ Checklist:
 - [ ] Search, view, history, and tag commands behave consistently.
 - [ ] JSON output remains machine-friendly for automation.
 - [ ] Tiered command sweep covers every shipped CLI command.
+- [ ] Command matrix audit covers every shipped command and documented variant.
 
 ## Release readiness
 

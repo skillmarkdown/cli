@@ -11,17 +11,21 @@ import {
   addOrganizationMember as defaultAddOrganizationMember,
   addOrganizationTeamMember as defaultAddOrganizationTeamMember,
   assignOrganizationSkillTeam as defaultAssignOrganizationSkillTeam,
+  createOrganizationToken as defaultCreateOrganizationToken,
   createOrganizationTeam as defaultCreateOrganizationTeam,
   getOrganizationTeam as defaultGetOrganizationTeam,
   listOrganizationMembers as defaultListOrganizationMembers,
   listOrganizationSkills as defaultListOrganizationSkills,
+  listOrganizationTokens as defaultListOrganizationTokens,
   listOrganizationTeams as defaultListOrganizationTeams,
   removeOrganizationMember as defaultRemoveOrganizationMember,
   removeOrganizationTeamMember as defaultRemoveOrganizationTeamMember,
+  revokeOrganizationToken as defaultRevokeOrganizationToken,
 } from "../lib/org/client";
 import { isOrgApiError } from "../lib/org/errors";
 import {
   type OrgEnvConfig,
+  type CreatedOrganizationTokenResponse,
   type OrganizationMemberMutationResponse,
   type OrganizationMemberRemoveResponse,
   type OrganizationMembersResponse,
@@ -29,11 +33,14 @@ import {
   type OrganizationRole,
   type OrganizationSkillTeamUpdateResponse,
   type OrganizationSkillsResponse,
+  type OrganizationTokenRevokeResponse,
+  type OrganizationTokensResponse,
   type OrganizationTeamCreateResponse,
   type OrganizationTeamMemberMutationResponse,
   type OrganizationTeamMemberRemoveResponse,
   type OrganizationTeamResponse,
   type OrganizationTeamsResponse,
+  type OrganizationTokenScope,
 } from "../lib/org/types";
 import { parseOrgFlags } from "../lib/org/flags";
 import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
@@ -119,6 +126,26 @@ interface OrgCommandOptions {
     teamSlug: string | null,
     options?: { timeoutMs?: number },
   ) => Promise<OrganizationSkillTeamUpdateResponse>;
+  createOrganizationToken?: (
+    baseUrl: string,
+    idToken: string,
+    slug: string,
+    request: { name: string; scope?: OrganizationTokenScope; expiresDays?: number },
+    options?: { timeoutMs?: number },
+  ) => Promise<CreatedOrganizationTokenResponse>;
+  listOrganizationTokens?: (
+    baseUrl: string,
+    idToken: string,
+    slug: string,
+    options?: { timeoutMs?: number },
+  ) => Promise<OrganizationTokensResponse>;
+  revokeOrganizationToken?: (
+    baseUrl: string,
+    idToken: string,
+    slug: string,
+    tokenId: string,
+    options?: { timeoutMs?: number },
+  ) => Promise<OrganizationTokenRevokeResponse>;
 }
 
 function printOrganizationListHuman(organizations: OrganizationMembership[]): void {
@@ -187,6 +214,21 @@ function printOrganizationSkillsHuman(payload: OrganizationSkillsResponse): void
   }
 }
 
+function printOrganizationTokensHuman(payload: OrganizationTokensResponse): void {
+  if (payload.tokens.length === 0) {
+    console.log("No organization tokens found.");
+    return;
+  }
+
+  for (const token of payload.tokens) {
+    const revoked = token.revokedAt ? ` revoked=${token.revokedAt}` : "";
+    const lastUsed = token.lastUsedAt ? ` lastUsed=${token.lastUsedAt}` : "";
+    console.log(
+      `${token.tokenId} ${token.scope} expires=${token.expiresAt} name="${token.name}"${revoked}${lastUsed}`,
+    );
+  }
+}
+
 export async function runOrgCommand(
   args: string[],
   options: OrgCommandOptions = {},
@@ -220,7 +262,13 @@ export async function runOrgCommand(
       });
     }
 
-    const readActions = new Set(["members.ls", "team.ls", "team.members.ls", "skills.ls"]);
+    const readActions = new Set([
+      "members.ls",
+      "team.ls",
+      "team.members.ls",
+      "skills.ls",
+      "tokens.ls",
+    ]);
     if (readActions.has(parsed.action)) {
       const config = (options.getReadConfig ?? getLoginScopedRegistryEnvConfig)(env);
       if (parsed.action === "members.ls") {
@@ -271,6 +319,23 @@ export async function runOrgCommand(
               { timeoutMs: config.requestTimeoutMs },
             ),
           printHuman: printOrganizationTeamHuman,
+          isApiError: isOrgApiError,
+        });
+      }
+
+      if (parsed.action === "tokens.ls") {
+        return executeReadCommand<OrganizationTokensResponse>({
+          command: "skillmd org",
+          json: parsed.json,
+          resolveIdToken: options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env })),
+          run: (idToken) =>
+            (options.listOrganizationTokens ?? defaultListOrganizationTokens)(
+              config.registryBaseUrl,
+              idToken,
+              parsed.slug,
+              { timeoutMs: config.requestTimeoutMs },
+            ),
+          printHuman: printOrganizationTokensHuman,
           isApiError: isOrgApiError,
         });
       }
@@ -425,6 +490,53 @@ export async function runOrgCommand(
           ),
         printHuman: (result) => {
           console.log(`Updated ${result.skill.skillId} team=${result.skill.teamSlug ?? "-"}.`);
+        },
+        isApiError: isOrgApiError,
+      });
+    }
+
+    if (parsed.action === "tokens.add") {
+      return executeWriteCommand<CreatedOrganizationTokenResponse>({
+        command: "skillmd org",
+        json: parsed.json,
+        resolveAuth: resolveOrgWriteAuth,
+        run: (idToken) =>
+          (options.createOrganizationToken ?? defaultCreateOrganizationToken)(
+            config.registryBaseUrl,
+            idToken,
+            parsed.slug,
+            {
+              name: parsed.name,
+              scope: parsed.scope,
+              expiresDays: parsed.days,
+            },
+            { timeoutMs: config.requestTimeoutMs },
+          ),
+        printHuman: (result) => {
+          console.log(
+            `Created organization token ${result.tokenId} (${result.scope}, expires ${result.expiresAt}).`,
+          );
+          console.log(`Token: ${result.token}`);
+        },
+        isApiError: isOrgApiError,
+      });
+    }
+
+    if (parsed.action === "tokens.rm") {
+      return executeWriteCommand<OrganizationTokenRevokeResponse>({
+        command: "skillmd org",
+        json: parsed.json,
+        resolveAuth: resolveOrgWriteAuth,
+        run: (idToken) =>
+          (options.revokeOrganizationToken ?? defaultRevokeOrganizationToken)(
+            config.registryBaseUrl,
+            idToken,
+            parsed.slug,
+            parsed.tokenId,
+            { timeoutMs: config.requestTimeoutMs },
+          ),
+        printHuman: (result) => {
+          console.log(`Revoked organization token ${result.tokenId}.`);
         },
         isApiError: isOrgApiError,
       });

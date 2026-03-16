@@ -164,6 +164,30 @@ function baseOptions(overrides = {}) {
         ...(teamSlug ? { teamSlug } : {}),
       },
     }),
+    listOrganizationTokens: async () => ({
+      tokens: [
+        {
+          tokenId: "tok_abc123abc123abc123abc123",
+          name: "deploy",
+          scope: "admin",
+          createdAt: "2026-03-01T00:00:00.000Z",
+          expiresAt: "2026-04-01T00:00:00.000Z",
+        },
+      ],
+    }),
+    createOrganizationToken: async (_baseUrl, _idToken, slug, request) => ({
+      tokenId: "tok_abc123abc123abc123abc123",
+      token: "skmd_dev_tok_abc123abc123abc123abc123.secret",
+      name: request.name,
+      scope: request.scope ?? "publish",
+      createdAt: "2026-03-01T00:00:00.000Z",
+      expiresAt: "2026-04-01T00:00:00.000Z",
+      slug,
+    }),
+    revokeOrganizationToken: async () => ({
+      status: "revoked",
+      tokenId: "tok_abc123abc123abc123abc123",
+    }),
     ...overrides,
   };
 }
@@ -267,6 +291,38 @@ test("assigns and clears organization skill team", async () => {
   );
   assert.equal(clearResult.result, 0);
   assert.match(clearResult.logs.join("\n"), /Updated @facebook\/private-skill team=-/);
+});
+
+test("lists organization tokens in json", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runOrgCommand(["tokens", "ls", "facebook", "--json"], baseOptions()),
+  );
+  assert.equal(result, 0);
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.tokens[0].name, "deploy");
+});
+
+test("adds and removes organization tokens", async () => {
+  const addResult = await captureConsole(() =>
+    runOrgCommand(
+      ["tokens", "add", "facebook", "deploy", "--scope", "admin", "--days", "7"],
+      baseOptions(),
+    ),
+  );
+  assert.equal(addResult.result, 0);
+  assert.match(
+    addResult.logs.join("\n"),
+    /Created organization token tok_abc123abc123abc123abc123/,
+  );
+
+  const removeResult = await captureConsole(() =>
+    runOrgCommand(["tokens", "rm", "facebook", "tok_abc123abc123abc123abc123"], baseOptions()),
+  );
+  assert.equal(removeResult.result, 0);
+  assert.match(
+    removeResult.logs.join("\n"),
+    /Revoked organization token tok_abc123abc123abc123abc123/,
+  );
 });
 
 test("prints helpful authz hint for membership failures", async () => {

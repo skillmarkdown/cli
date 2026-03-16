@@ -31,7 +31,7 @@ export const DEPRECATE_USAGE =
 export const UNPUBLISH_USAGE = "Usage: skillmd unpublish <skill-id>@<version> [--json]";
 export const WHOAMI_USAGE = "Usage: skillmd whoami [--json]";
 export const ORG_USAGE =
-  "Usage: skillmd org <ls|members|team|skills> ... [--json]\n" +
+  "Usage: skillmd org <ls|members|team|skills|tokens> ... [--json]\n" +
   "  skillmd org ls [--json]\n" +
   "  skillmd org members ls <org> [--json]\n" +
   "  skillmd org members add <org> <username> [--role <owner|admin|member>] [--json]\n" +
@@ -43,7 +43,10 @@ export const ORG_USAGE =
   "  skillmd org team members rm <org> <team-slug> <username> [--json]\n" +
   "  skillmd org skills ls <org> [--json]\n" +
   "  skillmd org skills team set <org> <skill-slug> <team-slug> [--json]\n" +
-  "  skillmd org skills team clear <org> <skill-slug> [--json]";
+  "  skillmd org skills team clear <org> <skill-slug> [--json]\n" +
+  "  skillmd org tokens ls <org> [--json]\n" +
+  "  skillmd org tokens add <org> <name> [--scope <publish|admin>] [--days <1-365>] [--json]\n" +
+  "  skillmd org tokens rm <org> <token-id> [--json]";
 export const TOKEN_USAGE =
   "Usage: skillmd token <ls|add|rm> ... [--json]\n" +
   "  skillmd token ls [--json]\n" +

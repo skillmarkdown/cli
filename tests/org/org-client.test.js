@@ -8,7 +8,9 @@ const { OrgApiError } = requireDist("lib/org/errors.js");
 const {
   listOrganizationMembers,
   listOrganizationSkills,
+  listOrganizationTokens,
   listOrganizationTeams,
+  createOrganizationToken,
   createOrganizationTeam,
   getOrganizationTeam,
   addOrganizationMember,
@@ -16,6 +18,7 @@ const {
   addOrganizationTeamMember,
   removeOrganizationTeamMember,
   assignOrganizationSkillTeam,
+  revokeOrganizationToken,
 } = requireDist("lib/org/client.js");
 
 test("listOrganizationMembers parses response", async () => {
@@ -217,6 +220,84 @@ test("assignOrganizationSkillTeam sends null when clearing", async () => {
 
   assert.equal(payload.skill.teamSlug, undefined);
   assert.equal(payload.skill.skillId, "@facebook/private-skill");
+});
+
+test("listOrganizationTokens parses response", async () => {
+  const payload = await withMockedFetch(
+    async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/organizations/facebook/tokens");
+      assert.equal(init.method, "GET");
+      return mockJsonResponse(200, {
+        tokens: [
+          {
+            tokenId: "tok_abc123abc123abc123abc123",
+            name: "ci",
+            scope: "admin",
+            createdAt: "2026-03-01T00:00:00.000Z",
+            expiresAt: "2026-04-01T00:00:00.000Z",
+          },
+        ],
+      });
+    },
+    () => listOrganizationTokens("https://registry.example.com", "id-token", "facebook"),
+  );
+
+  assert.equal(payload.tokens[0].scope, "admin");
+});
+
+test("createOrganizationToken sends payload and parses response", async () => {
+  const payload = await withMockedFetch(
+    async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/organizations/facebook/tokens");
+      assert.equal(init.method, "POST");
+      assert.deepEqual(JSON.parse(String(init.body)), {
+        name: "ci",
+        scope: "publish",
+        expiresDays: 7,
+      });
+      return mockJsonResponse(200, {
+        tokenId: "tok_abc123abc123abc123abc123",
+        token: "skmd_dev_tok_abc123abc123abc123abc123.secret",
+        name: "ci",
+        scope: "publish",
+        createdAt: "2026-03-01T00:00:00.000Z",
+        expiresAt: "2026-03-08T00:00:00.000Z",
+      });
+    },
+    () =>
+      createOrganizationToken("https://registry.example.com", "id-token", "facebook", {
+        name: "ci",
+        scope: "publish",
+        expiresDays: 7,
+      }),
+  );
+
+  assert.equal(payload.tokenId, "tok_abc123abc123abc123abc123");
+});
+
+test("revokeOrganizationToken sends delete request", async () => {
+  const payload = await withMockedFetch(
+    async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/organizations/facebook/tokens/tok_abc123abc123abc123abc123");
+      assert.equal(init.method, "DELETE");
+      return mockJsonResponse(200, {
+        status: "revoked",
+        tokenId: "tok_abc123abc123abc123abc123",
+      });
+    },
+    () =>
+      revokeOrganizationToken(
+        "https://registry.example.com",
+        "id-token",
+        "facebook",
+        "tok_abc123abc123abc123abc123",
+      ),
+  );
+
+  assert.equal(payload.status, "revoked");
 });
 
 test("addOrganizationTeamMember sends payload and parses response", async () => {

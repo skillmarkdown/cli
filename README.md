@@ -107,10 +107,11 @@ Token scope model:
 
 Organization automation:
 
-- organization access tokens are created from the web organization management page
+- organization access tokens can be managed from the CLI or the web organization management page
 - use them for org-owned automation with an explicit owner target, for example:
 
 ```bash
+skillmd org tokens add facebook deploy --scope admin
 SKILLMD_AUTH_TOKEN=skmd_dev_tok_... skillmd publish --owner facebook --version 1.2.3
 ```
 
@@ -132,6 +133,7 @@ SKILLMD_AUTH_TOKEN=skmd_dev_tok_... skillmd publish --owner facebook --version 1
 Release-gate commands:
 
 ```bash
+npm run e2e:contract
 npm run e2e:core
 npm run e2e:extended
 npm run e2e:release
