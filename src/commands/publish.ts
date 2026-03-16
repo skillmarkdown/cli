@@ -28,7 +28,10 @@ import { PUBLISH_USAGE } from "../lib/shared/cli-text";
 import { DEFAULT_AGENT_TARGET } from "../lib/shared/agent-target";
 import { failWithUsage, printValidationResult } from "../lib/shared/command-output";
 import { printJson } from "../lib/shared/json-output";
-import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
+import {
+  extractCliApiErrorReason,
+  formatCliApiErrorWithHint,
+} from "../lib/shared/authz-error-hints";
 import { type ValidationResult, validateSkill } from "../lib/validation/validator";
 
 interface PublishCommandOptions {
@@ -349,6 +352,11 @@ export async function runPublishCommand(
   } catch (error) {
     if (isPublishApiError(error)) {
       if (error.status === 409 && error.code === "version_conflict") {
+        const reason = extractCliApiErrorReason(error);
+        if (reason === "owner_conflict") {
+          console.error(`skillmd publish: skill name is not available (${basename(targetDir)}).`);
+          return 1;
+        }
         if (!owner && session) {
           owner = deriveOwnerFromSession();
         }

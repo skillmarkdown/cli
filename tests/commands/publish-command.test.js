@@ -369,6 +369,23 @@ test("maps version conflict errors", async () => {
   assert.match(errors.join("\n"), /version conflict/i);
 });
 
+test("maps owner conflict to skill name unavailable", async () => {
+  const options = baseOptions({
+    preparePublish: async () => {
+      throw new PublishApiError(409, "version_conflict", "conflict", {
+        reason: "owner_conflict",
+      });
+    },
+  });
+
+  const { result, errors } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0"], options),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /skill name is not available/i);
+});
+
 test("includes request id in publish API error output when available", async () => {
   const options = baseOptions({
     preparePublish: async () => {
