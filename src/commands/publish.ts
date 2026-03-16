@@ -225,7 +225,14 @@ export async function runPublishCommand(
     }
 
     const skill = basename(targetDir);
-    const skillId = `${owner ?? "@unknown"}/${skill}`;
+    if (skill.includes("@")) {
+      console.error(
+        `skillmd publish: skill name '${skill}' cannot contain '@'. ` +
+          "The owner scope is managed by the registry, not by the directory name.",
+      );
+      return 1;
+    }
+    const skillId = owner ? `${owner}/${skill}` : skill;
 
     const buildManifestFn = options.buildManifest ?? buildPublishManifest;
     const manifest = buildManifestFn({
@@ -345,8 +352,9 @@ export async function runPublishCommand(
         if (!owner && session) {
           owner = deriveOwnerFromSession();
         }
+        const conflictId = owner ? `${owner}/${basename(targetDir)}` : basename(targetDir);
         console.error(
-          `skillmd publish: version conflict for ${owner ?? "@unknown"}/${basename(targetDir)}@${parsed.version}. ` +
+          `skillmd publish: version conflict for ${conflictId}@${parsed.version}. ` +
             "Use a new version number.",
         );
         return 1;
