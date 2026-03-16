@@ -94,6 +94,24 @@ function selectorToSpec(selector: InstallSelector): string {
   return selector.spec;
 }
 
+function assertDescriptorMatchesRequest(
+  input: Pick<InstallWorkflowInput, "username" | "skillSlug">,
+  selectedVersion: string,
+  descriptor: ArtifactDescriptorResponse,
+): void {
+  if (descriptor.username !== input.username || descriptor.skill !== input.skillSlug) {
+    throw new Error(
+      "artifact descriptor identity mismatch: response did not match the requested skill",
+    );
+  }
+
+  if (descriptor.version !== selectedVersion) {
+    throw new Error(
+      `artifact descriptor version mismatch: expected ${selectedVersion}, got ${descriptor.version}`,
+    );
+  }
+}
+
 export async function installFromRegistry(
   input: InstallWorkflowInput,
   dependencies: UseWorkflowDependencies = {},
@@ -145,6 +163,7 @@ export async function installFromRegistry(
       { timeoutMs: input.requestTimeoutMs, idToken: token },
     ),
   );
+  assertDescriptorMatchesRequest(input, selectedVersion, descriptor);
   const warnings: string[] = [];
   if (descriptor.deprecated) {
     const message = descriptor.deprecatedMessage

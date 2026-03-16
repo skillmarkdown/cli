@@ -187,3 +187,53 @@ test("retries descriptor fetch with read token after auth failure", async () => 
   assert.deepEqual(descriptorTokens, [null, "id_token_123"]);
   assert.equal(tokenResolutionCount, 1);
 });
+
+test("rejects artifact descriptor owner or skill drift", async () => {
+  await assert.rejects(
+    installFromRegistry(
+      baseInput(),
+      baseDependencies({
+        getArtifactDescriptor: async () => ({
+          owner: "@otherowner",
+          username: "otherowner",
+          skill: "other-skill",
+          version: "1.2.3",
+          digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+          sizeBytes: 5,
+          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+          deprecated: false,
+          deprecatedAt: null,
+          deprecatedMessage: null,
+          downloadUrl: "https://storage.example.com/object?signature=secret",
+          downloadExpiresAt: "2026-03-02T12:40:00.000Z",
+        }),
+      }),
+    ),
+    /artifact descriptor identity mismatch/u,
+  );
+});
+
+test("rejects artifact descriptor version drift", async () => {
+  await assert.rejects(
+    installFromRegistry(
+      baseInput(),
+      baseDependencies({
+        getArtifactDescriptor: async () => ({
+          owner: "@stefdevscore",
+          username: "stefdevscore",
+          skill: "test-skill",
+          version: "9.9.9",
+          digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+          sizeBytes: 5,
+          mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+          deprecated: false,
+          deprecatedAt: null,
+          deprecatedMessage: null,
+          downloadUrl: "https://storage.example.com/object?signature=secret",
+          downloadExpiresAt: "2026-03-02T12:40:00.000Z",
+        }),
+      }),
+    ),
+    /artifact descriptor version mismatch/u,
+  );
+});
