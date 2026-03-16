@@ -127,6 +127,23 @@ SKILLMD_AUTH_TOKEN=skmd_dev_tok_... skillmd publish --owner facebook --version 1
 - Security policy: [SECURITY.md](SECURITY.md)
 - Issues: [GitHub Issues](https://github.com/skillmarkdown/cli/issues)
 
+## Release Validation
+
+Release-gate commands:
+
+```bash
+npm run e2e:core
+npm run e2e:extended
+npm run e2e:release
+```
+
+Exploratory sweeps:
+
+```bash
+npm run sweep:commands:dev
+npm run sweep:commands:dev:extended
+```
+
 ## License
 
 MIT

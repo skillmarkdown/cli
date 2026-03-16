@@ -101,6 +101,40 @@ test("login succeeds and writes session", async () => {
   });
 });
 
+test("login reads credentials from env for non-interactive automation", async () => {
+  const { result } = await run([], {
+    readSession: () => null,
+    env: {
+      SKILLMD_FIREBASE_API_KEY: "firebase-key",
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown",
+      SKILLMD_LOGIN_EMAIL: "env-user@example.com",
+      SKILLMD_LOGIN_PASSWORD: "env-password",
+    },
+    signInWithEmailAndPassword: async (_apiKey, email, password) => {
+      assert.equal(email, "env-user@example.com");
+      assert.equal(password, "env-password");
+      return { localId: "uid-1", email: "env-user@example.com", refreshToken: "refresh-1" };
+    },
+    writeSession: () => {},
+    exchangeRefreshToken: async () => ({
+      idToken: "id-token",
+      userId: "uid-1",
+      expiresInSeconds: 3600,
+    }),
+    getWhoami: async () => ({
+      uid: "uid-1",
+      owner: "@core",
+      username: "core",
+      email: "env-user@example.com",
+      projectId: "skillmarkdown",
+      authType: "firebase",
+      scope: "admin",
+    }),
+  });
+
+  assert.equal(result, 0);
+});
+
 test("login does not restart auth flow when already logged in", async () => {
   let prompted = false;
   const { result } = await run([], {

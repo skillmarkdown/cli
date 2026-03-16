@@ -15,19 +15,18 @@ Run:
 
 ```bash
 npm run ci:check
-npm run smoke:pack
-npm run smoke:link
+npm run e2e:release
 ```
 
 Packaging source of truth:
 
 - [ ] `npm pack --json --dry-run` reports the intended published files, including `dist/cli.js`.
 
-Recommended command sweeps before release:
+Exploratory command sweeps:
 
 ```bash
 npm run sweep:commands:dev
-npm run sweep:commands:prod
+npm run sweep:commands:dev:extended
 ```
 
 Checklist:
@@ -38,10 +37,8 @@ Checklist:
 - [ ] Source size guard passes.
 - [ ] Full test suite passes.
 - [ ] Pack size check passes.
-- [ ] Packed install smoke passes.
-- [ ] Linked install smoke passes.
-- [ ] Dev command sweep passes at an acceptable level.
-- [ ] Prod command sweep passes at an acceptable level.
+- [ ] Core release E2E passes.
+- [ ] Extended/admin release E2E passes.
 
 ## Packaging and publishability
 
@@ -52,11 +49,13 @@ Checklist:
 - [ ] `prepublishOnly` succeeds from a clean state.
 - [ ] README examples match actual command behavior.
 - [ ] README command examples match `src/lib/shared/cli-text.ts` usage strings after command-surface changes.
+- [ ] Strict E2E fixture env vars are present for dev release gating.
 
 ## Auth and environment safety
 
 - [ ] Local development commands target dev services unless production is explicitly requested.
 - [ ] Token, session, and interactive login flows behave correctly.
+- [ ] Non-interactive login for release automation uses fixture credentials only.
 - [ ] Auth precedence remains CLI flag, then environment, then interactive session.
 - [ ] Commands fail clearly when auth is missing or underscoped.
 
@@ -67,6 +66,7 @@ Checklist:
 - [ ] Publish, install, update, and remove flows work end to end.
 - [ ] Search, view, history, and tag commands behave consistently.
 - [ ] JSON output remains machine-friendly for automation.
+- [ ] Tiered command sweep covers every shipped CLI command.
 
 ## Release readiness
 

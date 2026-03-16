@@ -48,6 +48,22 @@ interface LoginCommandOptions {
   ) => Promise<WhoamiResponse>;
 }
 
+function promptCredentialsFromEnv(
+  env: NodeJS.ProcessEnv,
+): { email: string; password: string } | null {
+  const email = env.SKILLMD_LOGIN_EMAIL?.trim();
+  const password = env.SKILLMD_LOGIN_PASSWORD?.trim();
+  if (!email && !password) {
+    return null;
+  }
+  if (!email || !password) {
+    throw new Error(
+      "non-interactive login requires both SKILLMD_LOGIN_EMAIL and SKILLMD_LOGIN_PASSWORD",
+    );
+  }
+  return { email, password };
+}
+
 function requireConfig(env: NodeJS.ProcessEnv): LoginEnvConfig {
   try {
     return getLoginEnvConfig(env);
@@ -115,7 +131,14 @@ function promptForHiddenPassword(prompt: string): Promise<string> {
   });
 }
 
-async function promptForCredentials(): Promise<{ email: string; password: string }> {
+async function promptForCredentials(
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<{ email: string; password: string }> {
+  const envCredentials = promptCredentialsFromEnv(env);
+  if (envCredentials) {
+    return envCredentials;
+  }
+
   const rl = createInterface({ input, output });
   try {
     const email = (await rl.question("Email: ")).trim();
@@ -162,7 +185,7 @@ export async function runLoginCommand(
       readSession: readSessionFn,
       writeSession: writeSessionFn,
       clearSession: clearSessionFn,
-      promptForCredentials: options.promptForCredentials ?? promptForCredentials,
+      promptForCredentials: options.promptForCredentials ?? (() => promptForCredentials(env)),
       signInWithEmailAndPassword: options.signInWithEmailAndPassword ?? signInWithEmailAndPassword,
       verifyRefreshToken: options.verifyRefreshToken ?? verifyFirebaseRefreshToken,
     });
