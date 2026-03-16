@@ -128,6 +128,8 @@ function parseArgs(argv) {
     dryRun: false,
     verbose: false,
     skipDiscoverCoverage: false,
+    owner: null,
+    username: null,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -193,6 +195,24 @@ function parseArgs(argv) {
     }
     if (arg.startsWith("--prefix=")) {
       parsed.prefix = arg.slice("--prefix=".length).trim();
+      continue;
+    }
+    if (arg === "--owner") {
+      parsed.owner = normalizeOwner(argv[index + 1] ?? "");
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--owner=")) {
+      parsed.owner = normalizeOwner(arg.slice("--owner=".length));
+      continue;
+    }
+    if (arg === "--username") {
+      parsed.username = normalizeUsername(argv[index + 1] ?? "");
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--username=")) {
+      parsed.username = normalizeUsername(arg.slice("--username=".length));
       continue;
     }
     if (arg === "--workspace") {
@@ -299,6 +319,9 @@ function parseArgs(argv) {
   if (parsed.tags.length === 0) {
     throw new Error("--tags must include at least one dist-tag value");
   }
+  if (parsed.owner && parsed.username && parsed.owner !== `@${parsed.username}`) {
+    throw new Error("--owner and --username must refer to the same account");
+  }
 
   return parsed;
 }
@@ -308,6 +331,16 @@ function splitCsv(value) {
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
+}
+
+function normalizeOwner(value) {
+  const trimmed = (value ?? "").trim().replace(/^@+/u, "");
+  return trimmed ? `@${trimmed}` : null;
+}
+
+function normalizeUsername(value) {
+  const trimmed = (value ?? "").trim().replace(/^@+/u, "");
+  return trimmed || null;
 }
 
 function printUsage(code) {
@@ -330,6 +363,8 @@ function printUsage(code) {
       "  --tags <csv>              Dist-tags to rotate across publishes",
       "  --version-set <csv>       Semver set to rotate across publishes",
       "  --prefix <text>           Skill slug prefix. Default: edge",
+      "  --owner <owner>           Override owner handle in generated references",
+      "  --username <username>     Override username in generated references",
       "  --workspace <path>        Reuse a fixed workspace path",
       "  --keep-workspace          Keep generated workspace after completion",
       "  --dry-run                 Validate and dry-run publish instead of live publish",
@@ -373,6 +408,22 @@ function runCli(args, cwd, verbose) {
   }
 
   return (result.stdout ?? "").trim();
+}
+
+function getPublishIdentity(options) {
+  const raw = runCli(["whoami", "--json"], repoRoot, options.verbose);
+  const payload = JSON.parse(raw);
+  const owner = options.owner ?? normalizeOwner(payload.owner);
+  const username = options.username ?? normalizeUsername(payload.username);
+
+  if (!owner || !username) {
+    throw new Error("Could not resolve publish identity from skillmd whoami.");
+  }
+  if (owner !== `@${username}`) {
+    throw new Error(`Resolved owner mismatch: ${owner} does not match username ${username}.`);
+  }
+
+  return { owner, username, email: payload.email ?? null };
 }
 
 function ensureTemplateExists() {
@@ -473,7 +524,7 @@ function pickTag(version, fallbackTag) {
   return fallbackTag;
 }
 
-function rewriteTemplateFiles(skillDir, scenario) {
+function rewriteTemplateFiles(skillDir, scenario, identity) {
   const skillFile = join(skillDir, "SKILL.md");
   const readmeFile = join(skillDir, "README.md");
   const packageJsonFile = join(skillDir, "package.json");
@@ -486,7 +537,7 @@ function rewriteTemplateFiles(skillDir, scenario) {
   const assetDataFile = join(skillDir, "assets", "matrix-notes.json");
   const licenseFile = join(skillDir, "LICENSE");
 
-  const handle = `@test/${scenario.skillSlug}`;
+  const handle = `${identity.owner}/${scenario.skillSlug}`;
   const title = `${scenario.target.toUpperCase()} Registry Coverage Skill`;
   const shortDescription = `Exercise ${scenario.target} registry behavior with realistic content and varied release parameters.`;
   const longDescription = `${shortDescription} This package is generated from the skillmd-cli-skill template and expanded to cover browse, detail, install, and lifecycle edge cases across ${scenario.categoryLabels.join(", ")}.`;
@@ -511,7 +562,7 @@ function rewriteTemplateFiles(skillDir, scenario) {
   );
   skillContent = skillContent.replace(
     /## Examples[\s\S]*?## Limitations \/ Failure modes/u,
-    `${buildExamplesSection(scenario)}\n\n## Limitations / Failure modes`,
+    `${buildExamplesSection(scenario, identity)}\n\n## Limitations / Failure modes`,
   );
   if (scenario.includeLongMetadata) {
     skillContent = skillContent.replace(
@@ -550,7 +601,7 @@ function rewriteTemplateFiles(skillDir, scenario) {
   writeFileSync(readmeFile, readmeContent, "utf8");
 
   const pkg = JSON.parse(readFileSync(packageJsonFile, "utf8"));
-  pkg.name = `@test/${scenario.skillSlug}`;
+  pkg.name = scenario.skillSlug;
   pkg.description = longDescription;
   pkg.version = scenario.publishes[scenario.publishes.length - 1].version;
   pkg.license =
@@ -692,9 +743,9 @@ function validateDiscoverCoverage(scenarios) {
   }
 }
 
-function buildExamplesSection(scenario) {
+function buildExamplesSection(scenario, identity) {
   const appendix = scenario.includeExamplesAppendix
-    ? `\nExample F: verify release history\n- Input: "Inspect every generated release for ${scenario.skillSlug}"\n- Output:\n  - \`skillmd history @test/${scenario.skillSlug}\``
+    ? `\nExample F: verify release history\n- Input: "Inspect every generated release for ${scenario.skillSlug}"\n- Output:\n  - \`skillmd history ${identity.owner}/${scenario.skillSlug}\``
     : "";
 
   return [
@@ -751,6 +802,7 @@ function publishScenario(skillDir, scenario, options) {
 function main() {
   ensureTemplateExists();
   const options = parseArgs(process.argv.slice(2));
+  const identity = getPublishIdentity(options);
   const tempRoot = options.workspace ?? mkdtempSync(join(tmpdir(), "skillmd-edge-batch-"));
   const keepWorkspace = options.keepWorkspace || Boolean(options.workspace);
 
@@ -765,6 +817,8 @@ function main() {
   const report = {
     templateRoot,
     workspace: tempRoot,
+    owner: identity.owner,
+    username: identity.username,
     profile: options.profile,
     access: options.access,
     dryRun: options.dryRun,
@@ -782,10 +836,11 @@ function main() {
   try {
     console.log(`Workspace: ${tempRoot}`);
     console.log(`Template: ${templateRoot}`);
+    console.log(`Publishing as: ${identity.owner} (${identity.username})`);
     for (const scenario of scenarios) {
       const skillDir = join(tempRoot, scenario.skillSlug);
       copyTemplateSkill(skillDir);
-      rewriteTemplateFiles(skillDir, scenario);
+      rewriteTemplateFiles(skillDir, scenario, identity);
       const releases = publishScenario(skillDir, scenario, options);
       report.published.push({
         skillSlug: scenario.skillSlug,
@@ -799,7 +854,7 @@ function main() {
         releases,
       });
       console.log(
-        `${options.dryRun ? "Prepared" : "Published"} @test/${scenario.skillSlug} (${scenario.target}, ${scenario.contentMode}, ${scenario.licenseMode})`,
+        `${options.dryRun ? "Prepared" : "Published"} ${identity.owner}/${scenario.skillSlug} (${scenario.target}, ${scenario.contentMode}, ${scenario.licenseMode})`,
       );
     }
 
