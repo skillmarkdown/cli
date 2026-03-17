@@ -27,9 +27,8 @@ function shouldRetryWithReadToken(error: unknown): boolean {
   return isViewApiError(error) && isReadTokenRetryableStatus(error.status);
 }
 
-function printHumanResult(payload: ViewResponse): void {
-  const canonicalSkillId = `@${payload.username}/${payload.skill}`;
-  console.log(`Skill: ${canonicalSkillId}`);
+function printHumanResult(skillId: string, payload: ViewResponse): void {
+  console.log(`Skill: ${skillId}`);
   console.log(`Owner: ${payload.owner} (username: ${payload.username})`);
   console.log(`Updated: ${payload.updatedAt}`);
   console.log(`Access: ${payload.access}`);
@@ -45,7 +44,7 @@ function printHumanResult(payload: ViewResponse): void {
       console.log(`  ${tag}: ${version}`);
     }
   }
-  printNextStep(`skillmd history ${canonicalSkillId} --limit 20`);
+  printNextStep(`skillmd history ${skillId} --limit 20`);
 }
 
 function normalizeRegistryBaseUrl(value: string): string {
@@ -136,7 +135,9 @@ export async function runViewCommand(
       shouldRetry: shouldRetryWithReadToken,
     });
 
-    printCommandResult(parsed.json, response, () => printHumanResult(response));
+    printCommandResult(parsed.json, response, () =>
+      printHumanResult(parsedSkillId.skillId, response),
+    );
     return 0;
   } catch (error) {
     if (isViewApiError(error)) {

@@ -11,7 +11,7 @@ test("listSkillVersionHistory returns parsed response payload", async () => {
   const payload = await withMockedFetch(
     async (input, init) => {
       const url = new URL(String(input));
-      assert.equal(url.pathname, "/v1/skills/stefdevscore/test-skill/versions");
+      assert.equal(url.pathname, "/v1/skills/@stefdevscore/test-skill/versions");
       assert.equal(url.searchParams.get("limit"), "10");
       assert.equal(url.searchParams.get("cursor"), "next");
       assert.equal(init?.headers, undefined);
@@ -37,6 +37,28 @@ test("listSkillVersionHistory returns parsed response payload", async () => {
   assert.equal(payload.username, "stefdevscore");
   assert.equal(payload.limit, 10);
   assert.deepEqual(payload.results, []);
+});
+
+test("listSkillVersionHistory uses bare route path for user-owned skills", async () => {
+  await withMockedFetch(
+    async (input) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/skills/test-skill/versions");
+      return mockJsonResponse(200, {
+        owner: "@owner",
+        username: "owner",
+        skill: "test-skill",
+        limit: 20,
+        results: [],
+        nextCursor: null,
+      });
+    },
+    () =>
+      listSkillVersionHistory("https://registry.example.com", {
+        username: "",
+        skillSlug: "test-skill",
+      }),
+  );
 });
 
 test("listSkillVersionHistory attaches bearer token when provided", async () => {

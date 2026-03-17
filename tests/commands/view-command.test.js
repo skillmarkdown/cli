@@ -60,6 +60,16 @@ test("prints json output with --json", async () => {
   assert.equal(payload.distTags.latest, "1.2.3");
 });
 
+test("prints bare skill id for user-owned skills", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runViewCommand(["test-skill"], baseOptions()),
+  );
+
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /Skill: test-skill/);
+  assert.match(logs.join("\n"), /skillmd history test-skill --limit 20/);
+});
+
 test("resolves numeric index from cached search results", async () => {
   const { result } = await captureConsole(() =>
     runViewCommand(

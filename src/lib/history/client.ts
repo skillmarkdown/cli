@@ -33,8 +33,10 @@ export async function listSkillVersionHistory(
   request: HistoryRequest,
   options: HistoryClientOptions = {},
 ): Promise<HistoryResponse> {
-  const ownerPath = `@${request.username}`;
-  const url = new URL(`${baseUrl}/v1/skills/${ownerPath}/${request.skillSlug}/versions`);
+  const routePath = request.username
+    ? `@${request.username}/${request.skillSlug}`
+    : request.skillSlug;
+  const url = new URL(`${baseUrl}/v1/skills/${routePath}/versions`);
 
   if (request.limit) {
     url.searchParams.set("limit", String(request.limit));

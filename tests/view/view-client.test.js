@@ -11,7 +11,7 @@ test("getSkillView returns parsed response payload", async () => {
   const payload = await withMockedFetch(
     async (input) => {
       const url = new URL(String(input));
-      assert.equal(url.pathname, "/v1/skills/username/test-skill");
+      assert.equal(url.pathname, "/v1/skills/@username/test-skill");
       return mockJsonResponse(200, {
         owner: "@owner",
         username: "username",
@@ -33,6 +33,31 @@ test("getSkillView returns parsed response payload", async () => {
 
   assert.equal(payload.skill, "test-skill");
   assert.equal(payload.distTags.latest, "1.2.3");
+});
+
+test("getSkillView uses bare route path for user-owned skills", async () => {
+  await withMockedFetch(
+    async (input) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/skills/test-skill");
+      return mockJsonResponse(200, {
+        owner: "@owner",
+        username: "owner",
+        skill: "test-skill",
+        description: "desc",
+        access: "public",
+        distTags: {
+          latest: "1.2.3",
+        },
+        updatedAt: "2026-03-02T12:00:00.000Z",
+      });
+    },
+    () =>
+      getSkillView("https://registry.example.com", {
+        username: "",
+        skillSlug: "test-skill",
+      }),
+  );
 });
 
 test("getSkillView attaches bearer token when provided", async () => {

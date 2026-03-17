@@ -166,6 +166,30 @@ test("prints json output with --json", async () => {
   assert.equal(Array.isArray(parsed.results), true);
 });
 
+test("prints bare skill id in next-page guidance for user-owned skills", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runHistoryCommand(
+      ["test-skill", "--limit", "20"],
+      baseOptions({
+        listHistory: async () => ({
+          owner: "@test",
+          username: "test",
+          skill: "test-skill",
+          limit: 20,
+          results: [],
+          nextCursor: "next_cursor",
+        }),
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.match(
+    logs.join("\n"),
+    /Next page: skillmd history test-skill --limit 20 --cursor next_cursor/,
+  );
+});
+
 test("prints no-result message when empty", async () => {
   const { result, logs } = await captureConsole(() =>
     runHistoryCommand(
@@ -189,11 +213,11 @@ test("prints no-result message when empty", async () => {
 
 test("fails on malformed skill id before API call", async () => {
   const { result, errors } = await captureConsole(() =>
-    runHistoryCommand(["not-a-skill-id"], baseOptions()),
+    runHistoryCommand(["legacy/skill"], baseOptions()),
   );
 
   assert.equal(result, 1);
-  assert.match(errors.join("\n"), /skill id must be in the form/);
+  assert.match(errors.join("\n"), /scoped skill ids must use the form @org\/skill/);
 });
 
 test("maps history api errors", async () => {
