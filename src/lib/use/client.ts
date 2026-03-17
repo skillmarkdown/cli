@@ -68,12 +68,13 @@ function sanitizeDownloadOrigin(downloadUrl: string): string {
 
 export async function resolveSkillVersion(
   baseUrl: string,
-  username: string,
+  username: string | undefined,
   skillSlug: string,
   spec: string,
   options: UseClientOptions = {},
 ): Promise<ResolveSkillVersionResponse> {
-  const url = new URL(`${baseUrl}/v1/skills/${username}/${skillSlug}/resolve`);
+  const routePath = username ? `@${username}/${skillSlug}` : skillSlug;
+  const url = new URL(`${baseUrl}/v1/skills/${routePath}/resolve`);
   url.searchParams.set("spec", spec);
   return requestJson({
     url,
@@ -92,10 +93,11 @@ export async function getArtifactDescriptor(
   request: ArtifactDescriptorRequest,
   options: UseClientOptions = {},
 ): Promise<ArtifactDescriptorResponse> {
+  const routePath = request.username
+    ? `@${request.username}/${request.skillSlug}`
+    : request.skillSlug;
   return requestJson({
-    url: new URL(
-      `${baseUrl}/v1/skills/${request.username}/${request.skillSlug}/versions/${request.version}/artifact`,
-    ),
+    url: new URL(`${baseUrl}/v1/skills/${routePath}/versions/${request.version}/artifact`),
     method: "GET",
     idToken: options.idToken,
     timeoutMs: options.timeoutMs,

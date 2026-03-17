@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import { parseSkillId } from "../registry/skill-id";
 import { normalizeAgentTarget, type AgentTarget } from "../shared/agent-target";
 import { type InstallScope } from "../use/pathing";
 
@@ -75,7 +76,7 @@ function normalizeEntry(value: unknown): SkillsLockEntry | null {
   }
 
   const skillId = asTrimmedNonEmptyString(value.skillId);
-  const username = asTrimmedNonEmptyString(value.username);
+  const rawUsername = typeof value.username === "string" ? value.username.trim() : null;
   const skill = asTrimmedNonEmptyString(value.skill);
   const parsedAgentTarget =
     typeof value.agentTarget === "string" ? normalizeAgentTarget(value.agentTarget) : null;
@@ -92,7 +93,7 @@ function normalizeEntry(value: unknown): SkillsLockEntry | null {
 
   if (
     !skillId ||
-    !username ||
+    rawUsername === null ||
     !skill ||
     !parsedAgentTarget ||
     !selectorSpec ||
@@ -109,9 +110,24 @@ function normalizeEntry(value: unknown): SkillsLockEntry | null {
     return null;
   }
 
+  let parsedSkill;
+  try {
+    parsedSkill = parseSkillId(skillId);
+  } catch {
+    return null;
+  }
+
+  if (skill !== parsedSkill.skillSlug) {
+    return null;
+  }
+
+  if (parsedSkill.username.length > 0 && rawUsername !== parsedSkill.username) {
+    return null;
+  }
+
   return {
     skillId,
-    username,
+    username: rawUsername,
     skill,
     agentTarget: parsedAgentTarget,
     selectorSpec,

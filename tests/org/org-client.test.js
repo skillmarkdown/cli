@@ -6,6 +6,7 @@ const { mockJsonResponse, withMockedFetch } = require("../helpers/fetch-test-uti
 
 const { OrgApiError } = requireDist("lib/org/errors.js");
 const {
+  createOrganization,
   listOrganizationMembers,
   listOrganizationSkills,
   listOrganizationTokens,
@@ -20,6 +21,26 @@ const {
   assignOrganizationSkillTeam,
   revokeOrganizationToken,
 } = requireDist("lib/org/client.js");
+
+test("createOrganization sends payload and parses response", async () => {
+  const payload = await withMockedFetch(
+    async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/organizations");
+      assert.equal(init.method, "POST");
+      assert.deepEqual(JSON.parse(String(init.body)), {
+        slug: "facebook",
+      });
+      return mockJsonResponse(200, {
+        slug: "facebook",
+        owner: "@facebook",
+      });
+    },
+    () => createOrganization("https://registry.example.com", "id-token", { slug: "facebook" }),
+  );
+
+  assert.equal(payload.owner, "@facebook");
+});
 
 test("listOrganizationMembers parses response", async () => {
   const payload = await withMockedFetch(

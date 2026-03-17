@@ -45,6 +45,27 @@ interface UseCommandOptions {
 
 const PRODUCTION_REGISTRY_HOSTS = new Set(["registry.skillmarkdown.com"]);
 
+function parseUseSkillReference(input: string): {
+  skillId: string;
+  skillSlug: string;
+  username?: string;
+} {
+  const trimmed = input.trim();
+  if (!trimmed.includes("/")) {
+    return {
+      skillId: trimmed.toLowerCase(),
+      skillSlug: trimmed.toLowerCase(),
+    };
+  }
+
+  const parsed = parseSkillId(trimmed);
+  return {
+    skillId: parsed.skillId,
+    skillSlug: parsed.skillSlug,
+    username: parsed.username,
+  };
+}
+
 function shouldWarnProductionRegistry(registryBaseUrl: string): boolean {
   try {
     const host = new URL(registryBaseUrl).host.toLowerCase();
@@ -73,7 +94,7 @@ export async function runUseCommand(
   }
 
   try {
-    const parsedSkillId = parseSkillId(parsed.skillId);
+    const parsedSkillRef = parseUseSkillReference(parsed.skillId);
     const env = options.env ?? process.env;
     const now = options.now ?? (() => new Date());
     const cwd = options.cwd ?? process.cwd();
@@ -105,8 +126,9 @@ export async function runUseCommand(
         requestTimeoutMs: config.requestTimeoutMs,
         resolveReadIdToken: resolveReadIdTokenFn,
         cwd,
-        username: parsedSkillId.username,
-        skillSlug: parsedSkillId.skillSlug,
+        username: parsedSkillRef.username,
+        skillSlug: parsedSkillRef.skillSlug,
+        preferBareSkillId: !parsedSkillRef.username,
         selector,
         selectedAgentTarget: parsed.agentTarget,
         defaultAgentTarget: config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET,
@@ -156,8 +178,8 @@ export async function runUseCommand(
         (result.agentTarget !== DEFAULT_AGENT_TARGET ? result.agentTarget : undefined);
       const dependency: SkillsManifestDependency = {
         skillId: result.skillId,
-        username: parsedSkillId.username,
-        skillSlug: parsedSkillId.skillSlug,
+        username: result.username,
+        skillSlug: result.skill,
         spec: parsed.version ? result.version : (parsed.spec ?? "latest"),
         agentTarget: manifestAgentTarget,
       };

@@ -13,6 +13,11 @@ export interface OrganizationMembership {
   role: OrganizationRole;
 }
 
+export interface OrganizationCreateResponse {
+  slug: string;
+  owner: string;
+}
+
 export interface OrganizationTeamMembership {
   organizationSlug: string;
   teamSlug: string;
@@ -152,6 +157,7 @@ export interface OrganizationTokenRevokeResponse {
 
 export type ParsedOrgFlags =
   | { valid: true; action: "ls"; json: boolean }
+  | { valid: true; action: "create"; slug: string; json: boolean }
   | { valid: true; action: "members.ls"; slug: string; json: boolean }
   | {
       valid: true;

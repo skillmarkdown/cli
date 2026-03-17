@@ -91,9 +91,14 @@ function parseDependencies(value: unknown): SkillsManifestDependency[] {
 
   const parsed: SkillsManifestDependency[] = [];
   for (const [rawSkillId, rawDependency] of entries) {
-    const canonical = parseSkillId(rawSkillId);
+    let canonical;
+    try {
+      canonical = parseSkillId(rawSkillId);
+    } catch {
+      invalid(`dependency key '${rawSkillId}' must be canonical bare 'skill' or '@org/skill'`);
+    }
     if (canonical.skillId !== rawSkillId) {
-      invalid(`dependency key '${rawSkillId}' must be canonical '@username/skill'`);
+      invalid(`dependency key '${rawSkillId}' must be canonical bare 'skill' or '@org/skill'`);
     }
     if (!isRecord(rawDependency)) {
       invalid(`dependency '${rawSkillId}' must be an object`);

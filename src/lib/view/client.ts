@@ -35,8 +35,9 @@ export async function getSkillView(
   request: { username: string; skillSlug: string },
   options: ViewClientOptions = {},
 ): Promise<ViewResponse> {
+  const ownerPath = `@${request.username}`;
   return requestJson({
-    url: new URL(`${baseUrl}/v1/skills/${request.username}/${request.skillSlug}`),
+    url: new URL(`${baseUrl}/v1/skills/${ownerPath}/${request.skillSlug}`),
     method: "GET",
     idToken: options.idToken,
     timeoutMs: options.timeoutMs,

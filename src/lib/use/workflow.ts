@@ -23,13 +23,14 @@ export interface InstallWorkflowInput {
   idToken?: string;
   resolveReadIdToken?: () => Promise<string | null>;
   cwd: string;
-  username: string;
+  username?: string;
   skillSlug: string;
   selector: InstallSelector;
   selectedAgentTarget?: AgentTarget;
   defaultAgentTarget?: AgentTarget;
   installScope?: InstallScope;
   homeDir?: string;
+  preferBareSkillId?: boolean;
   sourceCommandFactory: (input: {
     canonicalSkillId: string;
     selector: InstallSelector;
@@ -41,14 +42,14 @@ export interface InstallWorkflowInput {
 export interface UseWorkflowDependencies {
   resolveVersion?: (
     baseUrl: string,
-    username: string,
+    username: string | undefined,
     skillSlug: string,
     spec: string,
     options?: { timeoutMs?: number; idToken?: string },
   ) => Promise<ResolveSkillVersionResponse>;
   getArtifactDescriptor?: (
     baseUrl: string,
-    request: { username: string; skillSlug: string; version: string },
+    request: { username?: string; skillSlug: string; version: string },
     options?: { timeoutMs?: number; idToken?: string },
   ) => Promise<ArtifactDescriptorResponse>;
   downloadArtifact?: (
@@ -99,7 +100,10 @@ function assertDescriptorMatchesRequest(
   selectedVersion: string,
   descriptor: ArtifactDescriptorResponse,
 ): void {
-  if (descriptor.username !== input.username || descriptor.skill !== input.skillSlug) {
+  if (
+    (input.username && descriptor.username !== input.username) ||
+    descriptor.skill !== input.skillSlug
+  ) {
     throw new Error(
       "artifact descriptor identity mismatch: response did not match the requested skill",
     );
@@ -178,7 +182,9 @@ export async function installFromRegistry(
 
   verifyDownloadedArtifact(descriptor, download.bytes, download.contentType);
 
-  const canonicalSkillId = `@${descriptor.username}/${descriptor.skill}`;
+  const canonicalSkillId = input.preferBareSkillId
+    ? descriptor.skill
+    : `@${descriptor.username}/${descriptor.skill}`;
   const resolvedAgentTarget =
     input.selectedAgentTarget ??
     descriptor.agentTarget ??

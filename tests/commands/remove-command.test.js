@@ -7,11 +7,12 @@ const { captureConsole } = require("../helpers/console-test-utils.js");
 const { runRemoveCommand } = requireDist("commands/remove.js");
 
 function lockEntry(overrides = {}) {
-  const skillId = overrides.skillId ?? "@username/skill-a";
-  const skill = skillId.split("/")[1];
+  const skillId = overrides.skillId ?? "skill-a";
+  const skill = skillId.includes("/") ? skillId.split("/")[1] : skillId;
+  const username = skillId.startsWith("@") ? skillId.slice(1).split("/")[0] : "";
   return {
     skillId,
-    username: "username",
+    username,
     skill,
     selectorSpec: "latest",
     resolvedVersion: "1.0.0",
@@ -21,7 +22,7 @@ function lockEntry(overrides = {}) {
     installedPath: overrides.installedPath ?? `/workspace/.agent/skills/${skill}`,
     registryBaseUrl: "https://registry.example.com",
     installedAt: "2026-03-01T00:00:00.000Z",
-    sourceCommand: "skillmd use @username/skill",
+    sourceCommand: `skillmd use ${skillId}`,
     downloadedFrom: "https://storage.example.com",
     agentTarget: overrides.agentTarget ?? "skillmd",
   };
@@ -33,14 +34,14 @@ test("fails with usage on invalid args", async () => {
 });
 
 test("fails with usage on invalid skill id without throwing", async () => {
-  const { result, errors } = await captureConsole(() => runRemoveCommand(["bad"]));
+  const { result, errors } = await captureConsole(() => runRemoveCommand(["bad/"]));
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /Usage: skillmd remove/);
 });
 
 test("fails when skill is not installed", async () => {
   const { result, errors } = await captureConsole(() =>
-    runRemoveCommand(["@username/missing"], {
+    runRemoveCommand(["missing"], {
       cwd: "/workspace",
       getConfig: () => ({
         firebaseProjectId: "skillmarkdown-development",
@@ -59,7 +60,7 @@ test("removes installed skill and updates lock", async () => {
   let removedPath = "";
   let savedLock;
   const { result, logs } = await captureConsole(() =>
-    runRemoveCommand(["@username/skill-a"], {
+    runRemoveCommand(["skill-a"], {
       cwd: "/workspace",
       getConfig: () => ({
         firebaseProjectId: "skillmarkdown-development",
@@ -88,7 +89,7 @@ test("removes installed skill and updates lock", async () => {
 
 test("prints json output and returns non-zero on failures", async () => {
   const { result, logs } = await captureConsole(() =>
-    runRemoveCommand(["@username/skill-a", "--json"], {
+    runRemoveCommand(["skill-a", "--json"], {
       cwd: "/workspace",
       getConfig: () => ({
         firebaseProjectId: "skillmarkdown-development",
@@ -117,7 +118,7 @@ test("remove --global validates and removes global install paths", async () => {
   let removedPath;
   let saveArgs;
   const { result } = await captureConsole(() =>
-    runRemoveCommand(["@username/skill-a", "--global", "--agent-target", "openai"], {
+    runRemoveCommand(["skill-a", "--global", "--agent-target", "openai"], {
       cwd: "/workspace/project",
       homeDir: "/Users/tester",
       env: {
@@ -136,8 +137,8 @@ test("remove --global validates and removes global install paths", async () => {
         generatedAt: "2026-03-02T00:00:00.000Z",
         entries: {
           a: {
-            skillId: "@username/skill-a",
-            username: "username",
+            skillId: "skill-a",
+            username: "",
             skill: "skill-a",
             selectorSpec: "latest",
             resolvedVersion: "1.0.0",
@@ -147,7 +148,7 @@ test("remove --global validates and removes global install paths", async () => {
             installedPath: "/Users/tester/.codex/skills/skill-a",
             registryBaseUrl: "https://registry.skillmarkdown.com",
             installedAt: "2026-03-02T00:00:00.000Z",
-            sourceCommand: "skillmd use --global @username/skill-a --agent-target openai",
+            sourceCommand: "skillmd use --global skill-a --agent-target openai",
             downloadedFrom: "https://storage.example.com",
             agentTarget: "openai",
           },

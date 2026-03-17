@@ -76,6 +76,32 @@ test("loadSkillsLock accepts new builtin agent targets", async () => {
   assert.equal(Object.values(loaded.entries)[0].agentTarget, "meta");
 });
 
+test("loadSkillsLock accepts bare skill ids with owner username metadata", async () => {
+  const rawLockfile = validLockfile({
+    a: {
+      skillId: "skill-a",
+      username: "username",
+      skill: "skill-a",
+      agentTarget: "skillmd",
+      selectorSpec: "latest",
+      resolvedVersion: "1.0.0",
+      digest: "sha256:a",
+      sizeBytes: 1,
+      mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+      installedPath: "/tmp/a",
+      registryBaseUrl: "https://registry.example.com",
+      installedAt: "2026-03-02T00:00:00.000Z",
+      sourceCommand: "skillmd use skill-a",
+      downloadedFrom: "https://storage.example.com",
+    },
+  });
+
+  const loaded = await loadSkillsLock("/workspace/project", {
+    readFile: async () => rawLockfile,
+  });
+  assert.equal(Object.values(loaded.entries)[0].username, "username");
+});
+
 test("saveSkillsLock round-trips lockfile via filesystem", async () => {
   const root = makeTempDirectory("skillmd-skills-lock-");
   try {

@@ -33,6 +33,18 @@ export function parseOrgFlags(args: string[]): ParsedOrgFlags {
     return { valid: true, action: "ls", json: parsed.json };
   }
 
+  if (section === "create") {
+    const parsed = parseJson(args);
+    if (!parsed || parsed.positional.length !== 2) {
+      return { valid: false, json: false };
+    }
+    const slug = parsed.positional[1]?.trim();
+    if (!slug) {
+      return { valid: false, json: false };
+    }
+    return { valid: true, action: "create", slug, json: parsed.json };
+  }
+
   if (section === "members") {
     if (subsection === "ls") {
       const parsed = parseJson(args);

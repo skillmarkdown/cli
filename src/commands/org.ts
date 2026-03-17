@@ -8,6 +8,7 @@ import {
 import { ORG_USAGE } from "../lib/shared/cli-text";
 import { executeReadCommand, executeWriteCommand } from "../lib/shared/command-execution";
 import {
+  createOrganization as defaultCreateOrganization,
   addOrganizationMember as defaultAddOrganizationMember,
   addOrganizationTeamMember as defaultAddOrganizationTeamMember,
   assignOrganizationSkillTeam as defaultAssignOrganizationSkillTeam,
@@ -26,6 +27,7 @@ import { isOrgApiError } from "../lib/org/errors";
 import {
   type OrgEnvConfig,
   type CreatedOrganizationTokenResponse,
+  type OrganizationCreateResponse,
   type OrganizationMemberMutationResponse,
   type OrganizationMemberRemoveResponse,
   type OrganizationMembersResponse,
@@ -89,6 +91,12 @@ interface OrgCommandOptions {
     teamSlug: string,
     options?: { timeoutMs?: number },
   ) => Promise<OrganizationTeamResponse>;
+  createOrganization?: (
+    baseUrl: string,
+    idToken: string,
+    request: { slug: string },
+    options?: { timeoutMs?: number },
+  ) => Promise<OrganizationCreateResponse>;
   createOrganizationTeam?: (
     baseUrl: string,
     idToken: string,
@@ -367,6 +375,25 @@ export async function runOrgCommand(
         ? { ok: true as const, idToken: auth.value.idToken }
         : { ok: false as const, message: auth.message };
     };
+
+    if (parsed.action === "create") {
+      return executeWriteCommand<OrganizationCreateResponse>({
+        command: "skillmd org",
+        json: parsed.json,
+        resolveAuth: resolveOrgWriteAuth,
+        run: (idToken) =>
+          (options.createOrganization ?? defaultCreateOrganization)(
+            config.registryBaseUrl,
+            idToken,
+            { slug: parsed.slug },
+            { timeoutMs: config.requestTimeoutMs },
+          ),
+        printHuman: (result) => {
+          console.log(`Created organization ${result.owner}.`);
+        },
+        isApiError: isOrgApiError,
+      });
+    }
 
     if (parsed.action === "members.add") {
       return executeWriteCommand<OrganizationMemberMutationResponse>({

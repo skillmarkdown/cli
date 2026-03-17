@@ -29,7 +29,7 @@ export interface ResolveSkillVersionResponse {
 }
 
 export interface ArtifactDescriptorRequest {
-  username: string;
+  username?: string;
   skillSlug: string;
   version: string;
 }

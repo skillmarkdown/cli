@@ -24,10 +24,10 @@ test("loadSkillsManifest parses valid manifest and sorts dependencies", async ()
           agentTarget: "skillmd",
         },
         dependencies: {
-          "@username/skill-b": {
+          "@team/skill-b": {
             spec: "^1.2.0",
           },
-          "@username/skill-a": {
+          "skill-a": {
             spec: "latest",
             agentTarget: "claude",
           },
@@ -39,9 +39,9 @@ test("loadSkillsManifest parses valid manifest and sorts dependencies", async ()
   assert.equal(parsed.defaults.agentTarget, "skillmd");
   assert.deepEqual(
     parsed.dependencies.map((dependency) => dependency.skillId),
-    ["@username/skill-a", "@username/skill-b"],
+    ["@team/skill-b", "skill-a"],
   );
-  assert.equal(parsed.dependencies[0].agentTarget, "claude");
+  assert.equal(parsed.dependencies[1].agentTarget, "claude");
 });
 
 test("loadSkillsManifest accepts new builtin agent targets", async () => {
@@ -53,7 +53,7 @@ test("loadSkillsManifest accepts new builtin agent targets", async () => {
           agentTarget: "openai",
         },
         dependencies: {
-          "@username/skill-a": {
+          "skill-a": {
             spec: "latest",
             agentTarget: "perplexity",
           },
@@ -73,7 +73,7 @@ test("loadSkillsManifest rejects unknown top-level fields", async () => {
           manifestJson({
             version: 1,
             dependencies: {
-              "@username/skill-a": { spec: "latest" },
+              "skill-a": { spec: "latest" },
             },
             extra: true,
           }),
@@ -98,7 +98,7 @@ test("loadSkillsManifest rejects missing dependencies", async () => {
   );
 });
 
-test("loadSkillsManifest rejects non-canonical dependency key", async () => {
+test("loadSkillsManifest rejects legacy username/skill dependency key", async () => {
   await assert.rejects(
     () =>
       loadSkillsManifest("/workspace/project", {
@@ -110,7 +110,7 @@ test("loadSkillsManifest rejects non-canonical dependency key", async () => {
             },
           }),
       }),
-    /invalid skills manifest: dependency key 'username\/skill-a' must be canonical/i,
+    /invalid skills manifest: dependency key 'username\/skill-a' must be canonical bare 'skill' or '@org\/skill'/i,
   );
 });
 
@@ -122,11 +122,11 @@ test("loadSkillsManifest rejects invalid dependency agentTarget", async () => {
           manifestJson({
             version: 1,
             dependencies: {
-              "@username/skill-a": { spec: "latest", agentTarget: "custom:UPPER" },
+              "skill-a": { spec: "latest", agentTarget: "custom:UPPER" },
             },
           }),
       }),
-    /invalid skills manifest: dependency '@username\/skill-a'.agentTarget must be a valid agent target/i,
+    /invalid skills manifest: dependency 'skill-a'.agentTarget must be a valid agent target/i,
   );
 });
 
@@ -181,11 +181,11 @@ test("loadSkillsManifest rejects invalid dependency shape", async () => {
           manifestJson({
             version: 1,
             dependencies: {
-              "@username/skill-a": "latest",
+              "skill-a": "latest",
             },
           }),
       }),
-    /invalid skills manifest: dependency '@username\/skill-a' must be an object/i,
+    /invalid skills manifest: dependency 'skill-a' must be an object/i,
   );
 });
 
@@ -197,14 +197,14 @@ test("loadSkillsManifest rejects unknown dependency fields", async () => {
           manifestJson({
             version: 1,
             dependencies: {
-              "@username/skill-a": {
+              "skill-a": {
                 spec: "latest",
                 owner: "@username",
               },
             },
           }),
       }),
-    /invalid skills manifest: dependency '@username\/skill-a' has unknown field 'owner'/i,
+    /invalid skills manifest: dependency 'skill-a' has unknown field 'owner'/i,
   );
 });
 
@@ -214,7 +214,7 @@ test("loadSkillsManifest trims dependency spec values", async () => {
       manifestJson({
         version: 1,
         dependencies: {
-          "@username/skill-a": {
+          "skill-a": {
             spec: "  latest  ",
           },
         },
@@ -243,22 +243,22 @@ test("upsertSkillsManifestDependency sorts and replaces by skill id", () => {
       defaults: {},
       dependencies: [
         {
-          skillId: "@username/skill-b",
-          username: "username",
+          skillId: "@team/skill-b",
+          username: "team",
           skillSlug: "skill-b",
           spec: "latest",
         },
         {
-          skillId: "@username/skill-a",
-          username: "username",
+          skillId: "skill-a",
+          username: "",
           skillSlug: "skill-a",
           spec: "^1.0.0",
         },
       ],
     },
     {
-      skillId: "@username/skill-b",
-      username: "username",
+      skillId: "@team/skill-b",
+      username: "team",
       skillSlug: "skill-b",
       spec: "^2.0.0",
       agentTarget: "claude",
@@ -272,8 +272,8 @@ test("upsertSkillsManifestDependency sorts and replaces by skill id", () => {
       dependency.agentTarget,
     ]),
     [
-      ["@username/skill-a", "^1.0.0", undefined],
-      ["@username/skill-b", "^2.0.0", "claude"],
+      ["@team/skill-b", "^2.0.0", "claude"],
+      ["skill-a", "^1.0.0", undefined],
     ],
   );
 });
@@ -292,8 +292,8 @@ test("saveSkillsManifest writes normalized dependency object payload", async () 
       },
       dependencies: [
         {
-          skillId: "@username/skill-a",
-          username: "username",
+          skillId: "skill-a",
+          username: "",
           skillSlug: "skill-a",
           spec: "latest",
           agentTarget: "claude",
@@ -323,7 +323,7 @@ test("saveSkillsManifest writes normalized dependency object payload", async () 
       agentTarget: "openai",
     },
     dependencies: {
-      "@username/skill-a": {
+      "skill-a": {
         spec: "latest",
         agentTarget: "claude",
       },

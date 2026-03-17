@@ -75,6 +75,10 @@ function baseOptions(overrides = {}) {
       slug,
       username,
     }),
+    createOrganization: async (_baseUrl, _idToken, request) => ({
+      slug: request.slug,
+      owner: `@${request.slug}`,
+    }),
     listOrganizationTeams: async () => ({
       slug: "facebook",
       owner: "@facebook",
@@ -201,6 +205,16 @@ test("lists organizations in human output", async () => {
   const { result, logs } = await captureConsole(() => runOrgCommand(["ls"], baseOptions()));
   assert.equal(result, 0);
   assert.match(logs.join("\n"), /@facebook role=admin/);
+});
+
+test("creates organization", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runOrgCommand(["create", "acme", "--json"], baseOptions()),
+  );
+  assert.equal(result, 0);
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.slug, "acme");
+  assert.equal(payload.owner, "@acme");
 });
 
 test("lists organization teams in json", async () => {

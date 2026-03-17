@@ -31,8 +31,9 @@ export const DEPRECATE_USAGE =
 export const UNPUBLISH_USAGE = "Usage: skillmd unpublish <skill-id>@<version> [--json]";
 export const WHOAMI_USAGE = "Usage: skillmd whoami [--json]";
 export const ORG_USAGE =
-  "Usage: skillmd org <ls|members|team|skills|tokens> ... [--json]\n" +
+  "Usage: skillmd org <ls|create|members|team|skills|tokens> ... [--json]\n" +
   "  skillmd org ls [--json]\n" +
+  "  skillmd org create <org> [--json]\n" +
   "  skillmd org members ls <org> [--json]\n" +
   "  skillmd org members add <org> <username> [--role <owner|admin|member>] [--json]\n" +
   "  skillmd org members rm <org> <username> [--json]\n" +

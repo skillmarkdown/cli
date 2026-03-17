@@ -1,6 +1,7 @@
 import { extractApiErrorFields, requestJson, type ApiErrorPayload } from "../shared/api-client";
 import { OrgApiError } from "./errors";
 import {
+  type OrganizationCreateResponse,
   type CreatedOrganizationTokenResponse,
   type OrganizationMemberMutationResponse,
   type OrganizationMemberRemoveResponse,
@@ -110,6 +111,14 @@ function isOrganizationMembersResponse(value: unknown): value is OrganizationMem
     Array.isArray(record.members) &&
     record.members.every(isMember)
   );
+}
+
+function isOrganizationCreateResponse(value: unknown): value is OrganizationCreateResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return typeof record.slug === "string" && typeof record.owner === "string";
 }
 
 function isOrganizationMemberMutationResponse(
@@ -305,6 +314,25 @@ export async function listOrganizationMembers(
     timeoutMs: options.timeoutMs,
     label: "Organization API",
     isValid: isOrganizationMembersResponse,
+    missingFieldsMessage: "Organization API response was missing required fields",
+    toApiError: toOrgApiError,
+  });
+}
+
+export async function createOrganization(
+  baseUrl: string,
+  idToken: string,
+  request: { slug: string },
+  options: OrgClientOptions = {},
+): Promise<OrganizationCreateResponse> {
+  return requestJson({
+    url: new URL(`${baseUrl}/v1/organizations`),
+    method: "POST",
+    idToken,
+    timeoutMs: options.timeoutMs,
+    body: request,
+    label: "Organization API",
+    isValid: isOrganizationCreateResponse,
     missingFieldsMessage: "Organization API response was missing required fields",
     toApiError: toOrgApiError,
   });

@@ -8,11 +8,12 @@ const { runInstallCommand } = requireDist("commands/install.js");
 const { UseApiError } = requireDist("lib/use/errors.js");
 
 function lockEntry(overrides = {}) {
-  const skillId = overrides.skillId ?? "@username/skill-a";
-  const skill = skillId.split("/")[1];
+  const skillId = overrides.skillId ?? "skill-a";
+  const skill = skillId.includes("/") ? skillId.split("/")[1] : skillId;
+  const username = skillId.startsWith("@") ? skillId.slice(1).split("/")[0] : "";
   return {
     skillId,
-    username: "username",
+    username,
     skill,
     selectorSpec: "latest",
     resolvedVersion: "1.0.0",
@@ -57,8 +58,8 @@ function baseOptions(overrides = {}) {
       defaults: { agentTarget: "skillmd" },
       dependencies: [
         {
-          skillId: "@username/skill-a",
-          username: "username",
+          skillId: "skill-a",
+          username: "",
           skillSlug: "skill-a",
           spec: "latest",
         },
@@ -66,12 +67,12 @@ function baseOptions(overrides = {}) {
     }),
     loadSkillsLock: async () =>
       lockFile({
-        a: lockEntry({ skillId: "@username/skill-a", resolvedVersion: "1.0.0" }),
+        a: lockEntry({ skillId: "skill-a", resolvedVersion: "1.0.0" }),
       }),
     saveSkillsLock: async () => {},
     installFromRegistry: async (input) => ({
       result: {
-        skillId: `@${input.username}/${input.skillSlug}`,
+        skillId: input.username ? `@${input.username}/${input.skillSlug}` : input.skillSlug,
         username: input.username,
         skill: input.skillSlug,
         version: "1.1.0",
@@ -85,7 +86,7 @@ function baseOptions(overrides = {}) {
         agentTarget: input.selectedAgentTarget,
       },
       lockEntry: {
-        skillId: `@${input.username}/${input.skillSlug}`,
+        skillId: input.username ? `@${input.username}/${input.skillSlug}` : input.skillSlug,
         username: input.username,
         skill: input.skillSlug,
         selectorSpec: input.selector.spec ?? input.selector.version,
@@ -109,7 +110,7 @@ function baseOptions(overrides = {}) {
 }
 
 test("fails with usage on unsupported args", async () => {
-  const exitCode = await runInstallCommand(["@username/skill"]);
+  const exitCode = await runInstallCommand(["skill-a"]);
   assert.equal(exitCode, 1);
 });
 
@@ -142,14 +143,14 @@ test("installs dependencies and writes lockfile entries", async () => {
           defaults: { agentTarget: "skillmd" },
           dependencies: [
             {
-              skillId: "@username/skill-a",
-              username: "username",
+              skillId: "skill-a",
+              username: "",
               skillSlug: "skill-a",
               spec: "latest",
             },
             {
-              skillId: "@username/skill-b",
-              username: "username",
+              skillId: "@team/skill-b",
+              username: "team",
               skillSlug: "skill-b",
               spec: "^1.2.0",
               agentTarget: "claude",
@@ -168,7 +169,7 @@ test("installs dependencies and writes lockfile entries", async () => {
   );
 
   assert.equal(result, 0);
-  assert.deepEqual(installCalls, ["username/skill-a:skillmd", "username/skill-b:claude"]);
+  assert.deepEqual(installCalls, ["/skill-a:skillmd", "team/skill-b:claude"]);
 
   const payload = JSON.parse(logs.join("\n"));
   assert.equal(payload.total, 2);
@@ -193,14 +194,14 @@ test("continues after dependency failure and exits non-zero", async () => {
           defaults: {},
           dependencies: [
             {
-              skillId: "@username/skill-a",
-              username: "username",
+              skillId: "skill-a",
+              username: "",
               skillSlug: "skill-a",
               spec: "latest",
             },
             {
-              skillId: "@username/skill-b",
-              username: "username",
+              skillId: "@team/skill-b",
+              username: "team",
               skillSlug: "skill-b",
               spec: "latest",
             },
@@ -234,8 +235,8 @@ test("global --agent-target accepts new builtin targets", async () => {
           defaults: { agentTarget: "skillmd" },
           dependencies: [
             {
-              skillId: "@username/skill-a",
-              username: "username",
+              skillId: "skill-a",
+              username: "",
               skillSlug: "skill-a",
               spec: "latest",
             },
@@ -263,8 +264,8 @@ test("global --agent-target overrides dependency/default targets", async () => {
           defaults: { agentTarget: "skillmd" },
           dependencies: [
             {
-              skillId: "@username/skill-a",
-              username: "username",
+              skillId: "skill-a",
+              username: "",
               skillSlug: "skill-a",
               spec: "latest",
               agentTarget: "claude",
@@ -295,8 +296,8 @@ test("prunes undeclared lock entries when --prune is set", async () => {
           defaults: {},
           dependencies: [
             {
-              skillId: "@username/skill-a",
-              username: "username",
+              skillId: "skill-a",
+              username: "",
               skillSlug: "skill-a",
               spec: "latest",
             },
@@ -304,9 +305,9 @@ test("prunes undeclared lock entries when --prune is set", async () => {
         }),
         loadSkillsLock: async () =>
           lockFile({
-            a: lockEntry({ skillId: "@username/skill-a", resolvedVersion: "1.0.0" }),
+            a: lockEntry({ skillId: "skill-a", resolvedVersion: "1.0.0" }),
             b: lockEntry({
-              skillId: "@username/skill-b",
+              skillId: "skill-b",
               resolvedVersion: "1.0.0",
               installedPath: "/workspace/project/.agent/skills/skill-b",
             }),
@@ -343,8 +344,8 @@ test("rejects pruning non-canonical install paths from lockfile", async () => {
           defaults: {},
           dependencies: [
             {
-              skillId: "@username/skill-a",
-              username: "username",
+              skillId: "skill-a",
+              username: "",
               skillSlug: "skill-a",
               spec: "latest",
             },
@@ -352,9 +353,9 @@ test("rejects pruning non-canonical install paths from lockfile", async () => {
         }),
         loadSkillsLock: async () =>
           lockFile({
-            a: lockEntry({ skillId: "@username/skill-a", resolvedVersion: "1.0.0" }),
+            a: lockEntry({ skillId: "skill-a", resolvedVersion: "1.0.0" }),
             b: lockEntry({
-              skillId: "@username/skill-b",
+              skillId: "skill-b",
               resolvedVersion: "1.0.0",
               installedPath: "/tmp/unsafe-prune-target",
             }),

@@ -8,13 +8,14 @@ const { runUpdateCommand } = requireDist("commands/update.js");
 const { UseApiError } = requireDist("lib/use/errors.js");
 
 function lockEntry(overrides = {}) {
-  const skillId = overrides.skillId ?? "@username/skill-a";
-  const skill = skillId.split("/")[1];
+  const skillId = overrides.skillId ?? "skill-a";
+  const skill = skillId.includes("/") ? skillId.split("/")[1] : skillId;
+  const username = skillId.startsWith("@") ? skillId.slice(1).split("/")[0] : "";
   const agentTarget = overrides.agentTarget ?? "skillmd";
   const installedPath = overrides.installedPath ?? `/workspace/project/.agent/skills/${skill}`;
   return {
     skillId,
-    username: "username",
+    username,
     skill,
     selectorSpec: "latest",
     resolvedVersion: "1.0.0",
@@ -56,12 +57,12 @@ function baseOptions(overrides = {}) {
     }),
     loadSkillsLock: async () =>
       lockFile({
-        a: lockEntry({ skillId: "@username/skill-a" }),
+        a: lockEntry({ skillId: "skill-a" }),
       }),
     saveSkillsLock: async () => {},
     installFromRegistry: async (input) => ({
       result: {
-        skillId: `@${input.username}/${input.skillSlug}`,
+        skillId: input.username ? `@${input.username}/${input.skillSlug}` : input.skillSlug,
         username: input.username,
         skill: input.skillSlug,
         version: "1.1.0",
@@ -75,7 +76,7 @@ function baseOptions(overrides = {}) {
         agentTarget: input.selectedAgentTarget,
       },
       lockEntry: {
-        skillId: `@${input.username}/${input.skillSlug}`,
+        skillId: input.username ? `@${input.username}/${input.skillSlug}` : input.skillSlug,
         username: input.username,
         skill: input.skillSlug,
         selectorSpec: input.selector.spec ?? input.selector.version,
@@ -87,7 +88,7 @@ function baseOptions(overrides = {}) {
         registryBaseUrl: "https://registry.example.com",
         downloadedFrom: "https://storage.example.com",
         installedAt: "2026-03-02T12:34:56.000Z",
-        sourceCommand: `skillmd update @${input.username}/${input.skillSlug}`,
+        sourceCommand: `skillmd update ${input.username ? `@${input.username}/${input.skillSlug}` : input.skillSlug}`,
         agentTarget: input.selectedAgentTarget,
       },
     }),
@@ -98,7 +99,7 @@ function baseOptions(overrides = {}) {
 }
 
 test("fails with usage on invalid args", async () => {
-  const exitCode = await runUpdateCommand(["--all", "@username/skill"]);
+  const exitCode = await runUpdateCommand(["--all", "skill-a"]);
   assert.equal(exitCode, 1);
 });
 
@@ -110,9 +111,9 @@ test("updates all lockfile entries by default", async () => {
       baseOptions({
         loadSkillsLock: async () =>
           lockFile({
-            a: lockEntry({ skillId: "@username/skill-a" }),
+            a: lockEntry({ skillId: "skill-a" }),
             b: lockEntry({
-              skillId: "@username/skill-b",
+              skillId: "skill-b",
               installedPath: "/workspace/project/.claude/skills/skill-b",
               agentTarget: "claude",
             }),
@@ -131,7 +132,7 @@ test("updates all lockfile entries by default", async () => {
     Object.values(savedLock.entries)
       .map((entry) => entry.sourceCommand)
       .sort(),
-    ["skillmd update @username/skill-a", "skillmd update @username/skill-b"],
+    ["skillmd update skill-a", "skillmd update skill-b"],
   );
 });
 
@@ -143,9 +144,9 @@ test("filters --all by --agent-target", async () => {
       baseOptions({
         loadSkillsLock: async () =>
           lockFile({
-            a: lockEntry({ skillId: "@username/skill-a", agentTarget: "skillmd" }),
+            a: lockEntry({ skillId: "skill-a", agentTarget: "skillmd" }),
             b: lockEntry({
-              skillId: "@username/skill-b",
+              skillId: "skill-b",
               installedPath: "/workspace/project/.claude/skills/skill-b",
               agentTarget: "claude",
             }),
@@ -170,9 +171,9 @@ test("filters --all by new builtin agent target", async () => {
       baseOptions({
         loadSkillsLock: async () =>
           lockFile({
-            a: lockEntry({ skillId: "@username/skill-a", agentTarget: "skillmd" }),
+            a: lockEntry({ skillId: "skill-a", agentTarget: "skillmd" }),
             b: lockEntry({
-              skillId: "@username/skill-b",
+              skillId: "skill-b",
               installedPath: "/workspace/project/.deepseek/skills/skill-b",
               agentTarget: "deepseek",
             }),
@@ -192,11 +193,11 @@ test("filters --all by new builtin agent target", async () => {
 test("updates explicit skill ids and reports missing installs", async () => {
   const { result, logs } = await captureConsole(() =>
     runUpdateCommand(
-      ["@username/skill-a", "@username/missing", "--json"],
+      ["skill-a", "missing", "--json"],
       baseOptions({
         loadSkillsLock: async () =>
           lockFile({
-            a: lockEntry({ skillId: "@username/skill-a" }),
+            a: lockEntry({ skillId: "skill-a" }),
           }),
       }),
     ),
@@ -218,7 +219,7 @@ test("skips exact-version pinned entries", async () => {
         loadSkillsLock: async () =>
           lockFile({
             a: lockEntry({
-              skillId: "@username/skill-a",
+              skillId: "skill-a",
               selectorSpec: "1.2.3",
               resolvedVersion: "1.2.3",
             }),
@@ -245,8 +246,8 @@ test("continues after update failure and exits non-zero", async () => {
       baseOptions({
         loadSkillsLock: async () =>
           lockFile({
-            a: lockEntry({ skillId: "@username/skill-a" }),
-            b: lockEntry({ skillId: "@username/skill-b" }),
+            a: lockEntry({ skillId: "skill-a" }),
+            b: lockEntry({ skillId: "skill-b" }),
           }),
         installFromRegistry: async (input) => {
           if (input.skillSlug === "skill-a") {
@@ -276,7 +277,7 @@ test("update --global reads global lock scope and preserves global source comman
           loadArgs = args;
           return lockFile({
             a: lockEntry({
-              skillId: "@username/skill-a",
+              skillId: "skill-a",
               installedPath: "/Users/tester/.codex/skills/skill-a",
               agentTarget: "openai",
             }),
