@@ -7,9 +7,9 @@ npm-like lifecycle for agent skills: create, publish, install, tag, deprecate, a
 
 ## Why skillmd
 
-- Publish and manage versioned agent skills.
-- Install directly or from a workspace `skills.json`.
-- Support built-in agent targets plus `custom:<slug>`.
+- Create and publish versioned skills.
+- Search, inspect, and install skills quickly.
+- Work with personal skills like `my-skill` and org skills like `@acme/my-skill`.
 
 ## Install
 
@@ -23,34 +23,34 @@ Or run one-off commands with:
 npx skillmarkdown <command>
 ```
 
-## Quickstart (60 seconds)
+## Quickstart
 
 ```bash
-# 1) Author a new skill
+# Create a skill
 mkdir my-skill && cd my-skill
 skillmd init --template minimal
 skillmd validate --strict
 
-# 2) Authenticate and publish
+# Sign in and publish it
 skillmd login
 skillmd publish --version 1.0.0 --tag latest --access public
 
-# 3) Discover and inspect
+# Find and inspect skills
 skillmd search
-skillmd view @username/my-skill
-skillmd history @username/my-skill
+skillmd view my-skill
+skillmd history my-skill
 
-# 4) Consume and maintain installs
-skillmd use @username/my-skill
-skillmd use -g @your-org/internal-skill
+# Use and maintain installs
+skillmd use my-skill
+skillmd use -g @acme/internal-skill
 skillmd list
-skillmd remove @username/my-skill
+skillmd remove my-skill
 skillmd update --all
 ```
 
 ## Workspace install (`skills.json`)
 
-Use `skillmd install` for declarative, workspace-level installs.
+Use `skillmd install` when your workspace should declare the skills it needs.
 
 ```json
 {
@@ -59,11 +59,11 @@ Use `skillmd install` for declarative, workspace-level installs.
     "agentTarget": "skillmd"
   },
   "dependencies": {
-    "@username/research-skill": {
+    "research-skill": {
       "spec": "latest",
       "agentTarget": "claude"
     },
-    "@username/ops-skill": {
+    "@acme/ops-skill": {
       "spec": "^1.2.0"
     }
   }
@@ -80,16 +80,14 @@ skillmd install --prune
 
 Notes:
 
-- `skills.json` is the declared intent.
-- `skills-lock.json` is CLI-owned resolved state, rewritten after successful installs/updates.
-- `skillmd use` remains available for one-off installs outside manifest flow.
-- Use `skillmd use -g <skill-id>` for global installs, which is useful for internal/shared skills outside a single workspace.
-- For the default `skillmd` target, global installs go under `~/.agent/skills/<skill>`.
-- The CLI still keeps auth/session/config and the global lockfile under `~/.skillmd/...`; that is metadata, not the installed skill location.
+- `skills.json` is the list you want.
+- `skills-lock.json` is the resolved list the CLI writes after install or update.
+- `skillmd use` is still the simplest way to install one skill directly.
+- `skillmd use -g <skill-id>` installs to a provider home instead of the current workspace.
 
 ## Authentication
 
-`skillmd login` signs you in to your Skillmarkdown account so the CLI can publish skills, manage installs, and access private or organization-scoped features.
+`skillmd login` signs you in so the CLI can publish skills, manage installs, and access private or org features.
 
 For API-calling commands, auth precedence is:
 
@@ -107,27 +105,37 @@ Token scope model:
 
 Organization automation:
 
-- you can manage organization access tokens from the CLI or from the Skillmarkdown web app
-- use them for organization-owned automation with an explicit owner target, for example:
+- create org tokens from the CLI or the web app
+- use them when automation should publish on behalf of an org:
 
 ```bash
-skillmd org tokens add facebook deploy --scope admin
-SKILLMD_AUTH_TOKEN=skmd_dev_tok_... skillmd publish --owner facebook --version 1.2.3
+skillmd org tokens add acme deploy --scope admin
+SKILLMD_AUTH_TOKEN=skmd_dev_tok_... skillmd publish --owner acme --version 1.2.3
 ```
 
 ## Commands
 
-- Authoring: `init`, `validate`, `publish`
-- Discovery: `search`, `view`, `history`
-- Consumption: `use`, `install`, `list`, `remove`, `update`
-- Release: `tag`, `deprecate`, `unpublish`
-- Auth and org: `login`, `logout`, `whoami`, `token`, `org`
+- Create and check: `init`, `validate`
+- Publish and release: `publish`, `tag`, `deprecate`, `unpublish`
+- Find and inspect: `search`, `view`, `history`
+- Install and maintain: `use`, `install`, `list`, `remove`, `update`
+- Account and access: `login`, `logout`, `whoami`, `token`, `org`
+
+## Organizations
+
+Use org commands when a team owns the skill instead of one person.
+
+```bash
+skillmd org create acme
+skillmd publish --owner acme --version 1.0.0
+skillmd use @acme/internal-skill
+```
 
 ## Accounts And Tokens
 
 - Use `skillmd login` when you want to work as yourself from the CLI.
 - Use `skillmd token` to create personal access tokens for scripts and automation.
-- Use `skillmd org tokens` when automation should act on behalf of an organization instead of an individual account.
+- Use `skillmd org tokens` when automation should act as an organization instead of an individual account.
 
 ## Support
 
