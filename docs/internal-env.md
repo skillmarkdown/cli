@@ -28,17 +28,37 @@ These identifiers are the current local dev fixture targets used by strict CLI s
 
 - standard login fixture email: `test@stefdevs.com`
 - secondary login fixture email: `pro@stefdevs.com`
+- standard login fixture username: `test`
+- secondary login fixture username: `prostefdevs`
 - org fixture slug: `huggingface`
 - dev Firebase project: `skillmarkdown-development`
 - dev registry base URL: `https://registryapi-sm46rm3rja-uc.a.run.app`
 
-Current fixture note:
-
-- `pro@stefdevs.com` is provisioned and valid for login, but the account currently reports plan `free`, not `pro`
-- strict `e2e:core` therefore treats private-Pro checks as conditional coverage unless that fixture is upgraded
-- keep passwords and API keys only in local `~/.skillmd/.env`, not in repo-tracked docs
-
 Keep passwords and live secrets in local `~/.skillmd/.env`, not in repo-tracked docs.
+
+## Replayable Fixture Setup
+
+To recreate the strict dev auth/org fixtures from the CLI repo:
+
+```bash
+cd /Users/azk/Desktop/workspace/skillmarkdown/cli
+npm run fixtures:dev:ensure
+```
+
+What it does:
+
+- ensures the free fixture auth user exists as `test@stefdevs.com` / `test`
+- ensures the Pro fixture auth user exists as `pro@stefdevs.com` / `prostefdevs`
+- forces the Pro fixture plan to `pro`
+- ensures the dev org fixture slug exists
+- verifies the Pro fixture resolves `plan=pro` plus private-skill entitlements
+- seeds a minimum private-search pagination corpus for the `cursorseed` query under the Pro fixture
+
+This script uses:
+
+- repo-local CLI build output at `dist/cli.js`
+- backend admin helpers in `/Users/azk/Desktop/workspace/skillmarkdown/functions/functions/scripts`
+- an isolated temporary `HOME` during login/org verification so local sessions are not overwritten
 
 ## Recommended `~/.skillmd/.env`
 
