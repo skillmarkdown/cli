@@ -20,8 +20,8 @@ function baseOptions(overrides = {}) {
       requestTimeoutMs: 10000,
     }),
     listHistory: async () => ({
-      owner: "@stefdevscore",
-      username: "stefdevscore",
+      owner: "@test",
+      username: "test",
       skill: "test-skill",
       limit: 20,
       results: [
@@ -55,7 +55,7 @@ test("fails with usage when --cursor is missing a value and next token is a flag
 
 test("prints human output for history results", async () => {
   const { result, logs } = await captureConsole(() =>
-    runHistoryCommand(["@stefdevscore/test-skill", "--limit", "20"], baseOptions()),
+    runHistoryCommand(["test-skill", "--limit", "20"], baseOptions()),
   );
 
   assert.equal(result, 0);
@@ -71,7 +71,7 @@ test("prints human output for history results", async () => {
 test("does not resolve read token when first history request succeeds", async () => {
   const { result } = await captureConsole(() =>
     runHistoryCommand(
-      ["@stefdevscore/test-skill"],
+      ["test-skill"],
       baseOptions({
         resolveReadIdToken: async () => {
           throw new Error("should not be called");
@@ -88,7 +88,7 @@ test("retries history request with read token after not found", async () => {
   let tokenResolutionCount = 0;
   const { result } = await captureConsole(() =>
     runHistoryCommand(
-      ["@stefdevscore/test-skill"],
+      ["test-skill"],
       baseOptions({
         resolveReadIdToken: async () => {
           tokenResolutionCount += 1;
@@ -101,8 +101,8 @@ test("retries history request with read token after not found", async () => {
           }
 
           return {
-            owner: "@stefdevscore",
-            username: "stefdevscore",
+            owner: "@test",
+            username: "test",
             skill: "test-skill",
             limit: 20,
             results: [],
@@ -121,11 +121,11 @@ test("retries history request with read token after not found", async () => {
 test("prints deprecated metadata and truncates digest in human output", async () => {
   const { result, logs } = await captureConsole(() =>
     runHistoryCommand(
-      ["@stefdevscore/test-skill", "--limit", "10"],
+      ["test-skill", "--limit", "10"],
       baseOptions({
         listHistory: async () => ({
-          owner: "@stefdevscore",
-          username: "stefdevscore",
+          owner: "@test",
+          username: "test",
           skill: "test-skill",
           limit: 10,
           results: [
@@ -149,20 +149,17 @@ test("prints deprecated metadata and truncates digest in human output", async ()
   assert.equal(result, 0);
   assert.match(logs[3], /yes:securit.*\.\.\.|yes:security issue/);
   assert.match(logs[3], /sha256:1234567890.*\.\.\./);
-  assert.equal(
-    logs[5],
-    "Next page: skillmd history @stefdevscore/test-skill --limit 10 --cursor cursor_2",
-  );
+  assert.equal(logs[5], "Next page: skillmd history test-skill --limit 10 --cursor cursor_2");
 });
 
 test("prints json output with --json", async () => {
   const { result, logs } = await captureConsole(() =>
-    runHistoryCommand(["@stefdevscore/test-skill", "--json"], baseOptions()),
+    runHistoryCommand(["test-skill", "--json"], baseOptions()),
   );
 
   assert.equal(result, 0);
   const parsed = JSON.parse(logs.join("\n"));
-  assert.equal(parsed.username, "stefdevscore");
+  assert.equal(parsed.username, "test");
   assert.equal(Array.isArray(parsed.results), true);
 });
 
@@ -193,11 +190,11 @@ test("prints bare skill id in next-page guidance for user-owned skills", async (
 test("prints no-result message when empty", async () => {
   const { result, logs } = await captureConsole(() =>
     runHistoryCommand(
-      ["@stefdevscore/test-skill"],
+      ["test-skill"],
       baseOptions({
         listHistory: async () => ({
-          owner: "@stefdevscore",
-          username: "stefdevscore",
+          owner: "@test",
+          username: "test",
           skill: "test-skill",
           limit: 20,
           results: [],
@@ -223,7 +220,7 @@ test("fails on malformed skill id before API call", async () => {
 test("maps history api errors", async () => {
   const { result, errors } = await captureConsole(() =>
     runHistoryCommand(
-      ["@stefdevscore/test-skill"],
+      ["test-skill"],
       baseOptions({
         listHistory: async () => {
           throw new HistoryApiError(400, "invalid_request", "bad cursor");

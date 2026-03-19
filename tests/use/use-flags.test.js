@@ -6,10 +6,10 @@ const { requireDist } = require("../helpers/dist-imports.js");
 const { parseUseFlags } = requireDist("lib/use/flags.js");
 
 test("parses skill id with default selector behavior", () => {
-  const parsed = parseUseFlags(["@stefdevscore/test-skill"]);
+  const parsed = parseUseFlags(["test-skill"]);
 
   assert.deepEqual(parsed, {
-    skillId: "@stefdevscore/test-skill",
+    skillId: "test-skill",
     version: undefined,
     spec: undefined,
     agentTarget: undefined,
@@ -21,10 +21,10 @@ test("parses skill id with default selector behavior", () => {
 });
 
 test("parses version selector with json flag", () => {
-  const parsed = parseUseFlags(["owner/skill", "--version", "1.2.3", "--json"]);
+  const parsed = parseUseFlags(["@acme/skill", "--version", "1.2.3", "--json"]);
 
   assert.deepEqual(parsed, {
-    skillId: "owner/skill",
+    skillId: "@acme/skill",
     version: "1.2.3",
     spec: undefined,
     agentTarget: undefined,
@@ -36,10 +36,10 @@ test("parses version selector with json flag", () => {
 });
 
 test("parses spec selector in equals form", () => {
-  const parsed = parseUseFlags(["owner/skill", "--spec=beta"]);
+  const parsed = parseUseFlags(["@acme/skill", "--spec=beta"]);
 
   assert.deepEqual(parsed, {
-    skillId: "owner/skill",
+    skillId: "@acme/skill",
     version: undefined,
     spec: "beta",
     agentTarget: undefined,
@@ -51,25 +51,25 @@ test("parses spec selector in equals form", () => {
 });
 
 test("parses agent target", () => {
-  const parsed = parseUseFlags(["owner/skill", "--agent-target", "custom:myagent"]);
+  const parsed = parseUseFlags(["test-skill", "--agent-target", "custom:myagent"]);
   assert.equal(parsed.valid, true);
   assert.equal(parsed.agentTarget, "custom:myagent");
 });
 
 test("parses new builtin agent target", () => {
-  const parsed = parseUseFlags(["owner/skill", "--agent-target", "perplexity"]);
+  const parsed = parseUseFlags(["test-skill", "--agent-target", "perplexity"]);
   assert.equal(parsed.valid, true);
   assert.equal(parsed.agentTarget, "perplexity");
 });
 
 for (const args of [
   [],
-  ["owner/skill", "--version"],
-  ["owner/skill", "--version", "x"],
-  ["owner/skill", "--spec"],
-  ["owner/skill", "--agent-target", "custom:UPPER"],
-  ["owner/skill", "--version", "1.2.3", "--spec", "latest"],
-  ["owner/skill", "--unknown"],
+  ["test-skill", "--version"],
+  ["test-skill", "--version", "x"],
+  ["test-skill", "--spec"],
+  ["test-skill", "--agent-target", "custom:UPPER"],
+  ["test-skill", "--version", "1.2.3", "--spec", "latest"],
+  ["test-skill", "--unknown"],
 ]) {
   test(`rejects invalid args: ${args.join(" ") || "<none>"}`, () => {
     const parsed = parseUseFlags(args);

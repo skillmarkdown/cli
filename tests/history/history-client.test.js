@@ -11,14 +11,14 @@ test("listSkillVersionHistory returns parsed response payload", async () => {
   const payload = await withMockedFetch(
     async (input, init) => {
       const url = new URL(String(input));
-      assert.equal(url.pathname, "/v1/skills/@stefdevscore/test-skill/versions");
+      assert.equal(url.pathname, "/v1/skills/@acme/test-skill/versions");
       assert.equal(url.searchParams.get("limit"), "10");
       assert.equal(url.searchParams.get("cursor"), "next");
       assert.equal(init?.headers, undefined);
 
       return mockJsonResponse(200, {
-        owner: "@stefdevscore",
-        username: "stefdevscore",
+        owner: "@acme",
+        username: "acme",
         skill: "test-skill",
         limit: 10,
         results: [],
@@ -27,14 +27,14 @@ test("listSkillVersionHistory returns parsed response payload", async () => {
     },
     () =>
       listSkillVersionHistory("https://registry.example.com", {
-        username: "stefdevscore",
+        username: "acme",
         skillSlug: "test-skill",
         limit: 10,
         cursor: "next",
       }),
   );
 
-  assert.equal(payload.username, "stefdevscore");
+  assert.equal(payload.username, "acme");
   assert.equal(payload.limit, 10);
   assert.deepEqual(payload.results, []);
 });
@@ -66,8 +66,8 @@ test("listSkillVersionHistory attaches bearer token when provided", async () => 
     async (_input, init) => {
       assert.match(String(init?.headers?.Authorization), /^Bearer /);
       return mockJsonResponse(200, {
-        owner: "@stefdevscore",
-        username: "stefdevscore",
+        owner: "@acme",
+        username: "acme",
         skill: "test-skill",
         limit: 10,
         results: [],
@@ -78,7 +78,7 @@ test("listSkillVersionHistory attaches bearer token when provided", async () => 
       await listSkillVersionHistory(
         "https://registry.example.com",
         {
-          username: "stefdevscore",
+          username: "acme",
           skillSlug: "test-skill",
           limit: 10,
         },
@@ -101,7 +101,7 @@ test("listSkillVersionHistory maps nested API errors", async () => {
     async () => {
       await assert.rejects(
         listSkillVersionHistory("https://registry.example.com", {
-          username: "stefdevscore",
+          username: "acme",
           skillSlug: "test-skill",
         }),
         (error) => {
@@ -125,7 +125,7 @@ test("listSkillVersionHistory rejects malformed success payloads", async () => {
     async () => {
       await assert.rejects(
         listSkillVersionHistory("https://registry.example.com", {
-          username: "stefdevscore",
+          username: "acme",
           skillSlug: "test-skill",
         }),
         /missing required fields/i,

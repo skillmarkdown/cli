@@ -10,6 +10,7 @@ npm-like lifecycle for agent skills: create, publish, install, tag, deprecate, a
 - Create and publish versioned skills.
 - Search, inspect, and install skills quickly.
 - Work with personal skills like `my-skill` and org skills like `@acme/my-skill`.
+- Personal skills are always bare. Scoped ids are reserved for organizations only.
 
 ## Install
 

@@ -16,20 +16,19 @@ test("resolveSkillVersion returns parsed payload", async () => {
   const payload = await withMockedFetch(
     async (input, init) => {
       const url = new URL(String(input));
-      assert.equal(url.pathname, "/v1/skills/@stefdevscore/test-skill/resolve");
+      assert.equal(url.pathname, "/v1/skills/test-skill/resolve");
       assert.equal(url.searchParams.get("spec"), "latest");
       assert.equal(init?.headers, undefined);
 
       return mockJsonResponse(200, {
-        owner: "@stefdevscore",
-        username: "stefdevscore",
+        owner: "@test",
+        username: "test",
         skill: "test-skill",
         spec: "latest",
         version: "1.2.3",
       });
     },
-    () =>
-      resolveSkillVersion("https://registry.example.com", "stefdevscore", "test-skill", "latest"),
+    () => resolveSkillVersion("https://registry.example.com", "", "test-skill", "latest"),
   );
 
   assert.equal(payload.version, "1.2.3");
@@ -40,21 +39,17 @@ test("resolveSkillVersion attaches bearer token when provided", async () => {
     async (_input, init) => {
       assert.match(String(init?.headers?.Authorization), /^Bearer /);
       return mockJsonResponse(200, {
-        owner: "@stefdevscore",
-        username: "stefdevscore",
+        owner: "@test",
+        username: "test",
         skill: "test-skill",
         spec: "latest",
         version: "1.2.3",
       });
     },
     async () => {
-      await resolveSkillVersion(
-        "https://registry.example.com",
-        "stefdevscore",
-        "test-skill",
-        "latest",
-        { idToken: "token_123" },
-      );
+      await resolveSkillVersion("https://registry.example.com", "", "test-skill", "latest", {
+        idToken: "token_123",
+      });
     },
   );
 });
@@ -63,11 +58,11 @@ test("resolveSkillVersion rejects malformed success payloads", async () => {
   await withMockedFetch(
     async () =>
       mockJsonResponse(200, {
-        owner: "@stefdevscore",
+        owner: "@test",
       }),
     async () => {
       await assert.rejects(
-        resolveSkillVersion("https://registry.example.com", "stefdevscore", "test-skill", "latest"),
+        resolveSkillVersion("https://registry.example.com", "", "test-skill", "latest"),
         /missing required fields/i,
       );
     },
@@ -78,10 +73,10 @@ test("getArtifactDescriptor returns parsed payload", async () => {
   const payload = await withMockedFetch(
     async (input) => {
       const url = new URL(String(input));
-      assert.equal(url.pathname, "/v1/skills/@stefdevscore/test-skill/versions/1.2.3/artifact");
+      assert.equal(url.pathname, "/v1/skills/test-skill/versions/1.2.3/artifact");
       return mockJsonResponse(200, {
-        owner: "@stefdevscore",
-        username: "stefdevscore",
+        owner: "@test",
+        username: "test",
         skill: "test-skill",
         version: "1.2.3",
         digest: "sha256:abc",
@@ -96,7 +91,7 @@ test("getArtifactDescriptor returns parsed payload", async () => {
     },
     () =>
       getArtifactDescriptor("https://registry.example.com", {
-        username: "stefdevscore",
+        username: "",
         skillSlug: "test-skill",
         version: "1.2.3",
       }),
@@ -139,7 +134,7 @@ test("maps API errors into UseApiError", async () => {
     async () => {
       await assert.rejects(
         getArtifactDescriptor("https://registry.example.com", {
-          username: "stefdevscore",
+          username: "",
           skillSlug: "test-skill",
           version: "9.9.9",
         }),

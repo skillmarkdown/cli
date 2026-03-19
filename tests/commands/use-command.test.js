@@ -23,15 +23,15 @@ function baseOptions(overrides = {}) {
       defaultAgentTarget: "skillmd",
     }),
     resolveVersion: async () => ({
-      owner: "@stefdevscore",
-      username: "stefdevscore",
+      owner: "@test",
+      username: "test",
       skill: "test-skill",
       spec: "latest",
       version: "1.2.3",
     }),
     getArtifactDescriptor: async () => ({
-      owner: "@stefdevscore",
-      username: "stefdevscore",
+      owner: "@test",
+      username: "test",
       skill: "test-skill",
       version: "1.2.3",
       digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -70,13 +70,13 @@ test("installs with default latest spec selector and updates lock", async () => 
   let savedLock;
   const { result, logs } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill"],
+      ["test-skill"],
       baseOptions({
         resolveVersion: async (_baseUrl, _owner, _skill, spec) => {
           resolvedSpec = spec;
           return {
-            owner: "@stefdevscore",
-            username: "stefdevscore",
+            owner: "@test",
+            username: "test",
             skill: "test-skill",
             spec: "latest",
             version: "1.2.3",
@@ -91,7 +91,7 @@ test("installs with default latest spec selector and updates lock", async () => 
 
   assert.equal(result, 0);
   assert.equal(resolvedSpec, "latest");
-  assert.match(logs.join("\n"), /Installed @stefdevscore\/test-skill@1.2.3/);
+  assert.match(logs.join("\n"), /Installed test-skill@1.2.3/);
   assert.equal(Object.keys(savedLock.entries).length, 1);
   const entry = Object.values(savedLock.entries)[0];
   assert.equal(entry.selectorSpec, "latest");
@@ -102,11 +102,11 @@ test("uses descriptor agent target when flag is omitted", async () => {
   let installInput;
   const { result } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill"],
+      ["test-skill"],
       baseOptions({
         getArtifactDescriptor: async () => ({
-          owner: "@stefdevscore",
-          username: "stefdevscore",
+          owner: "@test",
+          username: "test",
           skill: "test-skill",
           version: "1.2.3",
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -134,11 +134,11 @@ test("explicit --agent-target overrides descriptor target", async () => {
   let installInput;
   const { result } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill", "--agent-target", "gemini"],
+      ["test-skill", "--agent-target", "gemini"],
       baseOptions({
         getArtifactDescriptor: async () => ({
-          owner: "@stefdevscore",
-          username: "stefdevscore",
+          owner: "@test",
+          username: "test",
           skill: "test-skill",
           version: "1.2.3",
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -166,11 +166,11 @@ test("save persists explicitly selected agent target", async () => {
   let savedManifest;
   const { result } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill", "--agent-target", "gemini", "--save"],
+      ["test-skill", "--agent-target", "gemini", "--save"],
       baseOptions({
         getArtifactDescriptor: async () => ({
-          owner: "@stefdevscore",
-          username: "stefdevscore",
+          owner: "@test",
+          username: "test",
           skill: "test-skill",
           version: "1.2.3",
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -197,7 +197,7 @@ test("save persists explicitly selected agent target", async () => {
 
   assert.equal(result, 0);
   assert.equal(savedManifest.dependencies.length, 1);
-  assert.equal(savedManifest.dependencies[0].skillId, "@stefdevscore/test-skill");
+  assert.equal(savedManifest.dependencies[0].skillId, "test-skill");
   assert.equal(savedManifest.dependencies[0].agentTarget, "gemini");
   assert.equal(savedManifest.dependencies[0].spec, "latest");
 });
@@ -206,7 +206,7 @@ test("save omits agent target when resolved target is the default", async () => 
   let savedManifest;
   const { result } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill", "--save"],
+      ["test-skill", "--save"],
       baseOptions({
         loadSkillsManifestOrEmpty: async () => ({
           version: 1,
@@ -222,7 +222,7 @@ test("save omits agent target when resolved target is the default", async () => 
 
   assert.equal(result, 0);
   assert.equal(savedManifest.dependencies.length, 1);
-  assert.equal(savedManifest.dependencies[0].skillId, "@stefdevscore/test-skill");
+  assert.equal(savedManifest.dependencies[0].skillId, "test-skill");
   assert.equal(savedManifest.dependencies[0].agentTarget, undefined);
   assert.equal(savedManifest.dependencies[0].spec, "latest");
 });
@@ -231,11 +231,11 @@ test("save persists descriptor agent target when it is non-default", async () =>
   let savedManifest;
   const { result } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill", "--save"],
+      ["test-skill", "--save"],
       baseOptions({
         getArtifactDescriptor: async () => ({
-          owner: "@stefdevscore",
-          username: "stefdevscore",
+          owner: "@test",
+          username: "test",
           skill: "test-skill",
           version: "1.2.3",
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -269,13 +269,13 @@ test("supports explicit --spec selector", async () => {
   let resolvedSpec;
   const { result } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill", "--spec", "^1.2.0"],
+      ["test-skill", "--spec", "^1.2.0"],
       baseOptions({
         resolveVersion: async (_baseUrl, _owner, _skill, spec) => {
           resolvedSpec = spec;
           return {
-            owner: "@stefdevscore",
-            username: "stefdevscore",
+            owner: "@test",
+            username: "test",
             skill: "test-skill",
             spec,
             version: "1.2.3",
@@ -293,7 +293,7 @@ test("uses explicit --version without calling resolve endpoint", async () => {
   let resolveCalled = false;
   const { result } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill", "--version", "1.2.3"],
+      ["test-skill", "--version", "1.2.3"],
       baseOptions({
         resolveVersion: async () => {
           resolveCalled = true;
@@ -312,7 +312,7 @@ test("retries resolve with read token when first attempt returns not found", asy
   let tokenResolutionCount = 0;
   const { result } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill"],
+      ["test-skill"],
       baseOptions({
         resolveReadIdToken: async () => {
           tokenResolutionCount += 1;
@@ -325,8 +325,8 @@ test("retries resolve with read token when first attempt returns not found", asy
           }
 
           return {
-            owner: "@stefdevscore",
-            username: "stefdevscore",
+            owner: "@test",
+            username: "test",
             skill: "test-skill",
             spec: "latest",
             version: "1.2.3",
@@ -343,19 +343,19 @@ test("retries resolve with read token when first attempt returns not found", asy
 
 test("prints json output with --json", async () => {
   const { result, logs } = await captureConsole(() =>
-    runUseCommand(["@stefdevscore/test-skill", "--json"], baseOptions()),
+    runUseCommand(["test-skill", "--json"], baseOptions()),
   );
 
   assert.equal(result, 0);
   const parsed = JSON.parse(logs.join("\n"));
-  assert.equal(parsed.skillId, "@stefdevscore/test-skill");
+  assert.equal(parsed.skillId, "test-skill");
   assert.equal(parsed.version, "1.2.3");
 });
 
 test("prints warnings in json output", async () => {
   const { result, logs } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill", "--version", "1.2.3", "--json"],
+      ["test-skill", "--version", "1.2.3", "--json"],
       baseOptions({
         getConfig: () => ({
           firebaseProjectId: "skillmarkdown",
@@ -364,8 +364,8 @@ test("prints warnings in json output", async () => {
           defaultAgentTarget: "skillmd",
         }),
         getArtifactDescriptor: async () => ({
-          owner: "@stefdevscore",
-          username: "stefdevscore",
+          owner: "@test",
+          username: "test",
           skill: "test-skill",
           version: "1.2.3",
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -391,7 +391,7 @@ test("prints warnings in json output", async () => {
 test("warns when use command targets production registry", async () => {
   const { result, errors } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill"],
+      ["test-skill"],
       baseOptions({
         getConfig: () => ({
           firebaseProjectId: "skillmarkdown",
@@ -410,11 +410,11 @@ test("warns when use command targets production registry", async () => {
 test("warns when selected version is deprecated and still installs", async () => {
   const { result, errors } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill", "--version", "1.2.3"],
+      ["test-skill", "--version", "1.2.3"],
       baseOptions({
         getArtifactDescriptor: async () => ({
-          owner: "@stefdevscore",
-          username: "stefdevscore",
+          owner: "@test",
+          username: "test",
           skill: "test-skill",
           version: "1.2.3",
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -438,11 +438,11 @@ test("stores canonical source command with resolved non-default agent target", a
   let savedLock;
   const { result } = await captureConsole(() =>
     runUseCommand(
-      ["@StefDevScore/Test-Skill", "--spec", "beta"],
+      ["Test-Skill", "--spec", "beta"],
       baseOptions({
         getArtifactDescriptor: async () => ({
-          owner: "@stefdevscore",
-          username: "stefdevscore",
+          owner: "@test",
+          username: "test",
           skill: "test-skill",
           version: "1.2.3",
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -464,11 +464,8 @@ test("stores canonical source command with resolved non-default agent target", a
 
   assert.equal(result, 0);
   const entry = Object.values(savedLock.entries)[0];
-  assert.equal(entry.skillId, "@stefdevscore/test-skill");
-  assert.equal(
-    entry.sourceCommand,
-    "skillmd use @stefdevscore/test-skill --spec beta --agent-target claude",
-  );
+  assert.equal(entry.skillId, "test-skill");
+  assert.equal(entry.sourceCommand, "skillmd use test-skill --spec beta --agent-target claude");
 });
 
 test("does not call manifest helpers unless --save is passed", async () => {
@@ -476,7 +473,7 @@ test("does not call manifest helpers unless --save is passed", async () => {
   let saveManifestCalled = false;
   const { result } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill"],
+      ["test-skill"],
       baseOptions({
         loadSkillsManifestOrEmpty: async () => {
           loadManifestCalled = true;
@@ -497,7 +494,7 @@ test("does not call manifest helpers unless --save is passed", async () => {
 test("maps use API errors", async () => {
   const { result, errors } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill"],
+      ["test-skill"],
       baseOptions({
         resolveVersion: async () => {
           throw new UseApiError(404, "not_found", "skill not found");
@@ -522,7 +519,7 @@ test("fails for invalid skill ids", async () => {
 test("prefixes unexpected errors with command name", async () => {
   const { result, errors } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill"],
+      ["test-skill"],
       baseOptions({
         saveSkillsLock: async () => {
           throw new Error("disk is full");
@@ -538,7 +535,7 @@ test("prefixes unexpected errors with command name", async () => {
 test("prints pro-plan hint for private skill install denial", async () => {
   const { result, errors } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill"],
+      ["test-skill"],
       baseOptions({
         getArtifactDescriptor: async () => {
           const { UseApiError } = requireDist("lib/use/errors.js");
@@ -560,7 +557,7 @@ test("global use installs to provider home and writes global lock", async () => 
   let saveArgs;
   const { result } = await captureConsole(() =>
     runUseCommand(
-      ["@stefdevscore/test-skill", "--global", "--agent-target", "openai"],
+      ["test-skill", "--global", "--agent-target", "openai"],
       baseOptions({
         homeDir: "/Users/tester",
         installArtifact: async (input) => {
@@ -580,7 +577,7 @@ test("global use installs to provider home and writes global lock", async () => 
 
 test("global use rejects --save", async () => {
   const { result, errors } = await captureConsole(() =>
-    runUseCommand(["@stefdevscore/test-skill", "--global", "--save"], baseOptions()),
+    runUseCommand(["test-skill", "--global", "--save"], baseOptions()),
   );
 
   assert.equal(result, 1);

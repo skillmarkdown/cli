@@ -6,10 +6,10 @@ const { requireDist } = require("../helpers/dist-imports.js");
 const { parseViewFlags } = requireDist("lib/view/flags.js");
 
 test("parses skill id with --json", () => {
-  const parsed = parseViewFlags(["@stefdevscore/test-skill", "--json"]);
+  const parsed = parseViewFlags(["@acme/test-skill", "--json"]);
 
   assert.deepEqual(parsed, {
-    skillId: "@stefdevscore/test-skill",
+    skillId: "@acme/test-skill",
     json: true,
     valid: true,
   });
@@ -25,7 +25,7 @@ test("parses numeric index for search row lookup", () => {
   });
 });
 
-for (const args of [[], ["owner/skill", "extra"], ["--json"], ["owner/skill", "--bad-flag"]]) {
+for (const args of [[], ["owner/skill", "extra"], ["--json"], ["test-skill", "--bad-flag"]]) {
   test(`rejects invalid args: ${args.join(" ") || "<none>"}`, () => {
     const parsed = parseViewFlags(args);
     assert.equal(parsed.valid, false);

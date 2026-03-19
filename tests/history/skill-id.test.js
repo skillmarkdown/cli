@@ -15,16 +15,16 @@ test("parseSkillId accepts bare skill ids and normalizes casing", () => {
 });
 
 test("parseSkillId accepts @org/skill and normalizes casing", () => {
-  const parsed = parseSkillId("@StefDevScore/Test-Skill");
+  const parsed = parseSkillId("@Acme/Test-Skill");
   assert.deepEqual(parsed, {
-    username: "stefdevscore",
+    username: "acme",
     skillSlug: "test-skill",
-    skillId: "@stefdevscore/test-skill",
+    skillId: "@acme/test-skill",
   });
 });
 
 test("parseSkillId rejects legacy username/skill format", () => {
-  assert.throws(() => parseSkillId("stefdevscore/test-skill"), /@org\/skill/);
+  assert.throws(() => parseSkillId("personaluser/test-skill"), /@org\/skill/);
 });
 
 for (const input of [

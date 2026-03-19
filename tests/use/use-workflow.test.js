@@ -11,7 +11,8 @@ function baseInput(overrides = {}) {
     registryBaseUrl: "https://registry.example.com",
     requestTimeoutMs: 10_000,
     cwd: "/workspace/project",
-    username: "stefdevscore",
+    username: "",
+    preferBareSkillId: true,
     skillSlug: "test-skill",
     selector: { strategy: "spec", spec: "latest" },
     defaultAgentTarget: "skillmd",
@@ -30,15 +31,15 @@ function baseInput(overrides = {}) {
 function baseDependencies(overrides = {}) {
   return {
     resolveVersion: async () => ({
-      owner: "@stefdevscore",
-      username: "stefdevscore",
+      owner: "@test",
+      username: "test",
       skill: "test-skill",
       spec: "latest",
       version: "1.2.3",
     }),
     getArtifactDescriptor: async () => ({
-      owner: "@stefdevscore",
-      username: "stefdevscore",
+      owner: "@test",
+      username: "test",
       skill: "test-skill",
       version: "1.2.3",
       digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -65,8 +66,8 @@ test("uses selected agent target over descriptor and default targets", async () 
     baseInput({ selectedAgentTarget: "gemini" }),
     baseDependencies({
       getArtifactDescriptor: async () => ({
-        owner: "@stefdevscore",
-        username: "stefdevscore",
+        owner: "@test",
+        username: "test",
         skill: "test-skill",
         version: "1.2.3",
         digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -84,10 +85,7 @@ test("uses selected agent target over descriptor and default targets", async () 
 
   assert.equal(workflow.result.agentTarget, "gemini");
   assert.match(workflow.result.installedPath, /\/\.gemini\/skills\//);
-  assert.equal(
-    workflow.lockEntry.sourceCommand,
-    "skillmd use @stefdevscore/test-skill --agent-target gemini",
-  );
+  assert.equal(workflow.lockEntry.sourceCommand, "skillmd use test-skill --agent-target gemini");
 });
 
 test("falls back to descriptor agent target before default target", async () => {
@@ -95,8 +93,8 @@ test("falls back to descriptor agent target before default target", async () => 
     baseInput(),
     baseDependencies({
       getArtifactDescriptor: async () => ({
-        owner: "@stefdevscore",
-        username: "stefdevscore",
+        owner: "@test",
+        username: "test",
         skill: "test-skill",
         version: "1.2.3",
         digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -121,8 +119,8 @@ test("sanitizes downloadedFrom origin and preserves selector version in lock ent
     baseInput({ selector: { strategy: "version", version: "2.0.1" } }),
     baseDependencies({
       getArtifactDescriptor: async () => ({
-        owner: "@stefdevscore",
-        username: "stefdevscore",
+        owner: "@test",
+        username: "test",
         skill: "test-skill",
         version: "2.0.1",
         digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -156,15 +154,15 @@ test("prefers bare skill ids for personal installs when requested", async () => 
     }),
     baseDependencies({
       resolveVersion: async () => ({
-        owner: "@stefdevscore",
-        username: "stefdevscore",
+        owner: "@test",
+        username: "test",
         skill: "test-skill",
         spec: "latest",
         version: "1.2.3",
       }),
       getArtifactDescriptor: async () => ({
-        owner: "@stefdevscore",
-        username: "stefdevscore",
+        owner: "@test",
+        username: "test",
         skill: "test-skill",
         version: "1.2.3",
         digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
@@ -188,6 +186,7 @@ test("keeps scoped org skill ids when install request is scoped", async () => {
   const workflow = await installFromRegistry(
     baseInput({
       username: "core",
+      preferBareSkillId: false,
       sourceCommandFactory: ({ canonicalSkillId }) => `skillmd use ${canonicalSkillId}`,
     }),
     baseDependencies({
@@ -239,8 +238,8 @@ test("retries descriptor fetch with read token after auth failure", async () => 
           });
         }
         return {
-          owner: "@stefdevscore",
-          username: "stefdevscore",
+          owner: "@test",
+          username: "test",
           skill: "test-skill",
           version: "1.2.3",
           digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
