@@ -5,9 +5,11 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { loadInternalScriptEnv } from "./internal-env.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cliPath = join(repoRoot, "dist", "cli.js");
+const scriptEnv = loadInternalScriptEnv();
 
 function parseArgs(argv) {
   const parsed = {
@@ -83,6 +85,7 @@ function printUsage(code) {
       "Usage: node scripts/publish-private-search-seed.mjs [options]",
       "",
       "Publishes a repeatable batch of private skills for cursor/pagination verification.",
+      "Loads dev credentials from process.env or ~/.skillmd/.env.",
       "Requires non-interactive CLI login env vars:",
       "  SKILLMD_LOGIN_EMAIL",
       "  SKILLMD_LOGIN_PASSWORD",
@@ -102,7 +105,7 @@ function printUsage(code) {
 function runCli(args, cwd) {
   const result = spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
-    env: process.env,
+    env: scriptEnv,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -116,9 +119,9 @@ function runCli(args, cwd) {
 }
 
 function ensureLogin() {
-  if (!process.env.SKILLMD_LOGIN_EMAIL?.trim() || !process.env.SKILLMD_LOGIN_PASSWORD?.trim()) {
+  if (!scriptEnv.SKILLMD_LOGIN_EMAIL?.trim() || !scriptEnv.SKILLMD_LOGIN_PASSWORD?.trim()) {
     throw new Error(
-      "seed requires SKILLMD_LOGIN_EMAIL and SKILLMD_LOGIN_PASSWORD for non-interactive login",
+      "seed requires SKILLMD_LOGIN_EMAIL and SKILLMD_LOGIN_PASSWORD in process.env or ~/.skillmd/.env",
     );
   }
 

@@ -32,6 +32,7 @@ Use:
 
 - `README.md` for public command/docs accuracy
 - `docs/production-ready-checklist.md` for release readiness
+- `docs/internal-env.md` for dev-only script and E2E credential conventions
 - the automated test suite as the behavior acceptance checklist
 
 Required validation before merge:

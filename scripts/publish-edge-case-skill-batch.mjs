@@ -13,10 +13,12 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadInternalScriptEnv } from "./internal-env.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workspaceRoot = resolve(repoRoot, "..");
 const cliPath = join(repoRoot, "dist", "cli.js");
+const scriptEnv = loadInternalScriptEnv();
 const templateRoot = resolve(workspaceRoot, "skillmd-cli-skill");
 const defaultCount = 48;
 const defaultVersionSet = [
@@ -397,7 +399,7 @@ function runCli(args, cwd, verbose) {
 
   const result = spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
-    env: process.env,
+    env: scriptEnv,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });

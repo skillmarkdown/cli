@@ -5,9 +5,11 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { loadInternalScriptEnv } from "./internal-env.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cliPath = join(repoRoot, "dist", "cli.js");
+const scriptEnv = loadInternalScriptEnv();
 const defaultVersions = ["0.1.0", "0.1.1", "0.2.0", "1.0.0"];
 const mitLicense = `MIT License
 
@@ -112,7 +114,7 @@ function printUsage(code) {
 function runCli(args, cwd) {
   const result = spawnSync(process.execPath, [cliPath, ...args], {
     cwd,
-    env: process.env,
+    env: scriptEnv,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });

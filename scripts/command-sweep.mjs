@@ -7,6 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { pickFirstNonEmpty, sanitizeStepForOutput } from "./command-sweep-utils.mjs";
 import { getMatrixCommands } from "./command-matrix.mjs";
+import { loadInternalScriptEnv } from "./internal-env.mjs";
 
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI_PATH = join(ROOT_DIR, "dist", "cli.js");
@@ -24,7 +25,8 @@ const ENV_PROFILES = {
 
 const PROD_DEFAULT_API_KEY = "AIzaSyAkaZRmpCvZasFjeRAfW_b0V0nUcGOTjok";
 const RUN_ID = `${Date.now()}`;
-const PRIVATE_CURSOR_QUERY = process.env.SKILLMD_E2E_PRIVATE_CURSOR_QUERY || "cursorseed";
+const INTERNAL_ENV = loadInternalScriptEnv();
+const PRIVATE_CURSOR_QUERY = INTERNAL_ENV.SKILLMD_E2E_PRIVATE_CURSOR_QUERY || "cursorseed";
 const MATRIX_COMMANDS = getMatrixCommands();
 
 function parseOwnedSkillId(skillId) {
@@ -173,22 +175,22 @@ function createProfileEnv(profileName) {
   }
 
   const env = {
-    ...process.env,
+    ...INTERNAL_ENV,
     SKILLMD_FIREBASE_PROJECT_ID: profile.firebaseProjectId,
     SKILLMD_REGISTRY_BASE_URL: profile.registryBaseUrl,
   };
 
   if (profileName === "dev") {
     const devKey = pickFirstNonEmpty(
-      process.env.SKILLMD_DEV_FIREBASE_API_KEY,
-      process.env.SKILLMD_FIREBASE_API_KEY,
+      INTERNAL_ENV.SKILLMD_DEV_FIREBASE_API_KEY,
+      INTERNAL_ENV.SKILLMD_FIREBASE_API_KEY,
     );
     if (devKey) {
       env.SKILLMD_FIREBASE_API_KEY = devKey;
     }
   } else {
     const prodKey = pickFirstNonEmpty(
-      process.env.SKILLMD_PROD_FIREBASE_API_KEY,
+      INTERNAL_ENV.SKILLMD_PROD_FIREBASE_API_KEY,
       PROD_DEFAULT_API_KEY,
     );
     env.SKILLMD_FIREBASE_API_KEY = prodKey;
