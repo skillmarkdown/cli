@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { runInitCommand } from "./commands/init";
+import { runCreateCommand } from "./commands/create";
 import { runInstallCommand } from "./commands/install";
 import { runListCommand } from "./commands/list";
 import { runRemoveCommand } from "./commands/remove";
@@ -26,6 +27,7 @@ type CommandHandler = (args: string[]) => number | Promise<number>;
 
 const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   init: runInitCommand,
+  create: runCreateCommand,
   install: runInstallCommand,
   list: runListCommand,
   remove: runRemoveCommand,

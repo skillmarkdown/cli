@@ -27,10 +27,13 @@ npx skillmarkdown <command>
 ## Quickstart
 
 ```bash
-# Create a skill
+# Initialize the current directory as a skill
 mkdir my-skill && cd my-skill
 skillmd init --template minimal
 skillmd validate --strict
+
+# Or create a new skill directory in one step
+skillmd create another-skill --template minimal
 
 # Sign in and publish it
 skillmd login
@@ -116,7 +119,7 @@ SKILLMD_AUTH_TOKEN=skmd_dev_tok_... skillmd publish --owner acme --version 1.2.3
 
 ## Commands
 
-- Create and check: `init`, `validate`
+- Create and check: `init`, `create`, `validate`
 - Publish and release: `publish`, `tag`, `deprecate`, `unpublish`
 - Find and inspect: `search`, `view`, `history`
 - Install and maintain: `use`, `install`, `list`, `remove`, `update`
