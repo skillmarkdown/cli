@@ -65,6 +65,7 @@ Checklist:
 - [ ] `init` output remains deterministic.
 - [ ] `create` output remains deterministic and writes to a new target directory only.
 - [ ] `validate` stays offline and spec-aligned.
+- [ ] Publishability checks reject disallowed binary media files while still allowing text-first assets and `svg`.
 - [ ] Publish, install, update, and remove flows work end to end.
 - [ ] Search, view, history, and tag commands behave consistently.
 - [ ] JSON output remains machine-friendly for automation.

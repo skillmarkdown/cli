@@ -1,5 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const { requireDist } = require("../helpers/dist-imports.js");
 const {
@@ -129,6 +131,37 @@ license: Optional. Add a license name or reference to a bundled license file.
 test("accepts BOM-prefixed SKILL.md frontmatter", () => {
   expectValidation("validator-bom", (content) => `\uFEFF${content}`, "passed", null, {
     strict: true,
+  });
+});
+
+test("fails strict validation when skill contains disallowed raster media", () => {
+  withVerboseSkill("validator-disallowed-png", ({ dir }) => {
+    fs.writeFileSync(path.join(dir, "assets", "logo.png"), "not-a-real-png", "utf8");
+
+    const result = validateSkill(dir, { strict: true });
+    assert.equal(result.status, "failed");
+    assert.match(result.message, /must not contain binary media files/);
+    assert.match(result.message, /assets\/logo\.png/);
+  });
+});
+
+test("fails strict validation when skill contains disallowed video with uppercase extension", () => {
+  withVerboseSkill("validator-disallowed-video", ({ dir }) => {
+    fs.writeFileSync(path.join(dir, "references", "DEMO.MP4"), "not-a-real-mp4", "utf8");
+
+    const result = validateSkill(dir, { strict: true });
+    assert.equal(result.status, "failed");
+    assert.match(result.message, /references\/DEMO\.MP4/);
+  });
+});
+
+test("allows svg assets during strict validation", () => {
+  withVerboseSkill("validator-svg-allowed", ({ dir }) => {
+    fs.writeFileSync(path.join(dir, "assets", "diagram.svg"), "<svg></svg>", "utf8");
+    fs.writeFileSync(path.join(dir, "assets", "table.json"), '{"ok":true}', "utf8");
+
+    const result = validateSkill(dir, { strict: true });
+    assert.equal(result.status, "passed");
   });
 });
 

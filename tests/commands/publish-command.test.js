@@ -511,6 +511,64 @@ test("fails when manifest exceeds configured max size", async () => {
   assert.match(errors.join("\n"), /manifest exceeds max size/i);
 });
 
+test("fails before upload when artifact contains disallowed binary media", async () => {
+  let prepareCalled = false;
+  const options = baseOptions({
+    packArtifact: () => ({
+      ...packedArtifact(),
+      files: [{ path: "assets/logo.png", sizeBytes: 12, sha256: "abc" }],
+    }),
+    preparePublish: async () => {
+      prepareCalled = true;
+      return {
+        status: "upload_required",
+        publishToken: "pub-token",
+        uploadUrl: "https://upload.example.com/object",
+      };
+    },
+  });
+
+  const { result, errors } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0"], options),
+  );
+
+  assert.equal(result, 1);
+  assert.equal(prepareCalled, false);
+  assert.match(errors.join("\n"), /must not contain binary media files/);
+  assert.match(errors.join("\n"), /assets\/logo\.png/);
+});
+
+test("publish --json returns structured validation error for disallowed binary media", async () => {
+  let prepareCalled = false;
+  const options = baseOptions({
+    packArtifact: () => ({
+      ...packedArtifact(),
+      files: [{ path: "references/IMAGE.JPG", sizeBytes: 12, sha256: "abc" }],
+    }),
+    preparePublish: async () => {
+      prepareCalled = true;
+      return {
+        status: "upload_required",
+        publishToken: "pub-token",
+        uploadUrl: "https://upload.example.com/object",
+      };
+    },
+  });
+
+  const { result, logs, errors } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0", "--json"], options),
+  );
+
+  assert.equal(result, 1);
+  assert.equal(prepareCalled, false);
+  assert.equal(errors.length, 0);
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.ok, false);
+  assert.equal(payload.error.type, "validation");
+  assert.match(payload.error.message, /references\/IMAGE\.JPG/);
+  assert.match(payload.error.hint, /Use text, markdown, csv, json, or svg assets instead/);
+});
+
 test("publish --json returns structured auth error for project mismatch", async () => {
   const options = baseOptions({
     readSession: () => ({

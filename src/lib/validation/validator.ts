@@ -7,6 +7,11 @@ import {
   STRICT_REQUIRED_FILES,
   STRICT_SECTION_HEADINGS,
 } from "../scaffold/skill-spec";
+import {
+  findDisallowedPublishMediaFiles,
+  formatDisallowedPublishMediaMessage,
+  listPublishableSkillFiles,
+} from "../publish/file-policy";
 
 export type ValidationStatus = "passed" | "failed";
 
@@ -146,7 +151,15 @@ function collectStrictScaffoldErrors(targetDir: string): string[] {
     (section) => !hasHeadingOutsideFencedCode(skillContent, section),
   ).map((section) => `SKILL.md is missing strict section: ${section}`);
 
-  return [...missingStrictFiles, ...missingStrictSections];
+  const disallowedMediaFiles = findDisallowedPublishMediaFiles(
+    listPublishableSkillFiles(targetDir),
+  );
+  const disallowedMediaErrors =
+    disallowedMediaFiles.length > 0
+      ? [formatDisallowedPublishMediaMessage(disallowedMediaFiles)]
+      : [];
+
+  return [...missingStrictFiles, ...missingStrictSections, ...disallowedMediaErrors];
 }
 
 function hasHeadingOutsideFencedCode(content: string, heading: string): boolean {

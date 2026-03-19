@@ -146,6 +146,7 @@ skillmd use @acme/internal-skill
 - If `publish`, `install`, `search`, or `view` says you are not logged in, run `skillmd login`.
 - If `publish` or `use` is blocked by plan or account access, visit [skillmarkdown.com](https://www.skillmarkdown.com).
 - If a new skill fails validation, run `skillmd validate --strict` in the skill directory and fix the reported issues before publishing.
+- Published skills should stay text-first and reviewable. Do not include binary media files like `png`, `jpg`, `gif`, `mp3`, or `mp4`; use text, markdown, csv, json, or `svg` assets instead.
 - If you want to start a new skill in the current directory, use `skillmd init`. If you want the CLI to create the directory for you, use `skillmd create <target>`.
 
 ## Support

@@ -1,36 +1,15 @@
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, posix, relative } from "node:path";
+import { readFileSync, statSync } from "node:fs";
+import { join, posix } from "node:path";
 
 import { PUBLISH_MEDIA_TYPE, type PackedArtifact, type PackedFileEntry } from "./types";
+import { listPublishableSkillFiles } from "./file-policy";
 
 const BLOCK_SIZE = 512;
 const GZIP_OS_BYTE_OFFSET = 9;
 const GZIP_HEADER_MIN_BYTES = 10;
 const GZIP_OS_UNKNOWN = 255;
-
-const IGNORED_DIRECTORY_NAMES = new Set([
-  ".agent",
-  ".agents",
-  ".openai",
-  ".claude",
-  ".gemini",
-  ".meta",
-  ".mistral",
-  ".deepseek",
-  ".perplexity",
-  ".git",
-  "node_modules",
-  ".skillmd",
-]);
-const IGNORED_FILE_NAMES = new Set([".DS_Store"]);
-const SENSITIVE_FILE_PATTERNS = [
-  /^\.env(?:\..*)?$/iu,
-  /^\.npmrc$/iu,
-  /^id_(?:rsa|dsa|ecdsa|ed25519)(?:\.pub)?$/iu,
-  /\.(?:pem|key|p12|pfx)$/iu,
-];
 
 function sha256Hex(value: Buffer): string {
   return createHash("sha256").update(value).digest("hex");
@@ -43,60 +22,6 @@ function pad(value: Buffer): Buffer {
   }
 
   return Buffer.concat([value, Buffer.alloc(BLOCK_SIZE - remainder)]);
-}
-
-function toPosixPath(path: string): string {
-  return path.split("\\").join("/");
-}
-
-function shouldSkipDirectory(name: string): boolean {
-  return IGNORED_DIRECTORY_NAMES.has(name);
-}
-
-function shouldSkipFile(name: string): boolean {
-  if (IGNORED_FILE_NAMES.has(name)) {
-    return true;
-  }
-
-  return SENSITIVE_FILE_PATTERNS.some((pattern) => pattern.test(name));
-}
-
-function collectFiles(targetDir: string, cursorDir: string, files: string[]): void {
-  const entries = readdirSync(cursorDir, { withFileTypes: true }).sort((left, right) =>
-    left.name.localeCompare(right.name),
-  );
-
-  for (const entry of entries) {
-    const absolutePath = join(cursorDir, entry.name);
-
-    if (entry.isDirectory()) {
-      if (shouldSkipDirectory(entry.name)) {
-        continue;
-      }
-
-      collectFiles(targetDir, absolutePath, files);
-      continue;
-    }
-
-    if (!entry.isFile() || shouldSkipFile(entry.name)) {
-      continue;
-    }
-
-    const relativePath = toPosixPath(relative(targetDir, absolutePath));
-    files.push(relativePath);
-  }
-}
-
-function comparePathLexicographically(left: string, right: string): number {
-  if (left < right) {
-    return -1;
-  }
-
-  if (left > right) {
-    return 1;
-  }
-
-  return 0;
 }
 
 function normalizeGzipHeader(gzipBuffer: Buffer): void {
@@ -208,10 +133,7 @@ function buildCanonicalTar(
 }
 
 export function packSkillArtifact(targetDir: string): PackedArtifact {
-  const files: string[] = [];
-  collectFiles(targetDir, targetDir, files);
-  files.sort(comparePathLexicographically);
-
+  const files = listPublishableSkillFiles(targetDir);
   const { tar, entries } = buildCanonicalTar(targetDir, files);
   const tarGz = gzipSync(tar, { level: 9, mtime: 0 } as { level: number; mtime: number });
   normalizeGzipHeader(tarGz);

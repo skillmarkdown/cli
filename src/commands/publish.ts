@@ -11,6 +11,10 @@ import { isPublishApiError } from "../lib/publish/errors";
 import { parsePublishFlags } from "../lib/publish/flags";
 import { buildPublishManifest } from "../lib/publish/manifest";
 import { packSkillArtifact } from "../lib/publish/pack";
+import {
+  findDisallowedPublishMediaFiles,
+  formatDisallowedPublishMediaMessage,
+} from "../lib/publish/file-policy";
 import { commitPublish, preparePublish, uploadArtifact } from "../lib/publish/client";
 import {
   type CommitPublishResponse,
@@ -226,6 +230,21 @@ export async function runPublishCommand(
 
     const packArtifactFn = options.packArtifact ?? packSkillArtifact;
     const artifact = packArtifactFn(targetDir);
+    const disallowedMediaFiles = findDisallowedPublishMediaFiles(
+      (artifact.files ?? []).map((entry) => entry.path),
+    );
+
+    if (disallowedMediaFiles.length > 0) {
+      const message = formatDisallowedPublishMediaMessage(disallowedMediaFiles);
+      if (parsed.json) {
+        printJsonError("validation", message, {
+          hint: "Remove binary media files from the skill package. Use text, markdown, csv, json, or svg assets instead.",
+        });
+        return 1;
+      }
+      console.error(`skillmd publish: ${message}`);
+      return 1;
+    }
 
     if (artifact.sizeBytes > MAX_PUBLISH_ARTIFACT_SIZE_BYTES) {
       if (parsed.json) {
