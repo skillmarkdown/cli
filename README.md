@@ -141,42 +141,18 @@ skillmd use @acme/internal-skill
 - Use `skillmd token` to create personal access tokens for scripts and automation.
 - Use `skillmd org tokens` when automation should act as an organization instead of an individual account.
 
+## Troubleshooting
+
+- If `publish`, `install`, `search`, or `view` says you are not logged in, run `skillmd login`.
+- If `publish` or `use` is blocked by plan or account access, visit [skillmarkdown.com](https://www.skillmarkdown.com).
+- If a new skill fails validation, run `skillmd validate --strict` in the skill directory and fix the reported issues before publishing.
+- If you want to start a new skill in the current directory, use `skillmd init`. If you want the CLI to create the directory for you, use `skillmd create <target>`.
+
 ## Support
 
 - Security policy: [SECURITY.md](SECURITY.md)
+- Website: [skillmarkdown.com](https://www.skillmarkdown.com)
 - Issues: [GitHub Issues](https://github.com/skillmarkdown/cli/issues)
-
-## Release Validation
-
-Required validation before merge:
-
-```bash
-npm run ci:check
-npm run build
-```
-
-Packaging smoke checks:
-
-```bash
-npm run smoke:pack
-npm run smoke:link
-```
-
-Release-gate E2E commands:
-
-```bash
-npm run e2e:contract
-npm run e2e:core
-npm run e2e:extended
-npm run e2e:release
-```
-
-Exploratory sweeps:
-
-```bash
-npm run sweep:commands:dev
-npm run sweep:commands:dev:extended
-```
 
 ## License
 
