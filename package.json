@@ -35,6 +35,7 @@
     "e2e:extended": "npm run build && node scripts/command-sweep.mjs --env dev --tier extended --strict",
     "e2e:release": "npm run e2e:contract && npm run e2e:core && npm run e2e:extended",
     "seed:providers:dev": "node scripts/publish-provider-batch.mjs",
+    "seed:private-search:dev": "node scripts/publish-private-search-seed.mjs",
     "seed:test-skill:dev": "node scripts/publish-test-skill-sequence.mjs",
     "sweep:commands:dev": "npm run build && node scripts/command-sweep.mjs --env dev --tier core --allow-auth-blocked",
     "sweep:commands:dev:extended": "npm run build && node scripts/command-sweep.mjs --env dev --tier all --allow-auth-blocked",

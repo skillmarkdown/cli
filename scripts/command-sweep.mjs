@@ -24,6 +24,7 @@ const ENV_PROFILES = {
 
 const PROD_DEFAULT_API_KEY = "AIzaSyAkaZRmpCvZasFjeRAfW_b0V0nUcGOTjok";
 const RUN_ID = `${Date.now()}`;
+const PRIVATE_CURSOR_QUERY = process.env.SKILLMD_E2E_PRIVATE_CURSOR_QUERY || "cursorseed";
 const MATRIX_COMMANDS = getMatrixCommands();
 
 function parseOwnedSkillId(skillId) {
@@ -533,6 +534,8 @@ function makeCoreContext(workspace) {
     globalInstalledPath: null,
     globalManifestInstallPath: null,
     proOwnedSkillId: null,
+    privateCursorQuery: PRIVATE_CURSOR_QUERY,
+    privateCursorNext: null,
   };
 }
 
@@ -637,6 +640,39 @@ function validatePrivateSearchContains(skillId) {
       payload.results.some((item) => item && item.skillId === skillId),
       `private search results did not include ${skillId}`,
     );
+  };
+}
+
+function validatePrivateSearchPage(ctx, options = {}) {
+  const { expectQuery, expectedLimit, requireNextCursor = false } = options;
+  return (raw) => {
+    const payload = parseJsonPayload(raw.stdout);
+    assert(payload && Array.isArray(payload.results), "private search did not return results");
+    if (typeof expectQuery === "string") {
+      assert(
+        payload.query === expectQuery,
+        `private search query mismatch: expected ${expectQuery}`,
+      );
+    }
+    if (typeof expectedLimit === "number") {
+      assert(
+        payload.limit === expectedLimit,
+        `private search limit mismatch: expected ${expectedLimit}`,
+      );
+    }
+    assert(payload.results.length > 0, "private search returned no results");
+    if (requireNextCursor) {
+      assert(
+        typeof payload.nextCursor === "string" && payload.nextCursor.length > 0,
+        "expected nextCursor",
+      );
+    } else {
+      assert(
+        payload.nextCursor === null || typeof payload.nextCursor === "string",
+        "private search nextCursor shape invalid",
+      );
+    }
+    ctx.privateCursorNext = payload.nextCursor ?? null;
   };
 }
 
@@ -1144,36 +1180,6 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     validate: validatePrivateSearchContract,
     coverageKind: "live-auth",
   });
-  let privateNextCursor = null;
-  const privateSearchStep = state.steps[state.steps.length - 1];
-  if (privateSearchStep.status === "pass" && privateSearchStep.exitCode === 0) {
-    privateNextCursor = parseJsonPayload(privateSearchStep.stdout)?.nextCursor ?? null;
-  }
-  runScenarioStep(state, {
-    name: "search-private-cursor",
-    args: [
-      "search",
-      ownedSkill.skillSlug,
-      "--scope",
-      "private",
-      "--limit",
-      "1",
-      "--cursor",
-      privateNextCursor ?? "missing-cursor",
-      "--json",
-    ],
-    cwd: ROOT_DIR,
-    env: stepEnv,
-    strict,
-    allowAuthBlocked,
-    validate: validateSearchSuccess({
-      expectQuery: ownedSkill.skillSlug,
-      expectedLimit: 1,
-    }),
-    coverageKind: "live-auth",
-    required: false,
-    skipReason: privateNextCursor ? null : "private search did not return nextCursor",
-  });
   const anonymousSearchEnv = {
     ...env,
     HOME: ctx.anonymousHomeDir,
@@ -1257,6 +1263,45 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
       assert(ctx.proOwnedSkillId, "pro private publish did not return skill id");
       validatePrivateSearchContains(ctx.proOwnedSkillId)(raw);
     },
+    coverageKind: "live-auth",
+    skipReason: proAuthSkipReason,
+  });
+  runScenarioStep(state, {
+    name: "search-private-pro-limit",
+    args: ["search", ctx.privateCursorQuery, "--scope", "private", "--limit", "5", "--json"],
+    cwd: ROOT_DIR,
+    env: proStepEnv,
+    strict,
+    allowAuthBlocked,
+    validate: validatePrivateSearchPage(ctx, {
+      expectQuery: ctx.privateCursorQuery,
+      expectedLimit: 5,
+      requireNextCursor: true,
+    }),
+    coverageKind: "live-auth",
+    skipReason: proAuthSkipReason,
+  });
+  runScenarioStep(state, {
+    name: "search-private-pro-cursor",
+    args: [
+      "search",
+      ctx.privateCursorQuery,
+      "--scope",
+      "private",
+      "--limit",
+      "5",
+      "--cursor",
+      ctx.privateCursorNext ?? "missing-cursor",
+      "--json",
+    ],
+    cwd: ROOT_DIR,
+    env: proStepEnv,
+    strict,
+    allowAuthBlocked,
+    validate: validatePrivateSearchPage(ctx, {
+      expectQuery: ctx.privateCursorQuery,
+      expectedLimit: 5,
+    }),
     coverageKind: "live-auth",
     skipReason: proAuthSkipReason,
   });
