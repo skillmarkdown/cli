@@ -200,6 +200,18 @@ function hasLoginCredentials(env) {
   return Boolean(env.SKILLMD_LOGIN_EMAIL?.trim() && env.SKILLMD_LOGIN_PASSWORD?.trim());
 }
 
+function hasProLoginCredentials(env) {
+  return Boolean(env.SKILLMD_PRO_LOGIN_EMAIL?.trim() && env.SKILLMD_PRO_LOGIN_PASSWORD?.trim());
+}
+
+function withProLoginCredentials(env) {
+  return {
+    ...env,
+    SKILLMD_LOGIN_EMAIL: env.SKILLMD_PRO_LOGIN_EMAIL,
+    SKILLMD_LOGIN_PASSWORD: env.SKILLMD_PRO_LOGIN_PASSWORD,
+  };
+}
+
 function hasOrgFixtures(env) {
   return Boolean(env.SKILLMD_E2E_ORG_SLUG?.trim());
 }
@@ -439,6 +451,8 @@ function preflightOrThrow({ profileName, strict, tier, env }) {
     "SKILLMD_FIREBASE_API_KEY",
     "SKILLMD_LOGIN_EMAIL",
     "SKILLMD_LOGIN_PASSWORD",
+    "SKILLMD_PRO_LOGIN_EMAIL",
+    "SKILLMD_PRO_LOGIN_PASSWORD",
     "SKILLMD_E2E_ORG_SLUG",
   ];
   const missingCore = requiredCoreEnv.filter((key) => !env[key]?.trim());
@@ -482,31 +496,43 @@ function makeCoreContext(workspace) {
   const isolatedHomeDir = join(workspace, "isolated-home");
   const anonymousHomeDir = join(workspace, "anonymous-home");
   const globalHomeDir = join(workspace, "global-home");
+  const proHomeDir = join(workspace, "pro-home");
   const initDir = join(workspace, "init-verbose");
   const publishDir = join(workspace, `publish-skill-${RUN_ID}`);
+  const freePrivatePublishDir = join(workspace, `free-private-skill-${RUN_ID}`);
+  const proPrivatePublishDir = join(workspace, `pro-private-skill-${RUN_ID}`);
   const workDir = join(workspace, "work");
   const globalWorkDir = join(workspace, "global-work");
   mkdirSync(isolatedHomeDir, { recursive: true });
   mkdirSync(anonymousHomeDir, { recursive: true });
   mkdirSync(globalHomeDir, { recursive: true });
+  mkdirSync(proHomeDir, { recursive: true });
   mkdirSync(initDir, { recursive: true });
   mkdirSync(publishDir, { recursive: true });
+  mkdirSync(freePrivatePublishDir, { recursive: true });
+  mkdirSync(proPrivatePublishDir, { recursive: true });
   mkdirSync(workDir, { recursive: true });
   mkdirSync(globalWorkDir, { recursive: true });
   return {
     isolatedHomeDir,
     anonymousHomeDir,
     globalHomeDir,
+    proHomeDir,
     initDir,
     publishDir,
+    freePrivatePublishDir,
+    proPrivatePublishDir,
     workDir,
     globalWorkDir,
     ownedSkillId: null,
     ownedVersion: "1.0.0",
+    freePrivateVersion: "1.0.0",
+    proPrivateVersion: "1.0.0",
     installedPath: null,
     manifestInstallPath: null,
     globalInstalledPath: null,
     globalManifestInstallPath: null,
+    proOwnedSkillId: null,
   };
 }
 
@@ -514,6 +540,15 @@ function validateWhoami(raw) {
   const payload = parseJsonPayload(raw.stdout);
   assert(payload && typeof payload.owner === "string", "whoami did not return owner");
   assert(typeof payload.username === "string", "whoami did not return username");
+}
+
+function validateWhoamiPlan(expectedPlan) {
+  return (raw) => {
+    const payload = parseJsonPayload(raw.stdout);
+    assert(payload && typeof payload.owner === "string", "whoami did not return owner");
+    assert(typeof payload.username === "string", "whoami did not return username");
+    assert(payload.plan === expectedPlan, `expected whoami plan ${expectedPlan}`);
+  };
 }
 
 function validatePublishReal(ctx) {
@@ -534,6 +569,27 @@ function validateSearch(ctx) {
       payload.results.some((item) => item && item.skillId === ctx.ownedSkillId),
       `search results did not include ${ctx.ownedSkillId}`,
     );
+  };
+}
+
+function validatePublishPlanDenied(raw) {
+  assert(raw.exitCode !== 0, "private publish should fail for free plan");
+  assert(
+    /private publish is not allowed|private skills require a Pro plan/i.test(raw.combined),
+    "expected private publish plan-denial contract",
+  );
+}
+
+function validatePrivatePublishReal(ctx) {
+  return (raw) => {
+    const payload = parseJsonPayload(raw.stdout);
+    assert(
+      payload && typeof payload.skillId === "string",
+      "private publish did not return skillId",
+    );
+    assert(typeof payload.version === "string", "private publish did not return version");
+    ctx.proOwnedSkillId = payload.skillId;
+    ctx.proPrivateVersion = payload.version;
   };
 }
 
@@ -571,6 +627,17 @@ function validatePrivateSearchContract(raw) {
     /private search is not allowed|private skills require a Pro plan/i.test(raw.combined),
     "expected private search denial contract",
   );
+}
+
+function validatePrivateSearchContains(skillId) {
+  return (raw) => {
+    const payload = parseJsonPayload(raw.stdout);
+    assert(payload && Array.isArray(payload.results), "private search did not return results");
+    assert(
+      payload.results.some((item) => item && item.skillId === skillId),
+      `private search results did not include ${skillId}`,
+    );
+  };
 }
 
 function validateSearchEmpty(raw) {
@@ -852,9 +919,14 @@ function validateHistoryEmpty(raw) {
 function runCoreTier({ state, env, strict, allowAuthBlocked }) {
   const ctx = makeCoreContext(state.workspace);
   const stepEnv = { ...env, HOME: ctx.isolatedHomeDir };
+  const proStepEnv = withProLoginCredentials({ ...env, HOME: ctx.proHomeDir });
   const authSkipReason =
     !strict && !hasLoginCredentials(stepEnv)
       ? "missing non-interactive login credentials for live auth sweep"
+      : null;
+  const proAuthSkipReason =
+    !strict && !hasProLoginCredentials(env)
+      ? "missing non-interactive pro credentials for live auth sweep"
       : null;
   const orgSkipReason =
     !strict && !hasOrgFixtures(stepEnv) ? "missing org fixture slug for live org sweep" : null;
@@ -952,6 +1024,23 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     allowAuthBlocked,
   });
   runScenarioStep(state, {
+    name: "init-free-private-publish",
+    args: ["init", "--template", "verbose"],
+    cwd: ctx.freePrivatePublishDir,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+  });
+  runScenarioStep(state, {
+    name: "init-pro-private-publish",
+    args: ["init", "--template", "verbose"],
+    cwd: ctx.proPrivatePublishDir,
+    env: proStepEnv,
+    strict,
+    allowAuthBlocked,
+    skipReason: proAuthSkipReason,
+  });
+  runScenarioStep(state, {
     name: "publish-dry-run",
     args: [
       "publish",
@@ -992,6 +1081,30 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     strict,
     allowAuthBlocked,
     validate: validatePublishReal(ctx),
+    coverageKind: "live-auth",
+    skipReason: authSkipReason,
+  });
+  runScenarioStep(state, {
+    name: "publish-private-denied-free",
+    args: [
+      "publish",
+      ctx.freePrivatePublishDir,
+      "--version",
+      ctx.freePrivateVersion,
+      "--tag",
+      "latest",
+      "--access",
+      "private",
+      "--agent-target",
+      "skillmd",
+      "--json",
+    ],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    kind: "expected_error",
+    validate: validatePublishPlanDenied,
     coverageKind: "live-auth",
     skipReason: authSkipReason,
   });
@@ -1076,6 +1189,76 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     validate: validateSearchDenied,
     kind: "expected_error",
     coverageKind: "live-auth",
+  });
+  runScenarioStep(state, {
+    name: "pro-login",
+    args: ["login", "--reauth"],
+    cwd: ROOT_DIR,
+    env: proStepEnv,
+    strict,
+    allowAuthBlocked,
+    expectedPattern: /Login successful/i,
+    coverageKind: "live-auth",
+    skipReason: proAuthSkipReason,
+  });
+  runScenarioStep(state, {
+    name: "pro-login-status",
+    args: ["login", "--status"],
+    cwd: ROOT_DIR,
+    env: proStepEnv,
+    strict,
+    allowAuthBlocked,
+    expectedPattern: /(logged in|project:)/i,
+    coverageKind: "live-auth",
+    skipReason: proAuthSkipReason,
+  });
+  runScenarioStep(state, {
+    name: "pro-whoami",
+    args: ["whoami", "--json"],
+    cwd: ROOT_DIR,
+    env: proStepEnv,
+    strict,
+    allowAuthBlocked,
+    validate: validateWhoamiPlan("pro"),
+    coverageKind: "live-auth",
+    skipReason: proAuthSkipReason,
+  });
+  runScenarioStep(state, {
+    name: "publish-private-pro",
+    args: [
+      "publish",
+      ctx.proPrivatePublishDir,
+      "--version",
+      ctx.proPrivateVersion,
+      "--tag",
+      "latest",
+      "--access",
+      "private",
+      "--agent-target",
+      "skillmd",
+      "--json",
+    ],
+    cwd: ROOT_DIR,
+    env: proStepEnv,
+    strict,
+    allowAuthBlocked,
+    validate: validatePrivatePublishReal(ctx),
+    coverageKind: "live-auth",
+    skipReason: proAuthSkipReason,
+  });
+  runScenarioStep(state, {
+    name: "search-private-pro",
+    args: ["search", `pro-private-skill-${RUN_ID}`, "--scope", "private", "--limit", "5", "--json"],
+    cwd: ROOT_DIR,
+    env: proStepEnv,
+    strict,
+    allowAuthBlocked,
+    validate: (raw) => {
+      assert(ctx.proOwnedSkillId, "pro private publish did not return skill id");
+      validatePrivateSearchContains(ctx.proOwnedSkillId)(raw);
+    },
+    coverageKind: "live-auth",
+    skipReason: proAuthSkipReason,
   });
   runScenarioStep(state, {
     name: "view-skill",
