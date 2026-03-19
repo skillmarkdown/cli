@@ -60,6 +60,17 @@ This script uses:
 - backend admin helpers in `/Users/azk/Desktop/workspace/skillmarkdown/functions/functions/scripts`
 - an isolated temporary `HOME` during login/org verification so local sessions are not overwritten
 
+## Extended Sweep Note
+
+`npm run e2e:extended` now reuses `npm run fixtures:dev:ensure` automatically for the shared base fixtures.
+
+Extended strict coverage still needs two additional env-backed fixtures that are not created by the core bootstrap:
+
+- `SKILLMD_E2E_ORG_MEMBER_USERNAME`
+- `SKILLMD_E2E_ORG_SKILL_SLUG`
+
+Those are specific to the extended org membership/team-assignment scenarios and still need to point at a real dev user and a real org-owned skill under `SKILLMD_E2E_ORG_SLUG`.
+
 ## Recommended `~/.skillmd/.env`
 
 ```dotenv
