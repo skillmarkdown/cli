@@ -35,6 +35,15 @@ export async function executeLoginFlow(
   const existingSession = dependencies.readSession();
 
   if (existingSession && !reauth) {
+    const project = formatSessionProject(existingSession, config.firebaseProjectId);
+    if (project.mismatch) {
+      console.error(
+        `skillmd login: session project '${existingSession.projectId}' does not match current config ` +
+          `'${config.firebaseProjectId}'. Run 'skillmd login --reauth' to switch projects.`,
+      );
+      return { exitCode: 1, performedLogin: false };
+    }
+
     try {
       const validation = await dependencies.verifyRefreshToken(
         config.firebaseApiKey,
@@ -42,7 +51,6 @@ export async function executeLoginFlow(
       );
 
       if (validation.valid) {
-        const project = formatSessionProject(existingSession, config.firebaseProjectId);
         if (existingSession.email) {
           console.log(
             `Already logged in as ${existingSession.email} (project: ${project.label}). ` +
@@ -52,13 +60,6 @@ export async function executeLoginFlow(
           console.log(
             `Already logged in (uid: ${existingSession.uid}, project: ${project.label}). ` +
               "Run 'skillmd logout' first.",
-          );
-        }
-
-        if (project.mismatch) {
-          console.log(
-            `Current CLI config targets project '${config.firebaseProjectId}'. ` +
-              "Run 'skillmd login --reauth' to switch projects.",
           );
         }
 

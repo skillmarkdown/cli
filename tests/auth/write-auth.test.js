@@ -45,6 +45,27 @@ test("fails when session is missing", async () => {
   assert.deepEqual(result, {
     ok: false,
     message: "skillmd tag: not logged in. Run 'skillmd login' first.",
+    reason: "not_logged_in",
+    detail: "not logged in",
+    hint: "Run 'skillmd login' first.",
+  });
+});
+
+test("fails with structured project mismatch details", async () => {
+  const result = await resolveWriteAuth({
+    command: "skillmd tag",
+    config: makeConfig(),
+    readSession: () => makeSession({ projectId: "skillmarkdown-development" }),
+  });
+
+  assert.deepEqual(result, {
+    ok: false,
+    message:
+      "skillmd tag: session project 'skillmarkdown-development' does not match current config 'skillmarkdown'. Run 'skillmd login --reauth' to switch projects.",
+    reason: "project_mismatch",
+    detail:
+      "session project 'skillmarkdown-development' does not match current config 'skillmarkdown'.",
+    hint: "Run 'skillmd login --reauth' to switch projects.",
   });
 });
 
@@ -68,6 +89,8 @@ test("fails when owner profile is missing for owner-scoped commands", async () =
     ok: false,
     message:
       "skillmd tag: account profile not found. Complete sign-up on the web before using this command.",
+    reason: "profile_missing",
+    detail: "account profile not found",
   });
 });
 

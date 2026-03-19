@@ -317,7 +317,9 @@ export async function runUpdateCommand(
         );
         const { result, lockEntry } = workflow;
         const warnings = workflow.warnings ?? [];
-        printWarnings(warnings.map((warning) => `${entry.skillId}: ${warning}`));
+        if (!parsed.json) {
+          printWarnings(warnings.map((warning) => `${entry.skillId}: ${warning}`));
+        }
 
         lock = upsertInstalledLockEntry(lock, lockEntry, now(), entry.selectorSpec);
 

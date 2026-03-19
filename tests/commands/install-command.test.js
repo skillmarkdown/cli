@@ -259,6 +259,26 @@ test("supports --global install scope and source command", async () => {
   assert.equal(savedEntry.sourceCommand, "skillmd install --global --agent-target claude");
 });
 
+test("install --json keeps warnings in payload without printing stderr warnings", async () => {
+  const { result, logs, errors } = await captureConsole(() =>
+    runInstallCommand(
+      ["--json"],
+      baseOptions({
+        installFromRegistry: async (input) => ({
+          ...(await baseOptions().installFromRegistry(input)),
+          warnings: ["using cached metadata"],
+        }),
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(errors.length, 0);
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.installed.length, 1);
+  assert.match(payload.installed[0].reason, /using cached metadata/);
+});
+
 test("passes bare-vs-scoped skill identity through install workflow inputs", async () => {
   const captured = [];
   const { result } = await captureConsole(() =>

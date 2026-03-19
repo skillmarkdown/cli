@@ -111,6 +111,24 @@ test("fails when strict validation fails", async () => {
   assert.equal(result, 1);
 });
 
+test("publish --json returns structured validation error", async () => {
+  const options = baseOptions({
+    validateSkill: () => ({ status: "failed", message: "bad skill" }),
+  });
+
+  const { result, logs, errors } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0", "--json"], options),
+  );
+
+  assert.equal(result, 1);
+  assert.equal(errors.length, 0);
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.ok, false);
+  assert.equal(payload.error.type, "validation");
+  assert.equal(payload.error.message, "bad skill");
+  assert.match(payload.error.hint, /validate --strict/);
+});
+
 test("fails when not logged in", async () => {
   const options = baseOptions({ readSession: () => null });
   const { result, errors } = await captureConsole(() =>
@@ -491,6 +509,43 @@ test("fails when manifest exceeds configured max size", async () => {
 
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /manifest exceeds max size/i);
+});
+
+test("publish --json returns structured auth error for project mismatch", async () => {
+  const options = baseOptions({
+    readSession: () => ({
+      provider: "email",
+      uid: "uid-1",
+      refreshToken: "refresh-token",
+      projectId: "skillmarkdown",
+    }),
+  });
+
+  const { result, logs, errors } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0", "--json"], options),
+  );
+
+  assert.equal(result, 1);
+  assert.equal(errors.length, 0);
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.ok, false);
+  assert.equal(payload.error.type, "auth");
+  assert.match(payload.error.message, /session project/);
+  assert.equal(payload.error.hint, "Run 'skillmd login --reauth' to switch projects.");
+});
+
+test("publish --json returns structured auth error for missing session", async () => {
+  const { result, logs, errors } = await captureConsole(() =>
+    runPublishCommand(["--version", "1.0.0", "--json"], baseOptions({ readSession: () => null })),
+  );
+
+  assert.equal(result, 1);
+  assert.equal(errors.length, 0);
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.ok, false);
+  assert.equal(payload.error.type, "auth");
+  assert.equal(payload.error.message, "not logged in");
+  assert.equal(payload.error.hint, "Run 'skillmd login' first.");
 });
 
 test("prints pro-plan hint for private publish denial", async () => {

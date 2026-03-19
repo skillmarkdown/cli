@@ -25,7 +25,12 @@ import {
 } from "../lib/publish/types";
 import { PUBLISH_USAGE } from "../lib/shared/cli-text";
 import { DEFAULT_AGENT_TARGET } from "../lib/shared/agent-target";
-import { failWithUsage, printValidationResult } from "../lib/shared/command-output";
+import {
+  failWithUsage,
+  printJsonApiError,
+  printJsonError,
+  printValidationResult,
+} from "../lib/shared/command-output";
 import { printJson } from "../lib/shared/json-output";
 import {
   extractCliApiErrorReason,
@@ -201,6 +206,12 @@ export async function runPublishCommand(
   const validateSkillFn = options.validateSkill ?? validateSkill;
   const validation = validateSkillFn(targetDir, { strict: true });
   if (validation.status !== "passed") {
+    if (parsed.json) {
+      printJsonError("validation", validation.message, {
+        hint: "Run 'skillmd validate --strict' after fixing issues.",
+      });
+      return 1;
+    }
     printValidationResult(validation);
     console.error("Run 'skillmd validate --strict' after fixing issues.");
     return 1;
@@ -217,6 +228,13 @@ export async function runPublishCommand(
     const artifact = packArtifactFn(targetDir);
 
     if (artifact.sizeBytes > MAX_PUBLISH_ARTIFACT_SIZE_BYTES) {
+      if (parsed.json) {
+        printJsonError(
+          "validation",
+          `artifact exceeds max size (${artifact.sizeBytes} bytes > ${MAX_PUBLISH_ARTIFACT_SIZE_BYTES} bytes).`,
+        );
+        return 1;
+      }
       console.error(
         `skillmd publish: artifact exceeds max size (${artifact.sizeBytes} bytes > ` +
           `${MAX_PUBLISH_ARTIFACT_SIZE_BYTES} bytes).`,
@@ -226,6 +244,13 @@ export async function runPublishCommand(
 
     const skill = basename(targetDir);
     if (skill.includes("@")) {
+      if (parsed.json) {
+        printJsonError(
+          "validation",
+          `skill name '${skill}' cannot contain '@'. The owner scope is managed by the registry, not by the directory name.`,
+        );
+        return 1;
+      }
       console.error(
         `skillmd publish: skill name '${skill}' cannot contain '@'. ` +
           "The owner scope is managed by the registry, not by the directory name.",
@@ -257,6 +282,13 @@ export async function runPublishCommand(
     };
     const manifestSizeBytes = measureManifestSizeBytes(manifest);
     if (manifestSizeBytes > MAX_PUBLISH_MANIFEST_SIZE_BYTES) {
+      if (parsed.json) {
+        printJsonError(
+          "validation",
+          `manifest exceeds max size (${manifestSizeBytes} bytes > ${MAX_PUBLISH_MANIFEST_SIZE_BYTES} bytes).`,
+        );
+        return 1;
+      }
       console.error(
         `skillmd publish: manifest exceeds max size (${manifestSizeBytes} bytes > ` +
           `${MAX_PUBLISH_MANIFEST_SIZE_BYTES} bytes).`,
@@ -291,6 +323,12 @@ export async function runPublishCommand(
       targetOwnerSlug: parsed.owner,
     });
     if (!auth.ok) {
+      if (parsed.json) {
+        printJsonError("auth", auth.detail ?? auth.message.replace(/^skillmd publish: /u, ""), {
+          hint: auth.hint,
+        });
+        return 1;
+      }
       console.error(auth.message);
       return 1;
     }
@@ -351,10 +389,30 @@ export async function runPublishCommand(
       if (error.status === 409 && error.code === "version_conflict") {
         const reason = extractCliApiErrorReason(error);
         if (reason === "owner_conflict") {
+          if (parsed.json) {
+            printJsonError("api", `skill name is not available (${basename(targetDir)}).`, {
+              code: error.code,
+              status: error.status,
+              details: error.details,
+            });
+            return 1;
+          }
           console.error(`skillmd publish: skill name is not available (${basename(targetDir)}).`);
           return 1;
         }
         const conflictId = owner ? `${owner}/${basename(targetDir)}` : basename(targetDir);
+        if (parsed.json) {
+          printJsonError(
+            "api",
+            `version conflict for ${conflictId}@${parsed.version}. Use a new version number.`,
+            {
+              code: error.code,
+              status: error.status,
+              details: error.details,
+            },
+          );
+          return 1;
+        }
         console.error(
           `skillmd publish: version conflict for ${conflictId}@${parsed.version}. ` +
             "Use a new version number.",
@@ -362,10 +420,18 @@ export async function runPublishCommand(
         return 1;
       }
 
+      if (parsed.json) {
+        printJsonApiError(error);
+        return 1;
+      }
       console.error(formatCliApiErrorWithHint("skillmd publish", error));
       return 1;
     }
     const message = error instanceof Error ? error.message : "Unknown error";
+    if (parsed.json) {
+      printJsonError("internal", message);
+      return 1;
+    }
     console.error(`skillmd publish: ${message}`);
     return 1;
   }

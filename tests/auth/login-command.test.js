@@ -138,7 +138,11 @@ test("login reads credentials from env for non-interactive automation", async ()
 test("login does not restart auth flow when already logged in", async () => {
   let prompted = false;
   const { result } = await run([], {
-    readSession: () => makeSession(),
+    readSession: () => makeSession({ projectId: "skillmarkdown-development" }),
+    env: {
+      SKILLMD_FIREBASE_API_KEY: "firebase-key",
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+    },
     promptForCredentials: async () => {
       prompted = true;
       return { email: "user@example.com", password: "password123" };
@@ -150,10 +154,45 @@ test("login does not restart auth flow when already logged in", async () => {
   assert.equal(prompted, false);
 });
 
+test("login fails with reauth guidance when session project mismatches current config", async () => {
+  let prompted = false;
+  let verifyCalls = 0;
+  const { result, logs, errors } = await run([], {
+    readSession: () => makeSession({ projectId: "skillmarkdown" }),
+    env: {
+      SKILLMD_FIREBASE_API_KEY: "firebase-key",
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+    },
+    promptForCredentials: async () => {
+      prompted = true;
+      return { email: "user@example.com", password: "password123" };
+    },
+    verifyRefreshToken: async () => {
+      verifyCalls += 1;
+      return { valid: true };
+    },
+  });
+
+  assert.equal(result, 1);
+  assert.equal(prompted, false);
+  assert.equal(verifyCalls, 0);
+  assert.equal(logs.length, 0);
+  assert.match(errors.join("\n"), /login --reauth/);
+  assert.doesNotMatch(errors.join("\n"), /Already logged in/);
+});
+
 test("login clears stale session and reauthenticates", async () => {
   let cleared = false;
   const { result } = await run([], {
-    readSession: () => makeSession({ refreshToken: "stale-refresh" }),
+    readSession: () =>
+      makeSession({
+        refreshToken: "stale-refresh",
+        projectId: "skillmarkdown-development",
+      }),
+    env: {
+      SKILLMD_FIREBASE_API_KEY: "firebase-key",
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+    },
     verifyRefreshToken: async () => ({ valid: false }),
     clearSession: () => {
       cleared = true;

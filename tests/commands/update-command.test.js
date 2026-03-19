@@ -295,6 +295,26 @@ test("continues after update failure and exits non-zero", async () => {
   assert.equal(parsed.failed.length, 1);
 });
 
+test("update --json keeps warnings in payload without printing stderr warnings", async () => {
+  const { result, logs, errors } = await captureConsole(() =>
+    runUpdateCommand(
+      ["--all", "--json"],
+      baseOptions({
+        installFromRegistry: async (input) => ({
+          ...(await baseOptions().installFromRegistry(input)),
+          warnings: ["upstream metadata changed"],
+        }),
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(errors.length, 0);
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.updated.length, 1);
+  assert.match(payload.updated[0].reason, /upstream metadata changed/);
+});
+
 test("update --global reads global lock scope and preserves global source command", async () => {
   let loadArgs;
   let saveArgs;

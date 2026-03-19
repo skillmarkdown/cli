@@ -1,4 +1,9 @@
-import { printCommandResult, printLoginRequired } from "./command-output";
+import {
+  printCommandResult,
+  printJsonApiError,
+  printJsonError,
+  printLoginRequired,
+} from "./command-output";
 import { formatCliApiErrorWithHint } from "./authz-error-hints";
 import { type CliApiError } from "./api-errors";
 
@@ -32,6 +37,12 @@ export async function executeReadCommand<TResult, TError extends CliApiError = C
   try {
     const idToken = await options.resolveIdToken();
     if (!idToken) {
+      if (options.json) {
+        printJsonError("auth", "not logged in", {
+          hint: "Run 'skillmd login' first.",
+        });
+        return 1;
+      }
       printLoginRequired(options.command);
       return 1;
     }
@@ -41,7 +52,16 @@ export async function executeReadCommand<TResult, TError extends CliApiError = C
     return 0;
   } catch (error) {
     if (options.isApiError(error)) {
+      if (options.json) {
+        printJsonApiError(error);
+        return 1;
+      }
       console.error(formatCliApiErrorWithHint(options.command, error));
+      return 1;
+    }
+    if (options.json) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      printJsonError("internal", message);
       return 1;
     }
     return printUnknownCommandError(options.command, error);
@@ -54,6 +74,14 @@ export async function executeWriteCommand<TResult, TError extends CliApiError = 
   try {
     const auth = await options.resolveAuth();
     if (!auth.ok) {
+      if (options.json) {
+        const prefix = `${options.command}: `;
+        const message = auth.message.startsWith(prefix)
+          ? auth.message.slice(prefix.length)
+          : auth.message;
+        printJsonError("auth", message);
+        return 1;
+      }
       console.error(auth.message);
       return 1;
     }
@@ -63,7 +91,16 @@ export async function executeWriteCommand<TResult, TError extends CliApiError = 
     return 0;
   } catch (error) {
     if (options.isApiError(error)) {
+      if (options.json) {
+        printJsonApiError(error);
+        return 1;
+      }
       console.error(formatCliApiErrorWithHint(options.command, error));
+      return 1;
+    }
+    if (options.json) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      printJsonError("internal", message);
       return 1;
     }
     return printUnknownCommandError(options.command, error);

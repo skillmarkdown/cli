@@ -34,7 +34,13 @@ interface ResolvedWriteAuth {
 
 type ResolveWriteAuthResult =
   | { ok: true; value: ResolvedWriteAuth }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      reason?: "not_logged_in" | "project_mismatch" | "profile_missing";
+      detail?: string;
+      hint?: string;
+    };
 
 export async function resolveWriteAuth(
   options: ResolveWriteAuthOptions,
@@ -50,15 +56,23 @@ export async function resolveWriteAuth(
     return {
       ok: false,
       message: `${options.command}: not logged in. Run 'skillmd login' first.`,
+      reason: "not_logged_in",
+      detail: "not logged in",
+      hint: "Run 'skillmd login' first.",
     };
   }
 
   if (session.projectId && session.projectId !== options.config.firebaseProjectId) {
+    const detail =
+      `session project '${session.projectId}' does not match current config ` +
+      `'${options.config.firebaseProjectId}'.`;
+    const hint = "Run 'skillmd login --reauth' to switch projects.";
     return {
       ok: false,
-      message:
-        `${options.command}: session project '${session.projectId}' does not match current config ` +
-        `'${options.config.firebaseProjectId}'. Run 'skillmd login --reauth' to switch projects.`,
+      message: `${options.command}: ${detail} ${hint}`,
+      reason: "project_mismatch",
+      detail,
+      hint,
     };
   }
 
@@ -81,6 +95,8 @@ export async function resolveWriteAuth(
       return {
         ok: false,
         message: `${options.command}: account profile not found. Complete sign-up on the web before using this command.`,
+        reason: "profile_missing",
+        detail: "account profile not found",
       };
     }
   }

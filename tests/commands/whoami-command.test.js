@@ -90,6 +90,25 @@ test("prints json payload with --json", async () => {
   assert.equal(payload.organizationTeams[0].teamSlug, "core");
 });
 
+test("prints structured json auth error with --json", async () => {
+  const { result, logs, errors } = await captureConsole(() =>
+    runWhoamiCommand(
+      ["--json"],
+      baseOptions({
+        resolveReadIdToken: async () => null,
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.equal(errors.length, 0);
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.ok, false);
+  assert.equal(payload.error.type, "auth");
+  assert.equal(payload.error.message, "not logged in");
+  assert.equal(payload.error.hint, "Run 'skillmd login' first.");
+});
+
 test("whoami preserves exact auth failure wording", async () => {
   const { result, errors } = await captureConsole(() =>
     runWhoamiCommand(
@@ -118,6 +137,33 @@ test("maps whoami API errors", async () => {
 
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /invalid token/);
+});
+
+test("prints structured json api error with --json", async () => {
+  const { result, logs, errors } = await captureConsole(() =>
+    runWhoamiCommand(
+      ["--json"],
+      baseOptions({
+        getWhoami: async () => {
+          throw new WhoamiApiError(403, "forbidden", "private access denied", {
+            reason: "forbidden_plan",
+            requestId: "req_123",
+          });
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.equal(errors.length, 0);
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.ok, false);
+  assert.equal(payload.error.type, "api");
+  assert.equal(payload.error.message, "private access denied");
+  assert.equal(payload.error.code, "forbidden");
+  assert.equal(payload.error.status, 403);
+  assert.equal(payload.error.details.reason, "forbidden_plan");
+  assert.match(payload.error.hint, /Pro plan/i);
 });
 
 test("prints free plan without entitlements in human format", async () => {

@@ -323,9 +323,11 @@ export async function runInstallCommand(
           {},
         );
 
-        printWarnings(
-          (workflow.warnings ?? []).map((warning) => `${dependency.skillId}: ${warning}`),
-        );
+        if (!parsed.json) {
+          printWarnings(
+            (workflow.warnings ?? []).map((warning) => `${dependency.skillId}: ${warning}`),
+          );
+        }
 
         const { lockEntry, result } = workflow;
         lock = upsertInstalledLockEntry(lock, lockEntry, now(), dependency.spec);

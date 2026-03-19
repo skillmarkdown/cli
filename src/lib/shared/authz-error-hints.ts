@@ -47,3 +47,7 @@ export function formatCliApiErrorWithHint(prefix: string, error: CliApiError): s
   const hint = authzHintForReason(extractCliApiErrorReason(error));
   return hint ? `${base}\n${hint}` : base;
 }
+
+export function getCliApiErrorHint(error: CliApiError): string | null {
+  return authzHintForReason(extractCliApiErrorReason(error));
+}
