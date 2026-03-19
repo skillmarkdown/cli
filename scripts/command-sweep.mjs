@@ -289,6 +289,7 @@ function classifyResult({
   raw,
   kind,
   expectedPattern,
+  acceptedExitCodes,
   strict,
   allowAuthBlocked,
   required,
@@ -304,7 +305,10 @@ function classifyResult({
   }
 
   let status = "fail";
-  if (kind === "expected_error") {
+  if (Array.isArray(acceptedExitCodes) && acceptedExitCodes.length > 0) {
+    const matchedExpectedPattern = expectedPattern ? expectedPattern.test(raw.combined) : true;
+    status = acceptedExitCodes.includes(raw.exitCode) && matchedExpectedPattern ? "pass" : "fail";
+  } else if (kind === "expected_error") {
     const matchedExpectedPattern = expectedPattern ? expectedPattern.test(raw.combined) : true;
     status = raw.exitCode !== 0 && matchedExpectedPattern ? "pass" : "fail";
   } else {
@@ -365,6 +369,7 @@ function runScenarioStep(state, config) {
     raw,
     kind: config.kind ?? "success",
     expectedPattern: config.expectedPattern,
+    acceptedExitCodes: config.acceptedExitCodes,
     strict: config.strict,
     allowAuthBlocked: config.allowAuthBlocked,
     required: config.required ?? true,
@@ -475,22 +480,33 @@ function createSweepState({ profileName, strict, tier, workspace }) {
 
 function makeCoreContext(workspace) {
   const isolatedHomeDir = join(workspace, "isolated-home");
+  const anonymousHomeDir = join(workspace, "anonymous-home");
+  const globalHomeDir = join(workspace, "global-home");
   const initDir = join(workspace, "init-verbose");
   const publishDir = join(workspace, `publish-skill-${RUN_ID}`);
   const workDir = join(workspace, "work");
+  const globalWorkDir = join(workspace, "global-work");
   mkdirSync(isolatedHomeDir, { recursive: true });
+  mkdirSync(anonymousHomeDir, { recursive: true });
+  mkdirSync(globalHomeDir, { recursive: true });
   mkdirSync(initDir, { recursive: true });
   mkdirSync(publishDir, { recursive: true });
   mkdirSync(workDir, { recursive: true });
+  mkdirSync(globalWorkDir, { recursive: true });
   return {
     isolatedHomeDir,
+    anonymousHomeDir,
+    globalHomeDir,
     initDir,
     publishDir,
     workDir,
+    globalWorkDir,
     ownedSkillId: null,
     ownedVersion: "1.0.0",
     installedPath: null,
     manifestInstallPath: null,
+    globalInstalledPath: null,
+    globalManifestInstallPath: null,
   };
 }
 
@@ -521,10 +537,56 @@ function validateSearch(ctx) {
   };
 }
 
+function validateSearchSuccess(options = {}) {
+  const { expectQuery, expectedLimit, minResults } = options;
+  return (raw) => {
+    const payload = parseJsonPayload(raw.stdout);
+    assert(payload && Array.isArray(payload.results), "search did not return results");
+    if (expectQuery !== undefined) {
+      assert(payload.query === expectQuery, `search query mismatch: expected ${expectQuery}`);
+    }
+    if (expectedLimit !== undefined) {
+      assert(payload.limit === expectedLimit, `search limit mismatch: expected ${expectedLimit}`);
+    }
+    if (minResults !== undefined) {
+      assert(
+        payload.results.length >= minResults,
+        `expected at least ${minResults} search result(s)`,
+      );
+    }
+    assert(
+      payload.nextCursor === null || typeof payload.nextCursor === "string",
+      "search nextCursor shape invalid",
+    );
+  };
+}
+
+function validatePrivateSearchContract(raw) {
+  if (raw.exitCode === 0) {
+    validateSearchSuccess({ expectedLimit: 1 })(raw);
+    return;
+  }
+
+  assert(
+    /private search is not allowed|private skills require a Pro plan/i.test(raw.combined),
+    "expected private search denial contract",
+  );
+}
+
 function validateSearchEmpty(raw) {
   const payload = parseJsonPayload(raw.stdout);
   assert(payload && Array.isArray(payload.results), "search did not return results");
   assert(payload.results.length === 0, "expected empty search results");
+}
+
+function validateSearchDenied(raw) {
+  assert(raw.exitCode !== 0, "anonymous search should fail");
+  assert(
+    /(search requires login|not logged in|missing authentication token|authentication required)/i.test(
+      raw.combined,
+    ),
+    "expected anonymous search denial message",
+  );
 }
 
 function validateView(ctx) {
@@ -632,6 +694,24 @@ function validateListContains(ctx) {
   };
 }
 
+function validateListContainsWithTarget(ctx, agentTarget, installScope = "workspace") {
+  return (raw) => {
+    const payload = parseJsonPayload(raw.stdout);
+    assert(payload && Array.isArray(payload.entries), "list did not return entries");
+    assert(payload.scope === installScope, `list scope mismatch: expected ${installScope}`);
+    assert(
+      payload.entries.some(
+        (entry) => entry && entry.skillId === ctx.ownedSkillId && entry.agentTarget === agentTarget,
+      ),
+      `list did not include ${ctx.ownedSkillId} for ${agentTarget}`,
+    );
+    assert(
+      payload.entries.every((entry) => !entry || entry.agentTarget === agentTarget),
+      `list contained entries outside ${agentTarget}`,
+    );
+  };
+}
+
 function validateListMissing(ctx) {
   return (raw) => {
     const payload = parseJsonPayload(raw.stdout);
@@ -639,6 +719,20 @@ function validateListMissing(ctx) {
     assert(
       !payload.entries.some((entry) => entry && entry.skillId === ctx.ownedSkillId),
       `list still included ${ctx.ownedSkillId}`,
+    );
+  };
+}
+
+function validateListMissingWithTarget(ctx, agentTarget, installScope = "workspace") {
+  return (raw) => {
+    const payload = parseJsonPayload(raw.stdout);
+    assert(payload && Array.isArray(payload.entries), "list did not return entries");
+    assert(payload.scope === installScope, `list scope mismatch: expected ${installScope}`);
+    assert(
+      !payload.entries.some(
+        (entry) => entry && entry.skillId === ctx.ownedSkillId && entry.agentTarget === agentTarget,
+      ),
+      `list still included ${ctx.ownedSkillId} for ${agentTarget}`,
     );
   };
 }
@@ -654,6 +748,21 @@ function validateInstallJson(raw, ctx) {
   ctx.manifestInstallPath = installedEntry.installedPath;
 }
 
+function validateInstallJsonWithTarget(ctx, agentTarget, installScope = "workspace") {
+  return (raw) => {
+    const payload = parseJsonPayload(raw.stdout);
+    assert(payload && Array.isArray(payload.installed), "install did not report installed entries");
+    const installedEntry = payload.installed.find(
+      (entry) => entry && entry.skillId === ctx.ownedSkillId && entry.agentTarget === agentTarget,
+    );
+    assert(installedEntry, `install did not include ${ctx.ownedSkillId} for ${agentTarget}`);
+    ensureFile(join(installedEntry.installedPath, "SKILL.md"));
+    if (installScope === "global") {
+      ctx.globalManifestInstallPath = installedEntry.installedPath;
+    }
+  };
+}
+
 function validateInstallPrune(raw, ctx) {
   const payload = parseJsonPayload(raw.stdout);
   assert(payload && Array.isArray(payload.pruned), "install --prune did not report pruned entries");
@@ -666,6 +775,22 @@ function validateInstallPrune(raw, ctx) {
   assert(!existsSync(ctx.manifestInstallPath), "pruned install path still exists");
 }
 
+function validateInstallPruneGlobal(raw, ctx, agentTarget) {
+  const payload = parseJsonPayload(raw.stdout);
+  assert(payload && Array.isArray(payload.pruned), "install --prune did not report pruned entries");
+  assert(
+    payload.pruned.some(
+      (entry) =>
+        entry &&
+        entry.skillId === ctx.ownedSkillId &&
+        entry.agentTarget === agentTarget &&
+        entry.status === "pruned",
+    ),
+    `install --prune did not prune ${ctx.ownedSkillId} for ${agentTarget}`,
+  );
+  assert(!existsSync(ctx.globalManifestInstallPath), "global pruned install path still exists");
+}
+
 function validateUpdateJson(raw) {
   const payload = parseJsonPayload(raw.stdout);
   assert(payload && typeof payload.total === "number", "update did not return total");
@@ -675,11 +800,37 @@ function validateUpdateJson(raw) {
   );
 }
 
+function validateUpdateJsonWithTarget(skillId, agentTarget) {
+  return (raw) => {
+    const payload = parseJsonPayload(raw.stdout);
+    assert(payload && typeof payload.total === "number", "update did not return total");
+    const updatedOrSkipped = [...(payload.updated ?? []), ...(payload.skipped ?? [])];
+    assert(
+      updatedOrSkipped.some(
+        (entry) => entry && entry.skillId === skillId && entry.agentTarget === agentTarget,
+      ),
+      `update did not include ${skillId} for ${agentTarget}`,
+    );
+    assert(
+      updatedOrSkipped.every((entry) => !entry || entry.agentTarget === agentTarget),
+      `update included entries outside ${agentTarget}`,
+    );
+  };
+}
+
 function validateRemoveJson(raw, ctx) {
   const payload = parseJsonPayload(raw.stdout);
   assert(payload && typeof payload.removed === "number", "remove did not report removed count");
   if (ctx.installedPath) {
     assert(!existsSync(ctx.installedPath), "removed install path still exists");
+  }
+}
+
+function validateRemoveJsonGlobal(raw, ctx) {
+  const payload = parseJsonPayload(raw.stdout);
+  assert(payload && typeof payload.removed === "number", "remove did not report removed count");
+  if (ctx.globalInstalledPath) {
+    assert(!existsSync(ctx.globalInstalledPath), "removed global install path still exists");
   }
 }
 
@@ -868,6 +1019,63 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     strict,
     allowAuthBlocked,
     validate: validateSearchEmpty,
+  });
+  runScenarioStep(state, {
+    name: "search-private-limit",
+    args: ["search", ownedSkill.skillSlug, "--scope", "private", "--limit", "1", "--json"],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    acceptedExitCodes: [0, 1],
+    validate: validatePrivateSearchContract,
+    coverageKind: "live-auth",
+  });
+  let privateNextCursor = null;
+  const privateSearchStep = state.steps[state.steps.length - 1];
+  if (privateSearchStep.status === "pass" && privateSearchStep.exitCode === 0) {
+    privateNextCursor = parseJsonPayload(privateSearchStep.stdout)?.nextCursor ?? null;
+  }
+  runScenarioStep(state, {
+    name: "search-private-cursor",
+    args: [
+      "search",
+      ownedSkill.skillSlug,
+      "--scope",
+      "private",
+      "--limit",
+      "1",
+      "--cursor",
+      privateNextCursor ?? "missing-cursor",
+      "--json",
+    ],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    validate: validateSearchSuccess({
+      expectQuery: ownedSkill.skillSlug,
+      expectedLimit: 1,
+    }),
+    coverageKind: "live-auth",
+    required: false,
+    skipReason: privateNextCursor ? null : "private search did not return nextCursor",
+  });
+  const anonymousSearchEnv = {
+    ...env,
+    HOME: ctx.anonymousHomeDir,
+  };
+  delete anonymousSearchEnv.SKILLMD_AUTH_TOKEN;
+  runScenarioStep(state, {
+    name: "search-anonymous-denied",
+    args: ["search", ownedSkill.skillSlug, "--json"],
+    cwd: ROOT_DIR,
+    env: anonymousSearchEnv,
+    strict,
+    allowAuthBlocked,
+    validate: validateSearchDenied,
+    kind: "expected_error",
+    coverageKind: "live-auth",
   });
   runScenarioStep(state, {
     name: "view-skill",
@@ -1094,6 +1302,24 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     allowAuthBlocked,
     validate: validateListContains(ctx),
   });
+  runScenarioStep(state, {
+    name: "install-agent-target-claude",
+    args: ["install", "--agent-target", "claude", "--json"],
+    cwd: ctx.workDir,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    validate: validateInstallJsonWithTarget(ctx, "claude"),
+  });
+  runScenarioStep(state, {
+    name: "list-agent-target-claude",
+    args: ["list", "--agent-target", "claude", "--json"],
+    cwd: ctx.workDir,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    validate: validateListContainsWithTarget(ctx, "claude"),
+  });
 
   writeFileSync(
     join(ctx.workDir, "skills.json"),
@@ -1151,6 +1377,18 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     validate: validateInstalledPath,
   });
   runScenarioStep(state, {
+    name: "use-agent-target-claude",
+    args: ["use", ctx.ownedSkillId, "--agent-target", "claude", "--json"],
+    cwd: ctx.workDir,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    validate: (raw) =>
+      validateInstalledPath(raw, (installedPath) => {
+        ctx.installedPath = installedPath;
+      }),
+  });
+  runScenarioStep(state, {
     name: "update-skill",
     args: ["update", ctx.ownedSkillId, "--json"],
     cwd: ctx.workDir,
@@ -1160,6 +1398,15 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     validate: validateUpdateJson,
   });
   runScenarioStep(state, {
+    name: "update-agent-target-claude",
+    args: ["update", ctx.ownedSkillId, "--agent-target", "claude", "--json"],
+    cwd: ctx.workDir,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    validate: validateUpdateJsonWithTarget(ctx.ownedSkillId, "claude"),
+  });
+  runScenarioStep(state, {
     name: "update-all",
     args: ["update", "--all", "--json"],
     cwd: ctx.workDir,
@@ -1167,6 +1414,85 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     strict,
     allowAuthBlocked,
     validate: validateUpdateJson,
+  });
+  writeFileSync(
+    join(ctx.globalWorkDir, "skills.json"),
+    `${JSON.stringify(
+      {
+        version: 1,
+        defaults: { agentTarget: "skillmd" },
+        dependencies: {
+          [ctx.ownedSkillId]: { spec: "latest", agentTarget: "claude" },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+  const globalEnv = { ...env, HOME: ctx.globalHomeDir };
+  const sourceSessionPath = join(ctx.isolatedHomeDir, ".skillmd", "auth.json");
+  const targetSessionPath = join(ctx.globalHomeDir, ".skillmd", "auth.json");
+  if (existsSync(sourceSessionPath)) {
+    mkdirSync(dirname(targetSessionPath), { recursive: true });
+    writeFileSync(targetSessionPath, readFileSync(sourceSessionPath, "utf8"), "utf8");
+  }
+  runScenarioStep(state, {
+    name: "install-global",
+    args: ["install", "--global", "--agent-target", "claude", "--json"],
+    cwd: ctx.globalWorkDir,
+    env: globalEnv,
+    strict,
+    allowAuthBlocked,
+    validate: validateInstallJsonWithTarget(ctx, "claude", "global"),
+  });
+  runScenarioStep(state, {
+    name: "list-global",
+    args: ["list", "--global", "--agent-target", "claude", "--json"],
+    cwd: ctx.globalWorkDir,
+    env: globalEnv,
+    strict,
+    allowAuthBlocked,
+    validate: validateListContainsWithTarget(ctx, "claude", "global"),
+  });
+  runScenarioStep(state, {
+    name: "use-global",
+    args: ["use", ctx.ownedSkillId, "--global", "--agent-target", "claude", "--json"],
+    cwd: ctx.globalWorkDir,
+    env: globalEnv,
+    strict,
+    allowAuthBlocked,
+    validate: (raw) =>
+      validateInstalledPath(raw, (installedPath) => {
+        ctx.globalInstalledPath = installedPath;
+      }),
+  });
+  runScenarioStep(state, {
+    name: "update-global",
+    args: ["update", "--global", ctx.ownedSkillId, "--agent-target", "claude", "--json"],
+    cwd: ctx.globalWorkDir,
+    env: globalEnv,
+    strict,
+    allowAuthBlocked,
+    validate: validateUpdateJsonWithTarget(ctx.ownedSkillId, "claude"),
+  });
+  runScenarioStep(state, {
+    name: "remove-global",
+    args: ["remove", ctx.ownedSkillId, "--global", "--agent-target", "claude", "--json"],
+    cwd: ctx.globalWorkDir,
+    env: globalEnv,
+    strict,
+    allowAuthBlocked,
+    validate: (raw) => validateRemoveJsonGlobal(raw, ctx),
+  });
+  runScenarioStep(state, {
+    name: "list-global-after-remove",
+    args: ["list", "--global", "--agent-target", "claude", "--json"],
+    cwd: ctx.globalWorkDir,
+    env: globalEnv,
+    strict,
+    allowAuthBlocked,
+    validate: validateListMissingWithTarget(ctx, "claude", "global"),
   });
   runScenarioStep(state, {
     name: "deprecate",

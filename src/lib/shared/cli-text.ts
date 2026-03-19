@@ -2,7 +2,7 @@ export const ROOT_USAGE =
   "Usage: skillmd [--auth-token <token>] [--version|-v] <init|validate|login|logout|publish|search|view|history|install|list|remove|use|update|tag|deprecate|unpublish|whoami|org|token>";
 export const INIT_USAGE = "Usage: skillmd init [--no-validate] [--template <minimal|verbose>]";
 export const INSTALL_USAGE =
-  "Usage: skillmd install [--prune] [--agent-target <skillmd|openai|claude|gemini|meta|mistral|deepseek|perplexity|custom:<slug>>] [--json]";
+  "Usage: skillmd install [-g|--global] [--prune] [--agent-target <skillmd|openai|claude|gemini|meta|mistral|deepseek|perplexity|custom:<slug>>] [--json]";
 export const LIST_USAGE =
   "Usage: skillmd list [-g|--global] [--agent-target <skillmd|openai|claude|gemini|meta|mistral|deepseek|perplexity|custom:<slug>>] [--json]";
 export const REMOVE_USAGE =

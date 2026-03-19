@@ -538,3 +538,338 @@ test("spawned CLI: org ls and org tokens work with auth token", async () => {
     cleanupDirectory(root);
   }
 });
+
+test("spawned CLI: install supports mixed bare/org skills across multiple agent targets", async () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  let baseUrl = "";
+  const archives = {
+    "skill-a@1.2.3": await createSkillArchive(root, "skill-a-1.2.3", "skill-a"),
+    "@core/skill-b@2.0.0": await createSkillArchive(root, "core-skill-b-2.0.0", "skill-b"),
+  };
+
+  const mockRegistry = await startMockRegistry((request, response) => {
+    const url = new URL(request.url, "http://127.0.0.1");
+
+    if (
+      request.method === "GET" &&
+      url.pathname === "/v1/skills/skill-a/resolve" &&
+      url.searchParams.get("spec") === "latest"
+    ) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@owner",
+          username: "owner",
+          skill: "skill-a",
+          spec: "latest",
+          version: "1.2.3",
+        }),
+      );
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      url.pathname === "/v1/skills/@core/skill-b/resolve" &&
+      url.searchParams.get("spec") === "^2.0.0"
+    ) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@core",
+          username: "core",
+          skill: "skill-b",
+          spec: "^2.0.0",
+          version: "2.0.0",
+        }),
+      );
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/skills/skill-a/versions/1.2.3/artifact") {
+      const archive = archives["skill-a@1.2.3"];
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@owner",
+          username: "owner",
+          skill: "skill-a",
+          version: "1.2.3",
+          digest: archive.digest,
+          sizeBytes: archive.sizeBytes,
+          mediaType: archive.mediaType,
+          deprecated: false,
+          deprecatedAt: null,
+          deprecatedMessage: null,
+          downloadUrl: `${baseUrl}/download/skill-a/1.2.3`,
+          downloadExpiresAt: "2026-03-02T13:00:00.000Z",
+        }),
+      );
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      url.pathname === "/v1/skills/@core/skill-b/versions/2.0.0/artifact"
+    ) {
+      const archive = archives["@core/skill-b@2.0.0"];
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@core",
+          username: "core",
+          skill: "skill-b",
+          version: "2.0.0",
+          digest: archive.digest,
+          sizeBytes: archive.sizeBytes,
+          mediaType: archive.mediaType,
+          deprecated: false,
+          deprecatedAt: null,
+          deprecatedMessage: null,
+          downloadUrl: `${baseUrl}/download/@core/skill-b/2.0.0`,
+          downloadExpiresAt: "2026-03-02T13:00:00.000Z",
+        }),
+      );
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/download/skill-a/1.2.3") {
+      response.writeHead(200, { "content-type": archives["skill-a@1.2.3"].mediaType });
+      response.end(archives["skill-a@1.2.3"].bytes);
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/download/@core/skill-b/2.0.0") {
+      response.writeHead(200, { "content-type": archives["@core/skill-b@2.0.0"].mediaType });
+      response.end(archives["@core/skill-b@2.0.0"].bytes);
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: { code: "not_found", message: "not found" } }));
+  });
+  baseUrl = mockRegistry.baseUrl;
+
+  try {
+    fs.writeFileSync(
+      path.join(root, "skills.json"),
+      JSON.stringify(
+        {
+          version: 1,
+          defaults: {
+            agentTarget: "skillmd",
+          },
+          dependencies: {
+            "skill-a": {
+              spec: "latest",
+            },
+            "@core/skill-b": {
+              spec: "^2.0.0",
+              agentTarget: "claude",
+            },
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    const result = await runCliAsync(["install", "--json"], root, {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_REGISTRY_BASE_URL: baseUrl,
+    });
+    assert.equal(result.status, 0, result.stderr);
+
+    const payload = JSON.parse(result.stdout);
+    assert.equal(payload.installed.length, 2);
+    assert(
+      payload.installed.some(
+        (entry) => entry.skillId === "skill-a" && entry.agentTarget === "skillmd",
+      ),
+    );
+    assert(
+      payload.installed.some(
+        (entry) => entry.skillId === "@core/skill-b" && entry.agentTarget === "claude",
+      ),
+    );
+
+    const lock = JSON.parse(fs.readFileSync(path.join(root, "skills-lock.json"), "utf8"));
+    const entries = Object.values(lock.entries);
+    assert(entries.some((entry) => entry.skillId === "skill-a" && entry.agentTarget === "skillmd"));
+    assert(
+      entries.some((entry) => entry.skillId === "@core/skill-b" && entry.agentTarget === "claude"),
+    );
+  } finally {
+    await mockRegistry.close();
+    cleanupDirectory(root);
+  }
+});
+
+test("spawned CLI: global lifecycle and agent-target flows use isolated HOME", async () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  const globalHome = path.join(root, "global-home");
+  fs.mkdirSync(globalHome, { recursive: true });
+  let baseUrl = "";
+  let latestVersion = "1.2.3";
+  const archives = {
+    "1.2.3": await createSkillArchive(root, "skill-a-1.2.3-global", "skill-a"),
+    "1.2.4": await createSkillArchive(root, "skill-a-1.2.4-global", "skill-a"),
+  };
+
+  const mockRegistry = await startMockRegistry((request, response) => {
+    const url = new URL(request.url, "http://127.0.0.1");
+
+    if (
+      request.method === "GET" &&
+      url.pathname === "/v1/skills/skill-a/resolve" &&
+      url.searchParams.get("spec") === "latest"
+    ) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@owner",
+          username: "owner",
+          skill: "skill-a",
+          spec: "latest",
+          version: latestVersion,
+        }),
+      );
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      url.pathname === `/v1/skills/skill-a/versions/${latestVersion}/artifact`
+    ) {
+      const archive = archives[latestVersion];
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          owner: "@owner",
+          username: "owner",
+          skill: "skill-a",
+          version: latestVersion,
+          digest: archive.digest,
+          sizeBytes: archive.sizeBytes,
+          mediaType: archive.mediaType,
+          deprecated: false,
+          deprecatedAt: null,
+          deprecatedMessage: null,
+          downloadUrl: `${baseUrl}/download/skill-a/${latestVersion}`,
+          downloadExpiresAt: "2026-03-02T13:00:00.000Z",
+        }),
+      );
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === `/download/skill-a/${latestVersion}`) {
+      const archive = archives[latestVersion];
+      response.writeHead(200, { "content-type": archive.mediaType });
+      response.end(archive.bytes);
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: { code: "not_found", message: "not found" } }));
+  });
+  baseUrl = mockRegistry.baseUrl;
+
+  try {
+    fs.writeFileSync(
+      path.join(root, "skills.json"),
+      JSON.stringify(
+        {
+          version: 1,
+          defaults: {
+            agentTarget: "skillmd",
+          },
+          dependencies: {
+            "skill-a": {
+              spec: "latest",
+              agentTarget: "claude",
+            },
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    const env = {
+      HOME: globalHome,
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_REGISTRY_BASE_URL: baseUrl,
+    };
+
+    const installResult = await runCliAsync(
+      ["install", "--global", "--agent-target", "claude", "--json"],
+      root,
+      env,
+    );
+    assert.equal(installResult.status, 0, installResult.stderr);
+    const installPayload = JSON.parse(installResult.stdout);
+    assert.equal(installPayload.installed[0].agentTarget, "claude");
+    assert.match(installPayload.installed[0].installedPath, /\.claude\/skills\/skill-a$/);
+    const globalLockPath = path.join(globalHome, ".skillmd", "global-skills-lock.json");
+    assert.equal(fs.existsSync(globalLockPath), true);
+
+    const listResult = await runCliAsync(
+      ["list", "--global", "--agent-target", "claude", "--json"],
+      root,
+      env,
+    );
+    assert.equal(listResult.status, 0, listResult.stderr);
+    const listPayload = JSON.parse(listResult.stdout);
+    assert.equal(listPayload.scope, "global");
+    assert.equal(listPayload.entries.length, 1);
+    assert.equal(listPayload.entries[0].agentTarget, "claude");
+
+    const useResult = await runCliAsync(
+      ["use", "skill-a", "--global", "--agent-target", "claude", "--json"],
+      root,
+      env,
+    );
+    assert.equal(useResult.status, 0, useResult.stderr);
+    const usePayload = JSON.parse(useResult.stdout);
+    assert.equal(usePayload.installScope, "global");
+    assert.equal(usePayload.agentTarget, "claude");
+
+    latestVersion = "1.2.4";
+    const updateResult = await runCliAsync(
+      ["update", "--global", "skill-a", "--agent-target", "claude", "--json"],
+      root,
+      env,
+    );
+    assert.equal(updateResult.status, 0, updateResult.stderr);
+    const updatePayload = JSON.parse(updateResult.stdout);
+    assert(
+      [...updatePayload.updated, ...updatePayload.skipped].some(
+        (entry) => entry.skillId === "skill-a" && entry.agentTarget === "claude",
+      ),
+    );
+
+    const removeResult = await runCliAsync(
+      ["remove", "skill-a", "--global", "--agent-target", "claude", "--json"],
+      root,
+      env,
+    );
+    assert.equal(removeResult.status, 0, removeResult.stderr);
+    const removePayload = JSON.parse(removeResult.stdout);
+    assert.equal(removePayload.removed, 1);
+
+    const postRemoveList = await runCliAsync(
+      ["list", "--global", "--agent-target", "claude", "--json"],
+      root,
+      env,
+    );
+    assert.equal(postRemoveList.status, 0, postRemoveList.stderr);
+    const postRemovePayload = JSON.parse(postRemoveList.stdout);
+    assert.equal(postRemovePayload.scope, "global");
+    assert.equal(postRemovePayload.entries.length, 0);
+  } finally {
+    await mockRegistry.close();
+    cleanupDirectory(root);
+  }
+});

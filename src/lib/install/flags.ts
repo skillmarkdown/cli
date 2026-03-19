@@ -3,8 +3,14 @@ import { parseOptionValue } from "../shared/flag-parse";
 import { type InstallFlags } from "./types";
 
 export function parseInstallFlags(args: string[]): InstallFlags {
-  const invalid = (): InstallFlags => ({ prune: false, json: false, valid: false });
+  const invalid = (): InstallFlags => ({
+    prune: false,
+    global: false,
+    json: false,
+    valid: false,
+  });
   let prune = false;
+  let global = false;
   let json = false;
   let agentTarget: InstallFlags["agentTarget"];
 
@@ -13,6 +19,11 @@ export function parseInstallFlags(args: string[]): InstallFlags {
 
     if (arg === "--prune") {
       prune = true;
+      continue;
+    }
+
+    if (arg === "-g" || arg === "--global") {
+      global = true;
       continue;
     }
 
@@ -37,6 +48,7 @@ export function parseInstallFlags(args: string[]): InstallFlags {
 
   return {
     prune,
+    global,
     json,
     agentTarget,
     valid: true,

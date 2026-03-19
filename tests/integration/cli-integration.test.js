@@ -310,6 +310,138 @@ test("spawned CLI: search prints dist-tag latest and caches selection for numeri
   }
 });
 
+test("spawned CLI: search covers private scope, cursor, and anonymous denial", async () => {
+  const root = makeTempDirectory(CLI_TEST_PREFIX);
+  const authToken = "skmd_dev_tok_abc123abc123abc123abc123.secret";
+  let publicSearchCount = 0;
+  let privateSearchCount = 0;
+
+  const mockRegistry = await startMockRegistry((request, response) => {
+    const url = new URL(request.url, "http://127.0.0.1");
+    if (request.method === "GET" && url.pathname === "/v1/skills/search") {
+      const authorization = request.headers.authorization;
+      if (!authorization) {
+        response.writeHead(401, { "content-type": "application/json" });
+        response.end(
+          JSON.stringify({
+            error: { code: "unauthorized", message: "search requires login" },
+          }),
+        );
+        return;
+      }
+
+      assert.equal(authorization, `Bearer ${authToken}`);
+      const scope = url.searchParams.get("scope") ?? "public";
+      const limit = Number.parseInt(url.searchParams.get("limit") ?? "20", 10);
+      const cursor = url.searchParams.get("cursor");
+      const query = url.searchParams.get("q");
+      assert.equal(query, "agent");
+
+      if (scope === "private") {
+        privateSearchCount += 1;
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(
+          JSON.stringify({
+            query: "agent",
+            limit,
+            results: cursor
+              ? [
+                  {
+                    skillId: "skill-private-2",
+                    owner: "@owner",
+                    username: "username",
+                    skill: "skill-private-2",
+                    description: "Private follow-up",
+                    distTags: { latest: "2.0.1" },
+                    updatedAt: "2026-03-02T13:00:00.000Z",
+                  },
+                ]
+              : [
+                  {
+                    skillId: "skill-private-1",
+                    owner: "@owner",
+                    username: "username",
+                    skill: "skill-private-1",
+                    description: "Private result",
+                    distTags: { latest: "2.0.0" },
+                    updatedAt: "2026-03-02T12:30:00.000Z",
+                  },
+                ],
+            nextCursor: cursor ? null : "cursor-2",
+          }),
+        );
+        return;
+      }
+
+      publicSearchCount += 1;
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          query: "agent",
+          limit,
+          results: [
+            {
+              skillId: "skill-a",
+              owner: "@owner",
+              username: "username",
+              skill: "skill-a",
+              description: "A skill",
+              distTags: { latest: "1.2.3" },
+              updatedAt: "2026-03-02T12:00:00.000Z",
+            },
+          ],
+          nextCursor: null,
+        }),
+      );
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: { code: "not_found", message: "not found" } }));
+  });
+
+  try {
+    const env = {
+      SKILLMD_AUTH_TOKEN: authToken,
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
+    };
+
+    const privateSearch = await runCliAsync(
+      ["search", "agent", "--scope", "private", "--limit", "1", "--json"],
+      root,
+      env,
+    );
+    assert.equal(privateSearch.status, 0, privateSearch.stderr);
+    const privatePayload = JSON.parse(privateSearch.stdout);
+    assert.equal(privatePayload.limit, 1);
+    assert.equal(privatePayload.nextCursor, "cursor-2");
+
+    const cursorSearch = await runCliAsync(
+      ["search", "agent", "--scope", "private", "--limit", "1", "--cursor", "cursor-2", "--json"],
+      root,
+      env,
+    );
+    assert.equal(cursorSearch.status, 0, cursorSearch.stderr);
+    const cursorPayload = JSON.parse(cursorSearch.stdout);
+    assert.equal(cursorPayload.results.length, 1);
+    assert.equal(cursorPayload.nextCursor, null);
+
+    const anonymousSearch = await runCliAsync(["search", "agent", "--json"], root, {
+      SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
+      SKILLMD_REGISTRY_BASE_URL: mockRegistry.baseUrl,
+    });
+    assert.equal(anonymousSearch.status, 1);
+    assert.match(anonymousSearch.stderr, /search requires login/i);
+
+    assert.equal(publicSearchCount, 0);
+    assert.equal(privateSearchCount, 2);
+  } finally {
+    await mockRegistry.close();
+    cleanupDirectory(root);
+  }
+});
+
 test("spawned CLI: tag ls/add/rm manages dist-tags via strict v1 endpoints", async () => {
   const root = makeTempDirectory(CLI_TEST_PREFIX);
   const distTags = {

@@ -9,6 +9,7 @@ test("parses default install flags", () => {
   const parsed = parseInstallFlags([]);
   assert.deepEqual(parsed, {
     prune: false,
+    global: false,
     json: false,
     agentTarget: undefined,
     valid: true,
@@ -19,7 +20,19 @@ test("parses prune/json/agent-target flags", () => {
   const parsed = parseInstallFlags(["--prune", "--json", "--agent-target", "claude"]);
   assert.deepEqual(parsed, {
     prune: true,
+    global: false,
     json: true,
+    agentTarget: "claude",
+    valid: true,
+  });
+});
+
+test("parses global install flags", () => {
+  const parsed = parseInstallFlags(["--global", "--agent-target", "claude"]);
+  assert.deepEqual(parsed, {
+    prune: false,
+    global: true,
+    json: false,
     agentTarget: "claude",
     valid: true,
   });

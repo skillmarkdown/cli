@@ -2,6 +2,7 @@ import { type AgentTarget } from "../shared/agent-target";
 
 export interface InstallFlags {
   prune: boolean;
+  global: boolean;
   json: boolean;
   agentTarget?: AgentTarget;
   valid: boolean;

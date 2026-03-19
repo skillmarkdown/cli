@@ -40,11 +40,13 @@ import {
   resolveInstalledSkillPath,
   resolveLegacyFlatInstalledSkillPath,
   resolveLegacyInstalledSkillPath,
+  type InstallScope,
 } from "../lib/use/pathing";
 import { installFromRegistry as defaultInstallFromRegistry } from "../lib/use/workflow";
 
 interface InstallCommandOptions {
   cwd?: string;
+  homeDir?: string;
   env?: NodeJS.ProcessEnv;
   now?: () => Date;
   getConfig?: (env: NodeJS.ProcessEnv) => UseEnvConfig;
@@ -113,6 +115,8 @@ function buildDesiredKey(skillId: string, agentTarget: AgentTarget, registryHost
 function validatePrunePath(
   cwd: string,
   entry: SkillsLockEntry,
+  scope: InstallScope,
+  homeDir?: string,
 ): { valid: true } | { valid: false; reason: string } {
   let expectedPath: string;
   let legacyPath: string;
@@ -125,6 +129,7 @@ function validatePrunePath(
       parsedSkillId.username,
       parsedSkillId.skillSlug,
       entry.agentTarget,
+      { scope, homeDir },
     );
     legacyPath = resolveLegacyInstalledSkillPath(
       cwd,
@@ -132,6 +137,7 @@ function validatePrunePath(
       parsedSkillId.username,
       parsedSkillId.skillSlug,
       entry.agentTarget,
+      { scope, homeDir },
     );
     legacyFlatPath = resolveLegacyFlatInstalledSkillPath(
       cwd,
@@ -139,6 +145,7 @@ function validatePrunePath(
       parsedSkillId.username,
       parsedSkillId.skillSlug,
       entry.agentTarget,
+      { scope, homeDir },
     );
   } catch (error) {
     return {
@@ -200,8 +207,15 @@ function resolveAgentTargetForDependency(
   );
 }
 
-function buildSourceCommand(prune: boolean, globalTarget: AgentTarget | undefined): string {
+function buildSourceCommand(
+  prune: boolean,
+  global: boolean,
+  globalTarget: AgentTarget | undefined,
+): string {
   const parts = ["skillmd", "install"];
+  if (global) {
+    parts.push("--global");
+  }
   if (prune) {
     parts.push("--prune");
   }
@@ -261,10 +275,11 @@ export async function runInstallCommand(
   try {
     const config = getConfigFn(env);
     const manifest = await loadSkillsManifestFn(cwd);
-    let lock = await loadSkillsLockFn(cwd);
+    const installScope: InstallScope = parsed.global ? "global" : "workspace";
+    let lock = await loadSkillsLockFn(cwd, {}, { scope: installScope, homeDir: options.homeDir });
     const registryHost = resolveRegistryHost(config.registryBaseUrl);
     const entries: InstallCommandEntry[] = [];
-    const sourceCommand = buildSourceCommand(parsed.prune, parsed.agentTarget);
+    const sourceCommand = buildSourceCommand(parsed.prune, parsed.global, parsed.agentTarget);
     const desiredKeys = new Set<string>();
 
     for (const dependency of manifest.dependencies) {
@@ -301,6 +316,8 @@ export async function runInstallCommand(
             selectedAgentTarget: resolvedTarget,
             defaultAgentTarget: config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET,
             now,
+            installScope,
+            homeDir: options.homeDir,
             sourceCommandFactory: () => sourceCommand,
           },
           {},
@@ -340,7 +357,12 @@ export async function runInstallCommand(
       pruneEntries = [];
       const candidates = selectPruneCandidates(lock, registryHost, desiredKeys);
       for (const candidate of candidates) {
-        const prunePathValidation = validatePrunePath(cwd, candidate.entry);
+        const prunePathValidation = validatePrunePath(
+          cwd,
+          candidate.entry,
+          installScope,
+          options.homeDir,
+        );
         if (!prunePathValidation.valid) {
           pruneEntries.push({
             skillId: candidate.entry.skillId,
@@ -373,7 +395,7 @@ export async function runInstallCommand(
       }
     }
 
-    await saveSkillsLockFn(cwd, lock);
+    await saveSkillsLockFn(cwd, lock, {}, { scope: installScope, homeDir: options.homeDir });
 
     const jsonResult = toJsonResult(entries, pruneEntries);
     if (parsed.json) {

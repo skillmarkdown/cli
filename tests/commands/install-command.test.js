@@ -184,6 +184,81 @@ test("installs dependencies and writes lockfile entries", async () => {
   assert.deepEqual(sourceCommands, ["skillmd install", "skillmd install"]);
 });
 
+test("supports --global install scope and source command", async () => {
+  let receivedLocation;
+  let savedLocation;
+  let capturedInstallScope = null;
+  let capturedHomeDir = null;
+  let savedLock;
+
+  const { result, logs } = await captureConsole(() =>
+    runInstallCommand(
+      ["--global", "--agent-target", "claude", "--json"],
+      baseOptions({
+        homeDir: "/Users/tester",
+        loadSkillsLock: async (_cwd, _deps, location) => {
+          receivedLocation = location;
+          return lockFile({});
+        },
+        saveSkillsLock: async (_cwd, lock, _deps, location) => {
+          savedLock = lock;
+          savedLocation = location;
+        },
+        installFromRegistry: async (input) => {
+          capturedInstallScope = input.installScope;
+          capturedHomeDir = input.homeDir;
+          return {
+            result: {
+              skillId: input.skillSlug,
+              username: input.username,
+              skill: input.skillSlug,
+              version: "1.1.0",
+              digest: "sha256:new",
+              sizeBytes: 6,
+              mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+              installedPath: `/Users/tester/.claude/skills/${input.skillSlug}`,
+              registryBaseUrl: "https://registry.example.com",
+              installedAt: "2026-03-02T12:34:56.000Z",
+              source: "registry",
+              agentTarget: input.selectedAgentTarget,
+              installScope: input.installScope,
+            },
+            lockEntry: {
+              skillId: input.skillSlug,
+              username: input.username,
+              skill: input.skillSlug,
+              selectorSpec: input.selector.spec ?? input.selector.version,
+              version: "1.1.0",
+              digest: "sha256:new",
+              sizeBytes: 6,
+              mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+              installedPath: `/Users/tester/.claude/skills/${input.skillSlug}`,
+              registryBaseUrl: "https://registry.example.com",
+              downloadedFrom: "https://storage.example.com",
+              installedAt: "2026-03-02T12:34:56.000Z",
+              sourceCommand: "skillmd install --global --agent-target claude",
+              agentTarget: input.selectedAgentTarget,
+            },
+            warnings: [],
+          };
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.deepEqual(receivedLocation, { scope: "global", homeDir: "/Users/tester" });
+  assert.deepEqual(savedLocation, { scope: "global", homeDir: "/Users/tester" });
+  assert.equal(capturedInstallScope, "global");
+  assert.equal(capturedHomeDir, "/Users/tester");
+
+  const payload = JSON.parse(logs.join("\n"));
+  assert.equal(payload.installed.length, 1);
+  assert.equal(payload.installed[0].agentTarget, "claude");
+  const [savedEntry] = Object.values(savedLock.entries);
+  assert.equal(savedEntry.sourceCommand, "skillmd install --global --agent-target claude");
+});
+
 test("passes bare-vs-scoped skill identity through install workflow inputs", async () => {
   const captured = [];
   const { result } = await captureConsole(() =>
