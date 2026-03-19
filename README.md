@@ -148,7 +148,21 @@ skillmd use @acme/internal-skill
 
 ## Release Validation
 
-Release-gate commands:
+Required validation before merge:
+
+```bash
+npm run ci:check
+npm run build
+```
+
+Packaging smoke checks:
+
+```bash
+npm run smoke:pack
+npm run smoke:link
+```
+
+Release-gate E2E commands:
 
 ```bash
 npm run e2e:contract
