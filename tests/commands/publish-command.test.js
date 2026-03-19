@@ -545,7 +545,7 @@ test("publish --json returns structured auth error for missing session", async (
   assert.equal(payload.ok, false);
   assert.equal(payload.error.type, "auth");
   assert.equal(payload.error.message, "not logged in");
-  assert.equal(payload.error.hint, "Run 'skillmd login' first.");
+  assert.equal(payload.error.hint, "Run 'skillmd login' first at https://www.skillmarkdown.com.");
 });
 
 test("prints pro-plan hint for private publish denial", async () => {
@@ -566,4 +566,5 @@ test("prints pro-plan hint for private publish denial", async () => {
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /private publish is not allowed/i);
   assert.match(errors.join("\n"), /private skills require a Pro plan/i);
+  assert.match(errors.join("\n"), /https:\/\/www\.skillmarkdown\.com/);
 });

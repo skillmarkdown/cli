@@ -552,6 +552,7 @@ test("records pro-plan hint when install is denied for private skill access", as
 
     assert.equal(result, 1);
     assert.match(logs.join("\n"), /private skill access is not allowed/i);
+    assert.match(logs.join("\n"), /https:\/\/www\.skillmark[\s\S]*down\.com/);
   } finally {
     Object.defineProperty(process.stdout, "columns", {
       value: originalColumns,

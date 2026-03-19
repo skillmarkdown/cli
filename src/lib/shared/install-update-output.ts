@@ -76,6 +76,8 @@ export function printSkillStatusTable(
       minWidth: 12,
       maxWidth: 64,
       shrinkPriority: 4,
+      wrap: true,
+      maxLines: 4,
       value: (row: SkillStatusRow) => row.reason ?? "",
     },
   ];
@@ -118,6 +120,8 @@ export function printPruneTable(
         minWidth: 12,
         maxWidth: 64,
         shrinkPriority: 4,
+        wrap: true,
+        maxLines: 4,
         value: (row: { reason?: string }) => row.reason ?? "",
       },
     ],

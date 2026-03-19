@@ -197,4 +197,5 @@ test("prints pro-plan hint for private search denial", async () => {
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /private search is not allowed/i);
   assert.match(errors.join("\n"), /private skills require a Pro plan/i);
+  assert.match(errors.join("\n"), /https:\/\/www\.skillmarkdown\.com/);
 });

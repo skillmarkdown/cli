@@ -23,6 +23,7 @@ import { parseLoginFlags } from "../lib/auth/login-flags";
 import { printSessionStatus } from "../lib/auth/login-status";
 import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
 import { getRegistryEnvConfig } from "../lib/registry/config";
+import { SKILLMARKDOWN_WEBSITE_URL } from "../lib/shared/authz-error-hints";
 import { type WhoamiResponse } from "../lib/whoami/types";
 
 interface LoginCommandOptions {
@@ -215,7 +216,9 @@ export async function runLoginCommand(
     } catch (error) {
       clearSessionFn();
       const message = error instanceof Error ? error.message : "account profile not found";
-      console.error(`skillmd login: ${message}. Complete sign-up on the web before using the CLI.`);
+      console.error(
+        `skillmd login: ${message}. Complete sign-up at ${SKILLMARKDOWN_WEBSITE_URL} before using the CLI.`,
+      );
       return 1;
     }
 

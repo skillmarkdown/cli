@@ -44,10 +44,11 @@ test("fails when session is missing", async () => {
 
   assert.deepEqual(result, {
     ok: false,
-    message: "skillmd tag: not logged in. Run 'skillmd login' first.",
+    message:
+      "skillmd tag: not logged in. Run 'skillmd login' first at https://www.skillmarkdown.com.",
     reason: "not_logged_in",
     detail: "not logged in",
-    hint: "Run 'skillmd login' first.",
+    hint: "Run 'skillmd login' first at https://www.skillmarkdown.com.",
   });
 });
 
@@ -88,7 +89,7 @@ test("fails when owner profile is missing for owner-scoped commands", async () =
   assert.deepEqual(result, {
     ok: false,
     message:
-      "skillmd tag: account profile not found. Complete sign-up on the web before using this command.",
+      "skillmd tag: account profile not found. Complete sign-up at https://www.skillmarkdown.com before using this command.",
     reason: "profile_missing",
     detail: "account profile not found",
   });

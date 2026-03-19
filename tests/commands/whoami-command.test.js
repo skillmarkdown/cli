@@ -106,7 +106,7 @@ test("prints structured json auth error with --json", async () => {
   assert.equal(payload.ok, false);
   assert.equal(payload.error.type, "auth");
   assert.equal(payload.error.message, "not logged in");
-  assert.equal(payload.error.hint, "Run 'skillmd login' first.");
+  assert.equal(payload.error.hint, "Run 'skillmd login' first at https://www.skillmarkdown.com.");
 });
 
 test("whoami preserves exact auth failure wording", async () => {
@@ -120,7 +120,9 @@ test("whoami preserves exact auth failure wording", async () => {
   );
 
   assert.equal(result, 1);
-  assert.deepEqual(errors, ["skillmd whoami: not logged in. Run 'skillmd login' first."]);
+  assert.deepEqual(errors, [
+    "skillmd whoami: not logged in. Run 'skillmd login' first at https://www.skillmarkdown.com.",
+  ]);
 });
 
 test("maps whoami API errors", async () => {

@@ -1,5 +1,7 @@
 import { CliApiError } from "./api-errors";
 
+export const SKILLMARKDOWN_WEBSITE_URL = "https://www.skillmarkdown.com";
+
 function detailsRecord(details: unknown): Record<string, unknown> | null {
   if (!details || typeof details !== "object" || Array.isArray(details)) {
     return null;
@@ -19,7 +21,10 @@ export function authzHintForReason(reason?: string): string | null {
     return "Hint: verify your owner identity with 'skillmd whoami' and inspect org access with 'skillmd org ...'.";
   }
   if (reason === "forbidden_plan") {
-    return "Hint: private skills require a Pro plan. Free users can only use public skills.";
+    return (
+      "Hint: private skills require a Pro plan. Free users can only use public skills. " +
+      `Manage your account or plan at ${SKILLMARKDOWN_WEBSITE_URL}.`
+    );
   }
   return null;
 }

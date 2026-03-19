@@ -13,7 +13,10 @@ import { type SearchSkillsResponse } from "../lib/search/types";
 import { SEARCH_USAGE } from "../lib/shared/cli-text";
 import { failWithUsage, printCommandResult } from "../lib/shared/command-output";
 import { renderTable } from "../lib/shared/table";
-import { formatCliApiErrorWithHint } from "../lib/shared/authz-error-hints";
+import {
+  formatCliApiErrorWithHint,
+  SKILLMARKDOWN_WEBSITE_URL,
+} from "../lib/shared/authz-error-hints";
 
 interface SearchCommandOptions {
   env?: NodeJS.ProcessEnv;
@@ -185,7 +188,9 @@ export async function runSearchCommand(
     )();
 
     if (!idToken) {
-      console.error("skillmd search: search requires login. Run 'skillmd login' first.");
+      console.error(
+        `skillmd search: search requires login. Run 'skillmd login' first at ${SKILLMARKDOWN_WEBSITE_URL}.`,
+      );
       return 1;
     }
 

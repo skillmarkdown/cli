@@ -1,7 +1,7 @@
 import { type ValidationResult } from "../validation/validator";
 import { printJson } from "./json-output";
 import { type CliApiError } from "./api-errors";
-import { getCliApiErrorHint } from "./authz-error-hints";
+import { getCliApiErrorHint, SKILLMARKDOWN_WEBSITE_URL } from "./authz-error-hints";
 
 export function failWithUsage(message: string, usage: string): number {
   console.error(message);
@@ -41,7 +41,7 @@ export function printSummary(label: string, parts: string[]): void {
 }
 
 export function printLoginRequired(prefix: string, reason = "not logged in"): void {
-  console.error(`${prefix}: ${reason}. Run 'skillmd login' first.`);
+  console.error(`${prefix}: ${reason}. Run 'skillmd login' first at ${SKILLMARKDOWN_WEBSITE_URL}.`);
 }
 
 interface JsonErrorEnvelope {

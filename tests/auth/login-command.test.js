@@ -280,6 +280,7 @@ test("login fails and clears session when owner profile is missing", async () =>
   assert.equal(result, 1);
   assert.equal(cleared, true);
   assert.match(errors.join("\n"), /account profile not found/);
+  assert.match(errors.join("\n"), /https:\/\/www\.skillmarkdown\.com/);
 });
 
 test("login fails with usage on unsupported flags", async () => {
@@ -399,6 +400,7 @@ test("login reports username bootstrap failure and clears session", async () => 
   assert.equal(result, 1);
   assert.equal(cleared, true);
   assert.match(errors.join("\n"), /account profile not found/);
+  assert.match(errors.join("\n"), /https:\/\/www\.skillmarkdown\.com/);
 });
 
 test("login reports non-Error failures with fallback text", async () => {

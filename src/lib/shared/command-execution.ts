@@ -4,7 +4,7 @@ import {
   printJsonError,
   printLoginRequired,
 } from "./command-output";
-import { formatCliApiErrorWithHint } from "./authz-error-hints";
+import { formatCliApiErrorWithHint, SKILLMARKDOWN_WEBSITE_URL } from "./authz-error-hints";
 import { type CliApiError } from "./api-errors";
 
 interface ExecuteReadCommandOptions<TResult, TError extends CliApiError = CliApiError> {
@@ -39,7 +39,7 @@ export async function executeReadCommand<TResult, TError extends CliApiError = C
     if (!idToken) {
       if (options.json) {
         printJsonError("auth", "not logged in", {
-          hint: "Run 'skillmd login' first.",
+          hint: `Run 'skillmd login' first at ${SKILLMARKDOWN_WEBSITE_URL}.`,
         });
         return 1;
       }

@@ -2,6 +2,7 @@ import { resolveConfiguredAuthToken } from "./api-token";
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "./id-token";
 import { readAuthSession, type AuthSession } from "./session";
 import { getWhoami } from "../whoami/client";
+import { SKILLMARKDOWN_WEBSITE_URL } from "../shared/authz-error-hints";
 import { type WhoamiResponse } from "../whoami/types";
 
 interface WriteAuthConfig {
@@ -55,10 +56,12 @@ export async function resolveWriteAuth(
   if (!session) {
     return {
       ok: false,
-      message: `${options.command}: not logged in. Run 'skillmd login' first.`,
+      message:
+        `${options.command}: not logged in. ` +
+        `Run 'skillmd login' first at ${SKILLMARKDOWN_WEBSITE_URL}.`,
       reason: "not_logged_in",
       detail: "not logged in",
-      hint: "Run 'skillmd login' first.",
+      hint: `Run 'skillmd login' first at ${SKILLMARKDOWN_WEBSITE_URL}.`,
     };
   }
 
@@ -94,7 +97,9 @@ export async function resolveWriteAuth(
     } catch {
       return {
         ok: false,
-        message: `${options.command}: account profile not found. Complete sign-up on the web before using this command.`,
+        message:
+          `${options.command}: account profile not found. ` +
+          `Complete sign-up at ${SKILLMARKDOWN_WEBSITE_URL} before using this command.`,
         reason: "profile_missing",
         detail: "account profile not found",
       };

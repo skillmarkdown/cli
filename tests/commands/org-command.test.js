@@ -368,5 +368,7 @@ test("org read commands fail when not logged in", async () => {
   );
 
   assert.equal(result, 1);
-  assert.deepEqual(errors, ["skillmd org: not logged in. Run 'skillmd login' first."]);
+  assert.deepEqual(errors, [
+    "skillmd org: not logged in. Run 'skillmd login' first at https://www.skillmarkdown.com.",
+  ]);
 });

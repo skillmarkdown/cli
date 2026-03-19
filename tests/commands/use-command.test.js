@@ -550,6 +550,7 @@ test("prints pro-plan hint for private skill install denial", async () => {
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /private skill access is not allowed/i);
   assert.match(errors.join("\n"), /private skills require a Pro plan/i);
+  assert.match(errors.join("\n"), /https:\/\/www\.skillmarkdown\.com/);
 });
 
 test("global use installs to provider home and writes global lock", async () => {
