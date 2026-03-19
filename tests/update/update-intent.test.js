@@ -7,7 +7,7 @@ const { resolveUpdateIntent } = requireDist("lib/update/intent.js");
 
 test("resolveUpdateIntent returns version selector for exact semver", () => {
   const resolved = resolveUpdateIntent({
-    skillId: "@username/skill",
+    skillId: "skill",
     username: "username",
     skill: "skill",
     selectorSpec: "1.2.3",
@@ -18,7 +18,7 @@ test("resolveUpdateIntent returns version selector for exact semver", () => {
     installedPath: "/tmp/skill",
     registryBaseUrl: "https://registry.example.com",
     installedAt: "2026-03-02T00:00:00.000Z",
-    sourceCommand: "skillmd use @username/skill --version 1.2.3",
+    sourceCommand: "skillmd use skill --version 1.2.3",
     downloadedFrom: "https://storage.example.com",
     agentTarget: "skillmd",
   });
@@ -34,7 +34,7 @@ test("resolveUpdateIntent returns version selector for exact semver", () => {
 test("resolveUpdateIntent returns spec selector for tags/ranges", () => {
   assert.deepEqual(
     resolveUpdateIntent({
-      skillId: "@username/skill",
+      skillId: "skill",
       username: "username",
       skill: "skill",
       selectorSpec: "^1.2.0",
@@ -45,7 +45,7 @@ test("resolveUpdateIntent returns spec selector for tags/ranges", () => {
       installedPath: "/tmp/skill",
       registryBaseUrl: "https://registry.example.com",
       installedAt: "2026-03-02T00:00:00.000Z",
-      sourceCommand: "skillmd use @username/skill --spec ^1.2.0",
+      sourceCommand: "skillmd use skill --spec ^1.2.0",
       downloadedFrom: "https://storage.example.com",
       agentTarget: "skillmd",
     }),

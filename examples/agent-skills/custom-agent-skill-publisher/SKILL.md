@@ -19,7 +19,7 @@ Use when the requested skill workflow must target a custom agent root:
 
 - custom target (`custom:<slug>`)
 - skill workspace path
-- skill id (`@username/skill`)
+- skill id (`skill`)
 - version, channel, visibility
 
 ## Outputs
@@ -54,7 +54,7 @@ Use when the requested skill workflow must target a custom agent root:
 ## Examples
 
 - “Publish this skill for custom:myagent.”
-- “Install @username/skill under custom:researchbot.”
+- “Install skill under custom:researchbot.”
 - “Update all custom:myagent skills in this repo.”
 
 ## Limitations / Failure modes

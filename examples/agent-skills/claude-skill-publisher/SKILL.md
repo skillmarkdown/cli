@@ -18,7 +18,7 @@ Use when the requested skill workflow must target Claude roots and metadata:
 ## Inputs
 
 - skill workspace path
-- skill id (`@username/skill`)
+- skill id (`skill`)
 - version, channel, visibility
 
 ## Outputs
@@ -52,7 +52,7 @@ Use when the requested skill workflow must target Claude roots and metadata:
 ## Examples
 
 - “Publish this skill for Claude beta only.”
-- “Install @username/skill into Claude in this repo.”
+- “Install skill into Claude in this repo.”
 - “Update all Claude-targeted skills in this project.”
 
 ## Limitations / Failure modes

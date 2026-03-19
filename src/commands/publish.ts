@@ -1,8 +1,7 @@
 import { basename, resolve } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 
-import { deriveOwnerFromSession } from "../lib/auth/owner";
-import { readAuthSession, type AuthSession } from "../lib/auth/session";
+import { type AuthSession } from "../lib/auth/session";
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
 import { resolveWriteAuth } from "../lib/auth/write-auth";
 import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";
@@ -207,9 +206,7 @@ export async function runPublishCommand(
     return 1;
   }
 
-  const readSessionFn = options.readSession ?? readAuthSession;
-  const session = readSessionFn();
-  let owner = parsed.owner ? `@${parsed.owner}` : session ? deriveOwnerFromSession() : null;
+  let owner = parsed.owner ? `@${parsed.owner}` : null;
 
   try {
     const getConfigFn = options.getConfig ?? getPublishEnvConfig;
@@ -356,9 +353,6 @@ export async function runPublishCommand(
         if (reason === "owner_conflict") {
           console.error(`skillmd publish: skill name is not available (${basename(targetDir)}).`);
           return 1;
-        }
-        if (!owner && session) {
-          owner = deriveOwnerFromSession();
         }
         const conflictId = owner ? `${owner}/${basename(targetDir)}` : basename(targetDir);
         console.error(

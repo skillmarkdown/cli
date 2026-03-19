@@ -25,7 +25,7 @@ test("printSkillStatusTable renders rows with spec and detail columns", async ()
     printSkillStatusTable(
       [
         {
-          skillId: "@username/skill-a",
+          skillId: "skill-a",
           agentTarget: "claude",
           spec: "latest",
           fromVersion: "1.0.0",
@@ -41,7 +41,7 @@ test("printSkillStatusTable renders rows with spec and detail columns", async ()
   const output = logs.join("\n");
   assert.match(output, /SKILL/);
   assert.match(output, /SPEC/);
-  assert.match(output, /@username\/skill-a/);
+  assert.match(output, /skill-a/);
   assert.match(output, /resolved from dist-tag/);
 });
 
@@ -55,13 +55,13 @@ test("printPruneTable prints prune results table", async () => {
   const { logs } = await captureConsole(() =>
     printPruneTable([
       {
-        skillId: "@username/skill-a",
+        skillId: "skill-a",
         agentTarget: "openai",
         status: "pruned",
         reason: "not declared in skills.json",
       },
       {
-        skillId: "@username/skill-b",
+        skillId: "skill-b",
         agentTarget: "claude",
         status: "failed",
         reason: "install root is invalid",
@@ -71,7 +71,7 @@ test("printPruneTable prints prune results table", async () => {
 
   const output = logs.join("\n");
   assert.match(output, /Prune results:/);
-  assert.match(output, /@username\/skill-a/);
+  assert.match(output, /skill-a/);
   assert.match(output, /pruned/);
   assert.match(output, /failed/);
 });

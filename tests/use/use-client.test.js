@@ -16,7 +16,7 @@ test("resolveSkillVersion returns parsed payload", async () => {
   const payload = await withMockedFetch(
     async (input, init) => {
       const url = new URL(String(input));
-      assert.equal(url.pathname, "/v1/skills/stefdevscore/test-skill/resolve");
+      assert.equal(url.pathname, "/v1/skills/@stefdevscore/test-skill/resolve");
       assert.equal(url.searchParams.get("spec"), "latest");
       assert.equal(init?.headers, undefined);
 
@@ -78,7 +78,7 @@ test("getArtifactDescriptor returns parsed payload", async () => {
   const payload = await withMockedFetch(
     async (input) => {
       const url = new URL(String(input));
-      assert.equal(url.pathname, "/v1/skills/stefdevscore/test-skill/versions/1.2.3/artifact");
+      assert.equal(url.pathname, "/v1/skills/@stefdevscore/test-skill/versions/1.2.3/artifact");
       return mockJsonResponse(200, {
         owner: "@stefdevscore",
         username: "stefdevscore",

@@ -295,6 +295,7 @@ export async function runUpdateCommand(
             cwd,
             username: parsedSkillId.username,
             skillSlug: parsedSkillId.skillSlug,
+            preferBareSkillId: parsedSkillId.username.length === 0,
             selector: toSelector(intent.selector.value),
             selectedAgentTarget: entry.agentTarget as AgentTarget,
             defaultAgentTarget: config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET,

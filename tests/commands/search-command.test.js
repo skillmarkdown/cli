@@ -24,7 +24,7 @@ function baseOptions(overrides = {}) {
       limit: 20,
       results: [
         {
-          skillId: "@username/test-skill",
+          skillId: "test-skill",
           owner: "@owner",
           username: "username",
           skill: "test-skill",
@@ -50,7 +50,7 @@ test("fails with usage on invalid args", async () => {
 test("prints human output for search results", async () => {
   const { result, logs } = await captureConsole(() => runSearchCommand(["agent"], baseOptions()));
   assert.equal(result, 0);
-  assert.match(logs.join("\n"), /@username\/test-skill/);
+  assert.match(logs.join("\n"), /test-skill/);
   assert.match(logs.join("\n"), /1.2.3/);
 });
 
@@ -133,7 +133,7 @@ test("does not crash when result distTags are missing", async () => {
           limit: 20,
           results: [
             {
-              skillId: "@username/test-skill",
+              skillId: "test-skill",
               owner: "@owner",
               username: "username",
               skill: "test-skill",
@@ -148,7 +148,7 @@ test("does not crash when result distTags are missing", async () => {
   );
 
   assert.equal(result, 0);
-  assert.match(logs.join("\n"), /@username\/test-skill/);
+  assert.match(logs.join("\n"), /test-skill/);
 });
 
 test("prints pro-plan hint for private search denial", async () => {

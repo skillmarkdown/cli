@@ -20,7 +20,7 @@ function lockEntry(skillId, agentTarget = "skillmd") {
     installedPath: `/workspace/.agent/skills/registry.example.com/username/${skill}`,
     registryBaseUrl: "https://registry.example.com",
     installedAt: "2026-03-01T00:00:00.000Z",
-    sourceCommand: "skillmd use @username/skill",
+    sourceCommand: "skillmd use skill",
     downloadedFrom: "https://storage.example.com",
     agentTarget,
   };
@@ -62,8 +62,8 @@ test("prints json results and supports --agent-target", async () => {
         lockfileVersion: 1,
         generatedAt: "",
         entries: {
-          a: lockEntry("@username/skill-a", "skillmd"),
-          b: lockEntry("@username/skill-b", "claude"),
+          a: lockEntry("skill-a", "skillmd"),
+          b: lockEntry("skill-b", "claude"),
         },
       }),
     }),
@@ -71,7 +71,7 @@ test("prints json results and supports --agent-target", async () => {
   assert.equal(result, 0);
   const payload = JSON.parse(logs.join("\n"));
   assert.equal(payload.total, 1);
-  assert.equal(payload.entries[0].skillId, "@username/skill-b");
+  assert.equal(payload.entries[0].skillId, "skill-b");
 });
 
 test("filters json results with new builtin agent target", async () => {
@@ -88,8 +88,8 @@ test("filters json results with new builtin agent target", async () => {
         lockfileVersion: 1,
         generatedAt: "",
         entries: {
-          a: lockEntry("@username/skill-a", "skillmd"),
-          b: lockEntry("@username/skill-b", "perplexity"),
+          a: lockEntry("skill-a", "skillmd"),
+          b: lockEntry("skill-b", "perplexity"),
         },
       }),
     }),

@@ -117,7 +117,7 @@ test("searchSkills defaults missing distTags to empty map", async () => {
         limit: 20,
         results: [
           {
-            skillId: "@username/test-skill",
+            skillId: "test-skill",
             owner: "@owner",
             username: "username",
             skill: "test-skill",

@@ -29,7 +29,7 @@ test("login uses built-in defaults when env vars are missing", async () => {
     promptForCredentials: async () => ({ email: "user@example.com", password: "password123" }),
     signInWithEmailAndPassword: async (apiKey, email) => {
       called = true;
-      assert.equal(apiKey, "AIzaSyAkaZRmpCvZasFjeRAfW_b0V0nUcGOTjok");
+      assert.equal(apiKey, "AIzaSyB1eLZYLzmkrEdXXT6aZKB7sIWkTvKzf6M");
       assert.equal(email, "user@example.com");
       return { localId: "uid-1", email: "user@example.com", refreshToken: "refresh-1" };
     },
@@ -44,7 +44,7 @@ test("login uses built-in defaults when env vars are missing", async () => {
       owner: "@core",
       username: "core",
       email: "user@example.com",
-      projectId: "skillmarkdown",
+      projectId: "skillmarkdown-development",
       authType: "firebase",
       scope: "admin",
     }),

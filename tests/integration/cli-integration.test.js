@@ -177,7 +177,7 @@ test("spawned CLI: remove invalid skill id returns usage (no crash)", () => {
   const root = makeTempDirectory(CLI_TEST_PREFIX);
 
   try {
-    const result = runCli(["remove", "bad"], root);
+    const result = runCli(["remove", "username/skill"], root);
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Usage: skillmd remove/);
   } finally {
@@ -249,7 +249,7 @@ test("spawned CLI: search prints dist-tag latest and caches selection for numeri
           limit: 20,
           results: [
             {
-              skillId: "@username/skill-a",
+              skillId: "skill-a",
               owner: "@owner",
               username: "username",
               skill: "skill-a",
@@ -264,7 +264,7 @@ test("spawned CLI: search prints dist-tag latest and caches selection for numeri
       return;
     }
 
-    if (request.method === "GET" && url.pathname === "/v1/skills/username/skill-a") {
+    if (request.method === "GET" && url.pathname === "/v1/skills/skill-a") {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(
         JSON.stringify({
@@ -291,7 +291,7 @@ test("spawned CLI: search prints dist-tag latest and caches selection for numeri
       SKILLMD_REGISTRY_BASE_URL: baseUrl,
     });
     assert.equal(searchResult.status, 0);
-    assert.match(searchResult.stdout, /@username\/skill-a/);
+    assert.match(searchResult.stdout, /skill-a/);
     assert.match(searchResult.stdout, /1.2.3/);
 
     const viewResult = await runCliAsync(["view", "1"], root, {
@@ -299,7 +299,7 @@ test("spawned CLI: search prints dist-tag latest and caches selection for numeri
       SKILLMD_REGISTRY_BASE_URL: baseUrl,
     });
     assert.equal(viewResult.status, 0);
-    assert.match(viewResult.stdout, /Skill: @username\/skill-a/);
+    assert.match(viewResult.stdout, /Skill: skill-a/);
     assert.match(viewResult.stdout, /Dist-Tags:/);
   } finally {
     await mockRegistry.close();
@@ -505,14 +505,7 @@ test("spawned CLI: tag ls surfaces strict dist-tags route errors", async () => {
 
 test("spawned CLI: update --all uses skills-lock.json and rewrites resolved version", async () => {
   const root = makeTempDirectory(CLI_TEST_PREFIX);
-  const installedPath = path.join(
-    root,
-    ".agent",
-    "skills",
-    "registry.skillmarkdown.com",
-    "owner",
-    "skill-a",
-  );
+  const installedPath = path.join(root, ".agent", "skills", "skill-a");
   fs.mkdirSync(installedPath, { recursive: true });
   fs.writeFileSync(path.join(installedPath, "SKILL.md"), "---\nname: skill-a\n---\n", "utf8");
 
@@ -522,7 +515,7 @@ test("spawned CLI: update --all uses skills-lock.json and rewrites resolved vers
     const url = new URL(request.url, "http://127.0.0.1");
     if (
       request.method === "GET" &&
-      url.pathname === "/v1/skills/username/skill-a/resolve" &&
+      url.pathname === "/v1/skills/skill-a/resolve" &&
       url.searchParams.get("spec") === "latest"
     ) {
       response.writeHead(200, { "content-type": "application/json" });
@@ -538,10 +531,7 @@ test("spawned CLI: update --all uses skills-lock.json and rewrites resolved vers
       return;
     }
 
-    if (
-      request.method === "GET" &&
-      url.pathname === "/v1/skills/username/skill-a/versions/1.1.0/artifact"
-    ) {
+    if (request.method === "GET" && url.pathname === "/v1/skills/skill-a/versions/1.1.0/artifact") {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(
         JSON.stringify({
@@ -580,7 +570,7 @@ test("spawned CLI: update --all uses skills-lock.json and rewrites resolved vers
         generatedAt: "2026-03-01T00:00:00.000Z",
         entries: {
           a: {
-            skillId: "@username/skill-a",
+            skillId: "skill-a",
             username: "username",
             skill: "skill-a",
             selectorSpec: "latest",
@@ -591,7 +581,7 @@ test("spawned CLI: update --all uses skills-lock.json and rewrites resolved vers
             installedPath,
             registryBaseUrl: baseUrl,
             installedAt: "2026-03-01T00:00:00.000Z",
-            sourceCommand: "skillmd use @username/skill-a",
+            sourceCommand: "skillmd use skill-a",
             downloadedFrom: "https://storage.example.com",
             agentTarget: "skillmd",
           },
@@ -633,7 +623,7 @@ test("spawned CLI: install reads skills.json and writes skills-lock.json", async
     const url = new URL(request.url, "http://127.0.0.1");
     if (
       request.method === "GET" &&
-      url.pathname === "/v1/skills/username/skill-a/resolve" &&
+      url.pathname === "/v1/skills/skill-a/resolve" &&
       url.searchParams.get("spec") === "latest"
     ) {
       response.writeHead(200, { "content-type": "application/json" });
@@ -649,10 +639,7 @@ test("spawned CLI: install reads skills.json and writes skills-lock.json", async
       return;
     }
 
-    if (
-      request.method === "GET" &&
-      url.pathname === "/v1/skills/username/skill-a/versions/1.2.3/artifact"
-    ) {
+    if (request.method === "GET" && url.pathname === "/v1/skills/skill-a/versions/1.2.3/artifact") {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(
         JSON.stringify({
@@ -693,7 +680,7 @@ test("spawned CLI: install reads skills.json and writes skills-lock.json", async
           agentTarget: "skillmd",
         },
         dependencies: {
-          "@username/skill-a": {
+          "skill-a": {
             spec: "latest",
           },
         },
@@ -720,7 +707,7 @@ test("spawned CLI: install reads skills.json and writes skills-lock.json", async
     assert.equal(lock.lockfileVersion, 1);
     assert.equal(Object.keys(lock.entries).length, 1);
     const [entry] = Object.values(lock.entries);
-    assert.equal(entry.skillId, "@username/skill-a");
+    assert.equal(entry.skillId, "skill-a");
     assert.equal(entry.selectorSpec, "latest");
     assert.equal(entry.resolvedVersion, "1.2.3");
     assert.equal(entry.sourceCommand, "skillmd install");

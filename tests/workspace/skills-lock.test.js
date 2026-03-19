@@ -24,7 +24,7 @@ function validLockfile(entries) {
 test("loadSkillsLock rejects entries with invalid agentTarget", async () => {
   const rawLockfile = validLockfile({
     a: {
-      skillId: "@username/skill-a",
+      skillId: "skill-a",
       username: "username",
       skill: "skill-a",
       agentTarget: "bad-target",
@@ -36,7 +36,7 @@ test("loadSkillsLock rejects entries with invalid agentTarget", async () => {
       installedPath: "/tmp/a",
       registryBaseUrl: "https://registry.example.com",
       installedAt: "2026-03-02T00:00:00.000Z",
-      sourceCommand: "skillmd use @username/skill-a",
+      sourceCommand: "skillmd use skill-a",
       downloadedFrom: "https://storage.example.com",
     },
   });
@@ -53,7 +53,7 @@ test("loadSkillsLock rejects entries with invalid agentTarget", async () => {
 test("loadSkillsLock accepts new builtin agent targets", async () => {
   const rawLockfile = validLockfile({
     a: {
-      skillId: "@username/skill-a",
+      skillId: "skill-a",
       username: "username",
       skill: "skill-a",
       agentTarget: "meta",
@@ -65,7 +65,7 @@ test("loadSkillsLock accepts new builtin agent targets", async () => {
       installedPath: "/tmp/a",
       registryBaseUrl: "https://registry.example.com",
       installedAt: "2026-03-02T00:00:00.000Z",
-      sourceCommand: "skillmd use @username/skill-a --agent-target meta",
+      sourceCommand: "skillmd use skill-a --agent-target meta",
       downloadedFrom: "https://storage.example.com",
     },
   });
@@ -110,7 +110,7 @@ test("saveSkillsLock round-trips lockfile via filesystem", async () => {
     const lock = upsertSkillsLockEntry(
       createEmptySkillsLock(now),
       {
-        skillId: "@username/skill-a",
+        skillId: "skill-a",
         username: "username",
         skill: "skill-a",
         agentTarget: "skillmd",
@@ -122,7 +122,7 @@ test("saveSkillsLock round-trips lockfile via filesystem", async () => {
         installedPath: "/tmp/skills/username/skill-a",
         registryBaseUrl: "https://registry.example.com",
         installedAt: now.toISOString(),
-        sourceCommand: "skillmd use @username/skill-a",
+        sourceCommand: "skillmd use skill-a",
         downloadedFrom: "https://storage.example.com",
       },
       now,
@@ -145,7 +145,7 @@ test("saveSkillsLock supports concurrent writes without temp-file collisions", a
     const lockA = upsertSkillsLockEntry(
       createEmptySkillsLock(now),
       {
-        skillId: "@username/skill-a",
+        skillId: "skill-a",
         username: "username",
         skill: "skill-a",
         agentTarget: "skillmd",
@@ -157,7 +157,7 @@ test("saveSkillsLock supports concurrent writes without temp-file collisions", a
         installedPath: "/tmp/skills/username/skill-a",
         registryBaseUrl: "https://registry.example.com",
         installedAt: now.toISOString(),
-        sourceCommand: "skillmd use @username/skill-a",
+        sourceCommand: "skillmd use skill-a",
         downloadedFrom: "https://storage.example.com",
       },
       now,
@@ -165,7 +165,7 @@ test("saveSkillsLock supports concurrent writes without temp-file collisions", a
     const lockB = upsertSkillsLockEntry(
       createEmptySkillsLock(now),
       {
-        skillId: "@username/skill-b",
+        skillId: "skill-b",
         username: "username",
         skill: "skill-b",
         agentTarget: "claude",
@@ -177,7 +177,7 @@ test("saveSkillsLock supports concurrent writes without temp-file collisions", a
         installedPath: "/tmp/skills/username/skill-b",
         registryBaseUrl: "https://registry.example.com",
         installedAt: now.toISOString(),
-        sourceCommand: "skillmd use @username/skill-b --agent-target claude",
+        sourceCommand: "skillmd use skill-b --agent-target claude",
         downloadedFrom: "https://storage.example.com",
       },
       now,
@@ -188,10 +188,7 @@ test("saveSkillsLock supports concurrent writes without temp-file collisions", a
     const loaded = await loadSkillsLock(cwd);
     const loadedValues = Object.values(loaded.entries);
     assert.equal(loadedValues.length, 1);
-    assert.ok(
-      loadedValues[0].skillId === "@username/skill-a" ||
-        loadedValues[0].skillId === "@username/skill-b",
-    );
+    assert.ok(loadedValues[0].skillId === "skill-a" || loadedValues[0].skillId === "skill-b");
 
     const files = fs.readdirSync(cwd);
     assert.equal(files.includes("skills-lock.json"), true);

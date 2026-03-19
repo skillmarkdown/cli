@@ -512,11 +512,11 @@ test("maps use API errors", async () => {
 
 test("fails for invalid skill ids", async () => {
   const { result, errors } = await captureConsole(() =>
-    runUseCommand(["not-a-skill-id"], baseOptions()),
+    runUseCommand(["username/test-skill"], baseOptions()),
   );
 
   assert.equal(result, 1);
-  assert.match(errors.join("\n"), /skill id must be in the form/i);
+  assert.match(errors.join("\n"), /scoped skill ids must use the form @org\/skill/i);
 });
 
 test("prefixes unexpected errors with command name", async () => {

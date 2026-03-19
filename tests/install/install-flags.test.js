@@ -25,12 +25,7 @@ test("parses prune/json/agent-target flags", () => {
   });
 });
 
-for (const args of [
-  ["--bad"],
-  ["--agent-target"],
-  ["--agent-target", "custom:UPPER"],
-  ["@username/skill"],
-]) {
+for (const args of [["--bad"], ["--agent-target"], ["--agent-target", "custom:UPPER"], ["skill"]]) {
   test(`rejects invalid args: ${args.join(" ")}`, () => {
     const parsed = parseInstallFlags(args);
     assert.equal(parsed.valid, false);

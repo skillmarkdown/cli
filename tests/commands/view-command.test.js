@@ -41,18 +41,18 @@ test("fails with usage on invalid args", async () => {
 
 test("prints human output for skill view", async () => {
   const { result, logs } = await captureConsole(() =>
-    runViewCommand(["@username/test-skill"], baseOptions()),
+    runViewCommand(["test-skill"], baseOptions()),
   );
 
   assert.equal(result, 0);
-  assert.match(logs.join("\n"), /Skill: @username\/test-skill/);
+  assert.match(logs.join("\n"), /Skill: test-skill/);
   assert.match(logs.join("\n"), /Access: public/);
   assert.match(logs.join("\n"), /latest: 1.2.3/);
 });
 
 test("prints json output with --json", async () => {
   const { result, logs } = await captureConsole(() =>
-    runViewCommand(["@username/test-skill", "--json"], baseOptions()),
+    runViewCommand(["test-skill", "--json"], baseOptions()),
   );
   assert.equal(result, 0);
   const payload = JSON.parse(logs.join("\n"));
@@ -77,7 +77,7 @@ test("resolves numeric index from cached search results", async () => {
       baseOptions({
         readSelectionCache: () => ({
           registryBaseUrl: "https://registry.example.com",
-          skillIds: ["@username/a", "@username/b"],
+          skillIds: ["a", "b"],
           pageStartIndex: 1,
           updatedAt: "2026-03-02T00:00:00.000Z",
           continuations: [],
@@ -92,7 +92,7 @@ test("resolves numeric index from cached search results", async () => {
 test("maps view API errors", async () => {
   const { result, errors } = await captureConsole(() =>
     runViewCommand(
-      ["@username/test-skill"],
+      ["test-skill"],
       baseOptions({
         getSkillView: async () => {
           throw new ViewApiError(404, "not_found", "missing");

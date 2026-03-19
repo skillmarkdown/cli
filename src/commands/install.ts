@@ -293,6 +293,7 @@ export async function runInstallCommand(
             cwd,
             username: parsedSkill.username,
             skillSlug: parsedSkill.skillSlug,
+            preferBareSkillId: parsedSkill.username.length === 0,
             selector: {
               strategy: "spec",
               spec: dependency.spec,

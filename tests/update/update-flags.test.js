@@ -32,13 +32,13 @@ test("parses --all with flags", () => {
 });
 
 test("parses multiple skill ids", () => {
-  const parsed = parseUpdateFlags(["@username/skill-a", "username/skill-b"]);
+  const parsed = parseUpdateFlags(["skill-a", "username/skill-b"]);
 
   assert.deepEqual(parsed, {
     all: false,
     json: false,
     global: false,
-    skillIds: ["@username/skill-a", "username/skill-b"],
+    skillIds: ["skill-a", "username/skill-b"],
     agentTarget: undefined,
     valid: true,
   });
@@ -50,11 +50,7 @@ test("parses --agent-target", () => {
   assert.equal(parsed.agentTarget, "claude");
 });
 
-for (const args of [
-  ["--all", "@username/skill"],
-  ["--bad-flag"],
-  ["--agent-target", "custom:UPPER"],
-]) {
+for (const args of [["--all", "skill"], ["--bad-flag"], ["--agent-target", "custom:UPPER"]]) {
   test(`rejects invalid args: ${args.join(" ")}`, () => {
     const parsed = parseUpdateFlags(args);
     assert.equal(parsed.valid, false);
