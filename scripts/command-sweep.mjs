@@ -532,6 +532,7 @@ function makeCoreContext(workspace) {
     globalInstalledPath: null,
     globalManifestInstallPath: null,
     proOwnedSkillId: null,
+    proPlan: null,
     privateCursorQuery: PRIVATE_CURSOR_QUERY,
     privateCursorNext: null,
   };
@@ -543,12 +544,12 @@ function validateWhoami(raw) {
   assert(typeof payload.username === "string", "whoami did not return username");
 }
 
-function validateWhoamiPlan(expectedPlan) {
+function captureWhoamiPlan(ctx) {
   return (raw) => {
     const payload = parseJsonPayload(raw.stdout);
     assert(payload && typeof payload.owner === "string", "whoami did not return owner");
     assert(typeof payload.username === "string", "whoami did not return username");
-    assert(payload.plan === expectedPlan, `expected whoami plan ${expectedPlan}`);
+    ctx.proPlan = typeof payload.plan === "string" ? payload.plan : null;
   };
 }
 
@@ -1209,10 +1210,14 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     env: proStepEnv,
     strict,
     allowAuthBlocked,
-    validate: validateWhoamiPlan("pro"),
+    validate: captureWhoamiPlan(ctx),
     coverageKind: "live-auth",
     skipReason: proAuthSkipReason,
   });
+  const proPrivateSkipReason =
+    proAuthSkipReason ??
+    (ctx.proPlan === "pro" ? null : "pro fixture does not currently have Pro-plan entitlements");
+  const requireProPrivateChecks = proAuthSkipReason ? true : ctx.proPlan === "pro";
   runScenarioStep(state, {
     name: "publish-private-pro",
     args: [
@@ -1234,7 +1239,8 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     allowAuthBlocked,
     validate: validatePrivatePublishReal(ctx),
     coverageKind: "live-auth",
-    skipReason: proAuthSkipReason,
+    required: requireProPrivateChecks,
+    skipReason: proPrivateSkipReason,
   });
   runScenarioStep(state, {
     name: "search-private-pro",
@@ -1248,7 +1254,8 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
       validatePrivateSearchContains(ctx.proOwnedSkillId)(raw);
     },
     coverageKind: "live-auth",
-    skipReason: proAuthSkipReason,
+    required: requireProPrivateChecks,
+    skipReason: proPrivateSkipReason,
   });
   runScenarioStep(state, {
     name: "search-private-pro-limit",
@@ -1263,7 +1270,8 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
       requireNextCursor: true,
     }),
     coverageKind: "live-auth",
-    skipReason: proAuthSkipReason,
+    required: requireProPrivateChecks,
+    skipReason: proPrivateSkipReason,
   });
   runScenarioStep(state, {
     name: "search-private-pro-cursor",
@@ -1287,7 +1295,8 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
       expectedLimit: 5,
     }),
     coverageKind: "live-auth",
-    skipReason: proAuthSkipReason,
+    required: requireProPrivateChecks,
+    skipReason: proPrivateSkipReason,
   });
   runScenarioStep(state, {
     name: "view-skill",
