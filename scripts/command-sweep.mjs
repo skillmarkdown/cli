@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { pickFirstNonEmpty, sanitizeStepForOutput } from "./command-sweep-utils.mjs";
+import { getMatrixCommands } from "./command-matrix.mjs";
 
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI_PATH = join(ROOT_DIR, "dist", "cli.js");
@@ -23,6 +24,20 @@ const ENV_PROFILES = {
 
 const PROD_DEFAULT_API_KEY = "AIzaSyAkaZRmpCvZasFjeRAfW_b0V0nUcGOTjok";
 const RUN_ID = `${Date.now()}`;
+const MATRIX_COMMANDS = getMatrixCommands();
+
+function parseOwnedSkillId(skillId) {
+  if (typeof skillId !== "string" || skillId.trim().length === 0) {
+    throw new Error("owned skill id is not set");
+  }
+
+  if (!skillId.includes("/")) {
+    return { owner: "", skillSlug: skillId };
+  }
+
+  const [owner, skillSlug] = skillId.split("/");
+  return { owner, skillSlug };
+}
 
 function parseArgs(argv) {
   const parsed = {
@@ -179,6 +194,23 @@ function createProfileEnv(profileName) {
   }
 
   return env;
+}
+
+function hasLoginCredentials(env) {
+  return Boolean(env.SKILLMD_LOGIN_EMAIL?.trim() && env.SKILLMD_LOGIN_PASSWORD?.trim());
+}
+
+function hasOrgFixtures(env) {
+  return Boolean(env.SKILLMD_E2E_ORG_SLUG?.trim());
+}
+
+function inferCommandFromArgs(args) {
+  if (!Array.isArray(args) || args.length === 0) {
+    return "root";
+  }
+
+  const [first] = args;
+  return typeof first === "string" && !first.startsWith("-") ? first : "root";
 }
 
 function runCli({ env, cwd, args }) {
@@ -340,6 +372,10 @@ function runScenarioStep(state, config) {
     validate: config.validate,
   });
 
+  finalized.command = config.command ?? inferCommandFromArgs(config.args);
+  finalized.coverageKind = config.coverageKind ?? "spawned";
+  finalized.required = config.required ?? true;
+
   printStep(finalized, state);
   return finalized;
 }
@@ -352,6 +388,37 @@ function summarizeOutcome(state) {
     return 3;
   }
   return 0;
+}
+
+function buildCommandCoverage(results) {
+  const liveCommands = new Set();
+  const spawnedCommands = new Set();
+
+  for (const result of results) {
+    for (const step of result.steps ?? []) {
+      if (step.status !== "pass" || typeof step.command !== "string") {
+        continue;
+      }
+      if (step.coverageKind === "live-auth") {
+        liveCommands.add(step.command);
+        continue;
+      }
+      spawnedCommands.add(step.command);
+    }
+  }
+
+  const coverage = {};
+  for (const command of Array.from(MATRIX_COMMANDS).sort()) {
+    if (liveCommands.has(command)) {
+      coverage[command] = "live-auth-covered";
+    } else if (spawnedCommands.has(command)) {
+      coverage[command] = "spawned-covered";
+    } else {
+      coverage[command] = "unit-only";
+    }
+  }
+
+  return coverage;
 }
 
 function preflightOrThrow({ profileName, strict, tier, env }) {
@@ -367,6 +434,7 @@ function preflightOrThrow({ profileName, strict, tier, env }) {
     "SKILLMD_FIREBASE_API_KEY",
     "SKILLMD_LOGIN_EMAIL",
     "SKILLMD_LOGIN_PASSWORD",
+    "SKILLMD_E2E_ORG_SLUG",
   ];
   const missingCore = requiredCoreEnv.filter((key) => !env[key]?.trim());
   if (missingCore.length > 0) {
@@ -462,9 +530,21 @@ function validateSearchEmpty(raw) {
 function validateView(ctx) {
   return (raw) => {
     const payload = parseJsonPayload(raw.stdout);
-    const [owner, skill] = ctx.ownedSkillId.split("/");
-    assert(payload && payload.owner === owner, "view owner mismatch");
-    assert(payload.skill === skill, "view skill mismatch");
+    const parsed = parseOwnedSkillId(ctx.ownedSkillId);
+    assert(payload, "view did not return payload");
+    if (parsed.owner) {
+      assert(payload.owner === parsed.owner, "view owner mismatch");
+    } else {
+      assert(
+        typeof payload.owner === "string" && payload.owner.startsWith("@"),
+        "view owner missing",
+      );
+      assert(
+        typeof payload.username === "string" && payload.owner === `@${payload.username}`,
+        "view owner/username mismatch",
+      );
+    }
+    assert(payload.skill === parsed.skillSlug, "view skill mismatch");
   };
 }
 
@@ -485,6 +565,43 @@ function validateTagList(tagName, shouldExist = true) {
     assert(payload && payload.distTags && typeof payload.distTags === "object", "tag ls invalid");
     const hasTag = Object.prototype.hasOwnProperty.call(payload.distTags, tagName);
     assert(hasTag === shouldExist, `tag ${tagName} presence mismatch`);
+  };
+}
+
+function validateTagListEventually({
+  tagName,
+  shouldExist = true,
+  env,
+  cwd,
+  skillId,
+  strict,
+  allowAuthBlocked,
+}) {
+  return (raw) => {
+    let lastRaw = raw;
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        validateTagList(tagName, shouldExist)(lastRaw);
+        return;
+      } catch (error) {
+        if (attempt === 2) {
+          throw error;
+        }
+        lastRaw = runCli({ env, cwd, args: ["tag", "ls", skillId, "--json"] });
+        const classified = classifyResult({
+          raw: { ...lastRaw, name: "tag-ls-after-rm-retry" },
+          kind: "success",
+          strict,
+          allowAuthBlocked,
+          required: true,
+          skipReason: null,
+        });
+        if (classified.status !== "pass") {
+          throw new Error(classified.detail ?? classified.combined ?? "tag ls retry failed");
+        }
+      }
+    }
   };
 }
 
@@ -584,6 +701,12 @@ function validateHistoryEmpty(raw) {
 function runCoreTier({ state, env, strict, allowAuthBlocked }) {
   const ctx = makeCoreContext(state.workspace);
   const stepEnv = { ...env, HOME: ctx.isolatedHomeDir };
+  const authSkipReason =
+    !strict && !hasLoginCredentials(stepEnv)
+      ? "missing non-interactive login credentials for live auth sweep"
+      : null;
+  const orgSkipReason =
+    !strict && !hasOrgFixtures(stepEnv) ? "missing org fixture slug for live org sweep" : null;
 
   runScenarioStep(state, {
     name: "root-version",
@@ -592,6 +715,7 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     env: stepEnv,
     strict,
     allowAuthBlocked,
+    command: "root",
   });
   runScenarioStep(state, {
     name: "root-version-short",
@@ -600,6 +724,7 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     env: stepEnv,
     strict,
     allowAuthBlocked,
+    command: "root",
   });
   runScenarioStep(state, {
     name: "logout-preflight",
@@ -618,6 +743,8 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     strict,
     allowAuthBlocked,
     expectedPattern: /Login successful/i,
+    coverageKind: "live-auth",
+    skipReason: authSkipReason,
   });
   runScenarioStep(state, {
     name: "login-status",
@@ -627,6 +754,8 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     strict,
     allowAuthBlocked,
     expectedPattern: /(logged in|project:)/i,
+    coverageKind: "live-auth",
+    skipReason: authSkipReason,
   });
   runScenarioStep(state, {
     name: "whoami",
@@ -636,6 +765,8 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     strict,
     allowAuthBlocked,
     validate: validateWhoami,
+    coverageKind: "live-auth",
+    skipReason: authSkipReason,
   });
   runScenarioStep(state, {
     name: "init-verbose-no-validate",
@@ -710,17 +841,19 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     strict,
     allowAuthBlocked,
     validate: validatePublishReal(ctx),
+    coverageKind: "live-auth",
+    skipReason: authSkipReason,
   });
 
   if (!ctx.ownedSkillId) {
     return ctx;
   }
 
-  const ownedSkillSlug = ctx.ownedSkillId.split("/")[1];
+  const ownedSkill = parseOwnedSkillId(ctx.ownedSkillId);
 
   runScenarioStep(state, {
     name: "search-owned-skill",
-    args: ["search", ownedSkillSlug, "--json"],
+    args: ["search", ownedSkill.skillSlug, "--json"],
     cwd: ROOT_DIR,
     env: stepEnv,
     strict,
@@ -753,6 +886,127 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     strict,
     allowAuthBlocked,
     validate: validateHistory(ctx),
+    coverageKind: "live-auth",
+  });
+  runScenarioStep(state, {
+    name: "token-add",
+    args: ["token", "add", `sweep-read-${RUN_ID}`, "--scope", "read", "--days", "1", "--json"],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    coverageKind: "live-auth",
+  });
+  let tokenId = null;
+  const tokenAddStep = state.steps[state.steps.length - 1];
+  if (tokenAddStep.status === "pass") {
+    tokenId = parseJsonPayload(tokenAddStep.stdout)?.tokenId ?? null;
+  }
+  runScenarioStep(state, {
+    name: "token-ls",
+    args: ["token", "ls", "--json"],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    coverageKind: "live-auth",
+    validate: (raw) => {
+      const payload = parseJsonPayload(raw.stdout);
+      assert(payload && Array.isArray(payload.tokens), "token ls invalid");
+      assert(
+        tokenId && payload.tokens.some((token) => token && token.tokenId === tokenId),
+        "token missing from list",
+      );
+    },
+  });
+  runScenarioStep(state, {
+    name: "token-rm",
+    args: ["token", "rm", tokenId ?? "missing-token", "--json"],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    coverageKind: "live-auth",
+    skipReason: tokenId ? null : "token add did not return tokenId",
+  });
+  runScenarioStep(state, {
+    name: "org-ls",
+    args: ["org", "ls", "--json"],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    coverageKind: "live-auth",
+    skipReason: orgSkipReason,
+    validate: (raw) => {
+      const payload = parseJsonPayload(raw.stdout);
+      assert(payload && Array.isArray(payload.organizations), "org ls invalid");
+      assert(
+        payload.organizations.some((org) => org && org.slug === stepEnv.SKILLMD_E2E_ORG_SLUG),
+        `missing org ${stepEnv.SKILLMD_E2E_ORG_SLUG}`,
+      );
+    },
+  });
+  runScenarioStep(state, {
+    name: "org-tokens-add",
+    args: [
+      "org",
+      "tokens",
+      "add",
+      stepEnv.SKILLMD_E2E_ORG_SLUG ?? "missing-org",
+      `sweep-org-${RUN_ID}`,
+      "--scope",
+      "admin",
+      "--days",
+      "1",
+      "--json",
+    ],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    coverageKind: "live-auth",
+    skipReason: orgSkipReason,
+  });
+  let orgTokenId = null;
+  const orgTokenAddStep = state.steps[state.steps.length - 1];
+  if (orgTokenAddStep.status === "pass") {
+    orgTokenId = parseJsonPayload(orgTokenAddStep.stdout)?.tokenId ?? null;
+  }
+  runScenarioStep(state, {
+    name: "org-tokens-ls",
+    args: ["org", "tokens", "ls", stepEnv.SKILLMD_E2E_ORG_SLUG ?? "missing-org", "--json"],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    coverageKind: "live-auth",
+    skipReason: orgSkipReason,
+    validate: (raw) => {
+      const payload = parseJsonPayload(raw.stdout);
+      assert(payload && Array.isArray(payload.tokens), "org tokens ls invalid");
+      assert(
+        orgTokenId && payload.tokens.some((token) => token && token.tokenId === orgTokenId),
+        "org token missing from list",
+      );
+    },
+  });
+  runScenarioStep(state, {
+    name: "org-tokens-rm",
+    args: [
+      "org",
+      "tokens",
+      "rm",
+      stepEnv.SKILLMD_E2E_ORG_SLUG ?? "missing-org",
+      orgTokenId ?? "missing-token",
+      "--json",
+    ],
+    cwd: ROOT_DIR,
+    env: stepEnv,
+    strict,
+    allowAuthBlocked,
+    coverageKind: "live-auth",
+    skipReason: orgSkipReason || (orgTokenId ? null : "org token add did not return tokenId"),
   });
   runScenarioStep(state, {
     name: "tag-ls-before",
@@ -795,7 +1049,15 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     env: stepEnv,
     strict,
     allowAuthBlocked,
-    validate: validateTagList("qa-sweep", false),
+    validate: validateTagListEventually({
+      tagName: "qa-sweep",
+      shouldExist: false,
+      env: stepEnv,
+      cwd: ROOT_DIR,
+      skillId: ctx.ownedSkillId,
+      strict,
+      allowAuthBlocked,
+    }),
   });
 
   writeFileSync(
@@ -920,6 +1182,7 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     strict,
     allowAuthBlocked,
   });
+  const deprecateStep = state.steps[state.steps.length - 1];
   runScenarioStep(state, {
     name: "use-deprecated-version",
     args: ["use", ctx.ownedSkillId, "--version", ctx.ownedVersion, "--json"],
@@ -928,6 +1191,7 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     strict,
     allowAuthBlocked,
     validate: validateDeprecatedUse,
+    skipReason: deprecateStep.status === "pass" ? null : "deprecate step did not succeed",
   });
   runScenarioStep(state, {
     name: "unpublish",
@@ -937,6 +1201,7 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     strict,
     allowAuthBlocked,
   });
+  const unpublishStep = state.steps[state.steps.length - 1];
   runScenarioStep(state, {
     name: "history-after-unpublish",
     args: ["history", ctx.ownedSkillId, "--limit", "5", "--json"],
@@ -945,6 +1210,7 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     strict,
     allowAuthBlocked,
     validate: validateHistoryEmpty,
+    skipReason: unpublishStep.status === "pass" ? null : "unpublish step did not succeed",
   });
   runScenarioStep(state, {
     name: "remove",
@@ -971,6 +1237,7 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     strict,
     allowAuthBlocked,
     expectedPattern: /(not logged in|no session)/i,
+    kind: "expected_error",
   });
 
   return ctx;
@@ -1367,6 +1634,7 @@ function main() {
       workspace: options.workspace,
     },
     results,
+    commandCoverage: buildCommandCoverage(results),
     summary: {
       pass: results.reduce((sum, item) => sum + item.counts.pass, 0),
       fail: results.reduce((sum, item) => sum + item.counts.fail, 0),

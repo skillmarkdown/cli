@@ -210,6 +210,36 @@ test("updates explicit skill ids and reports missing installs", async () => {
   assert.match(parsed.failed[0].reason, /not installed/i);
 });
 
+test("preserves bare-vs-scoped identity when updating lock entries", async () => {
+  const captured = [];
+  const { result } = await captureConsole(() =>
+    runUpdateCommand(
+      ["--all", "--json"],
+      baseOptions({
+        loadSkillsLock: async () =>
+          lockFile({
+            a: lockEntry({ skillId: "skill-a", username: "", skill: "skill-a" }),
+            b: lockEntry({ skillId: "@core/skill-b", username: "core", skill: "skill-b" }),
+          }),
+        installFromRegistry: async (input) => {
+          captured.push({
+            skillSlug: input.skillSlug,
+            username: input.username,
+            preferBareSkillId: input.preferBareSkillId,
+          });
+          return baseOptions().installFromRegistry(input);
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.deepEqual(captured, [
+    { skillSlug: "skill-b", username: "core", preferBareSkillId: false },
+    { skillSlug: "skill-a", username: "", preferBareSkillId: true },
+  ]);
+});
+
 test("skips exact-version pinned entries", async () => {
   let installCalls = 0;
   const { result, logs } = await captureConsole(() =>

@@ -184,6 +184,49 @@ test("installs dependencies and writes lockfile entries", async () => {
   assert.deepEqual(sourceCommands, ["skillmd install", "skillmd install"]);
 });
 
+test("passes bare-vs-scoped skill identity through install workflow inputs", async () => {
+  const captured = [];
+  const { result } = await captureConsole(() =>
+    runInstallCommand(
+      ["--json"],
+      baseOptions({
+        loadSkillsManifest: async () => ({
+          version: 1,
+          defaults: { agentTarget: "skillmd" },
+          dependencies: [
+            {
+              skillId: "skill-a",
+              username: "",
+              skillSlug: "skill-a",
+              spec: "latest",
+            },
+            {
+              skillId: "@core/skill-b",
+              username: "core",
+              skillSlug: "skill-b",
+              spec: "latest",
+            },
+          ],
+        }),
+        installFromRegistry: async (input) => {
+          captured.push({
+            skillSlug: input.skillSlug,
+            username: input.username,
+            preferBareSkillId: input.preferBareSkillId,
+          });
+          return baseOptions().installFromRegistry(input);
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.deepEqual(captured, [
+    { skillSlug: "skill-a", username: "", preferBareSkillId: true },
+    { skillSlug: "skill-b", username: "core", preferBareSkillId: false },
+  ]);
+});
+
 test("continues after dependency failure and exits non-zero", async () => {
   const { result, logs } = await captureConsole(() =>
     runInstallCommand(

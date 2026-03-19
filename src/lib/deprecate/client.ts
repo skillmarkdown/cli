@@ -1,4 +1,5 @@
 import { extractApiErrorFields, requestJson, type ApiErrorPayload } from "../shared/api-client";
+import { buildSkillRoutePath } from "../shared/skill-route";
 import { DeprecateApiError } from "./errors";
 import { type DeprecateVersionsRequest, type DeprecateVersionsResponse } from "./types";
 
@@ -31,8 +32,9 @@ export async function deprecateVersions(
   request: DeprecateVersionsRequest,
   options: DeprecateClientOptions = {},
 ): Promise<DeprecateVersionsResponse> {
+  const routePath = buildSkillRoutePath(request.username, request.skillSlug);
   return requestJson({
-    url: new URL(`${baseUrl}/v1/skills/${request.username}/${request.skillSlug}/deprecations`),
+    url: new URL(`${baseUrl}/v1/skills/${routePath}/deprecations`),
     method: "POST",
     idToken,
     body: {

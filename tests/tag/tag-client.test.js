@@ -11,7 +11,7 @@ test("listDistTags returns parsed payload", async () => {
   const payload = await withMockedFetch(
     async (input) => {
       const url = new URL(String(input));
-      assert.equal(url.pathname, "/v1/skills/username/test-skill/dist-tags");
+      assert.equal(url.pathname, "/v1/skills/@username/test-skill/dist-tags");
       return mockJsonResponse(200, {
         owner: "@owner",
         username: "username",
@@ -29,6 +29,27 @@ test("listDistTags returns parsed payload", async () => {
 
   assert.equal(payload.username, "username");
   assert.equal(payload.distTags.latest, "1.2.3");
+});
+
+test("listDistTags uses bare personal skill route when username is empty", async () => {
+  await withMockedFetch(
+    async (input) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/skills/test-skill/dist-tags");
+      return mockJsonResponse(200, {
+        owner: "@test",
+        username: "test",
+        skill: "test-skill",
+        distTags: { latest: "1.2.3" },
+        updatedAt: "2026-03-03T12:00:00.000Z",
+      });
+    },
+    () =>
+      listDistTags("https://registry.example.com", {
+        username: "",
+        skillSlug: "test-skill",
+      }),
+  );
 });
 
 test("listDistTags surfaces strict route errors without fallback", async () => {
@@ -62,7 +83,7 @@ test("setDistTag sends PUT payload and parses response", async () => {
   const payload = await withMockedFetch(
     async (input, init) => {
       const url = new URL(String(input));
-      assert.equal(url.pathname, "/v1/skills/username/test-skill/dist-tags/beta");
+      assert.equal(url.pathname, "/v1/skills/@username/test-skill/dist-tags/beta");
       assert.equal(init.method, "PUT");
       assert.match(String(init.headers.Authorization), /^Bearer /);
       assert.deepEqual(JSON.parse(String(init.body)), { version: "1.2.3" });
@@ -86,11 +107,34 @@ test("setDistTag sends PUT payload and parses response", async () => {
   assert.equal(payload.distTags.beta, "1.2.3");
 });
 
+test("setDistTag uses bare personal skill route when username is empty", async () => {
+  await withMockedFetch(
+    async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/skills/test-skill/dist-tags/beta");
+      assert.equal(init.method, "PUT");
+      return mockJsonResponse(200, {
+        status: "updated",
+        tag: "beta",
+        version: "1.2.3",
+        distTags: { beta: "1.2.3" },
+      });
+    },
+    () =>
+      setDistTag("https://registry.example.com", "id-token", {
+        username: "",
+        skillSlug: "test-skill",
+        tag: "beta",
+        version: "1.2.3",
+      }),
+  );
+});
+
 test("removeDistTag sends DELETE and parses response", async () => {
   const payload = await withMockedFetch(
     async (input, init) => {
       const url = new URL(String(input));
-      assert.equal(url.pathname, "/v1/skills/username/test-skill/dist-tags/beta");
+      assert.equal(url.pathname, "/v1/skills/@username/test-skill/dist-tags/beta");
       assert.equal(init.method, "DELETE");
       assert.match(String(init.headers.Authorization), /^Bearer /);
       return mockJsonResponse(200, {
@@ -109,6 +153,27 @@ test("removeDistTag sends DELETE and parses response", async () => {
 
   assert.equal(payload.status, "deleted");
   assert.equal(payload.distTags.latest, "1.2.2");
+});
+
+test("removeDistTag uses bare personal skill route when username is empty", async () => {
+  await withMockedFetch(
+    async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(url.pathname, "/v1/skills/test-skill/dist-tags/beta");
+      assert.equal(init.method, "DELETE");
+      return mockJsonResponse(200, {
+        status: "deleted",
+        tag: "beta",
+        distTags: { latest: "1.2.2" },
+      });
+    },
+    () =>
+      removeDistTag("https://registry.example.com", "id-token", {
+        username: "",
+        skillSlug: "test-skill",
+        tag: "beta",
+      }),
+  );
 });
 
 test("tag client maps API errors", async () => {

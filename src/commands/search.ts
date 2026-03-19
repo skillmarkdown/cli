@@ -180,13 +180,12 @@ export async function runSearchCommand(
   try {
     const env = options.env ?? process.env;
     const config = (options.getConfig ?? getRegistryEnvConfig)(env);
-    const idToken =
-      parsed.scope === "private"
-        ? await (options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env })))()
-        : null;
+    const idToken = await (
+      options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env }))
+    )();
 
-    if (parsed.scope === "private" && !idToken) {
-      console.error("skillmd search: private scope requires login. Run 'skillmd login' first.");
+    if (!idToken) {
+      console.error("skillmd search: search requires login. Run 'skillmd login' first.");
       return 1;
     }
 
@@ -201,7 +200,7 @@ export async function runSearchCommand(
         cursor: parsed.cursor,
         scope: parsed.scope,
       },
-      { timeoutMs: config.requestTimeoutMs, idToken: idToken ?? undefined },
+      { timeoutMs: config.requestTimeoutMs, idToken },
     );
 
     const pageStartIndex = resolvePageStartIndex({

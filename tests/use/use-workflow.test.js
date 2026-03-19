@@ -147,6 +147,79 @@ test("sanitizes downloadedFrom origin and preserves selector version in lock ent
   assert.equal(workflow.result.version, "2.0.1");
 });
 
+test("prefers bare skill ids for personal installs when requested", async () => {
+  const workflow = await installFromRegistry(
+    baseInput({
+      username: "",
+      preferBareSkillId: true,
+      sourceCommandFactory: ({ canonicalSkillId }) => `skillmd use ${canonicalSkillId}`,
+    }),
+    baseDependencies({
+      resolveVersion: async () => ({
+        owner: "@stefdevscore",
+        username: "stefdevscore",
+        skill: "test-skill",
+        spec: "latest",
+        version: "1.2.3",
+      }),
+      getArtifactDescriptor: async () => ({
+        owner: "@stefdevscore",
+        username: "stefdevscore",
+        skill: "test-skill",
+        version: "1.2.3",
+        digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+        sizeBytes: 5,
+        mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+        deprecated: false,
+        deprecatedAt: null,
+        deprecatedMessage: null,
+        downloadUrl: "https://storage.example.com/object?signature=secret",
+        downloadExpiresAt: "2026-03-02T12:40:00.000Z",
+      }),
+    }),
+  );
+
+  assert.equal(workflow.result.skillId, "test-skill");
+  assert.equal(workflow.lockEntry.skillId, "test-skill");
+  assert.equal(workflow.lockEntry.sourceCommand, "skillmd use test-skill");
+});
+
+test("keeps scoped org skill ids when install request is scoped", async () => {
+  const workflow = await installFromRegistry(
+    baseInput({
+      username: "core",
+      sourceCommandFactory: ({ canonicalSkillId }) => `skillmd use ${canonicalSkillId}`,
+    }),
+    baseDependencies({
+      resolveVersion: async () => ({
+        owner: "@core",
+        username: "core",
+        skill: "test-skill",
+        spec: "latest",
+        version: "1.2.3",
+      }),
+      getArtifactDescriptor: async () => ({
+        owner: "@core",
+        username: "core",
+        skill: "test-skill",
+        version: "1.2.3",
+        digest: "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+        sizeBytes: 5,
+        mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+        deprecated: false,
+        deprecatedAt: null,
+        deprecatedMessage: null,
+        downloadUrl: "https://storage.example.com/object?signature=secret",
+        downloadExpiresAt: "2026-03-02T12:40:00.000Z",
+      }),
+    }),
+  );
+
+  assert.equal(workflow.result.skillId, "@core/test-skill");
+  assert.equal(workflow.lockEntry.skillId, "@core/test-skill");
+  assert.equal(workflow.lockEntry.sourceCommand, "skillmd use @core/test-skill");
+});
+
 test("retries descriptor fetch with read token after auth failure", async () => {
   const descriptorTokens = [];
   let tokenResolutionCount = 0;

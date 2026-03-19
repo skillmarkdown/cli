@@ -64,24 +64,24 @@ test("prints json output with --json", async () => {
   assert.equal(payload.results[0].distTags.latest, "1.2.3");
 });
 
-test("requires login for private scope when no token exists", async () => {
+test("requires login when no token exists", async () => {
   const { result, errors } = await captureConsole(() =>
     runSearchCommand(
-      ["--scope", "private"],
+      ["agent"],
       baseOptions({
         resolveReadIdToken: async () => null,
       }),
     ),
   );
   assert.equal(result, 1);
-  assert.match(errors.join("\n"), /requires login/i);
+  assert.match(errors.join("\n"), /search requires login/i);
 });
 
-test("private scope uses SKILLMD_AUTH_TOKEN when configured", async () => {
+test("default search uses SKILLMD_AUTH_TOKEN when configured", async () => {
   let capturedIdToken = null;
   const { result } = await captureConsole(() =>
     runSearchCommand(
-      ["--scope", "private"],
+      ["agent"],
       baseOptions({
         env: {
           SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
@@ -121,6 +121,35 @@ test("maps search API errors", async () => {
   );
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /boom/);
+});
+
+test("default search resolves read token through session path", async () => {
+  let resolveCalls = 0;
+  let capturedIdToken = null;
+  const { result } = await captureConsole(() =>
+    runSearchCommand(
+      ["agent"],
+      baseOptions({
+        resolveReadIdToken: async () => {
+          resolveCalls += 1;
+          return "session-token";
+        },
+        searchSkills: async (_baseUrl, _request, options) => {
+          capturedIdToken = options.idToken ?? null;
+          return {
+            query: "agent",
+            limit: 20,
+            results: [],
+            nextCursor: null,
+          };
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.equal(resolveCalls, 1);
+  assert.equal(capturedIdToken, "session-token");
 });
 
 test("does not crash when result distTags are missing", async () => {

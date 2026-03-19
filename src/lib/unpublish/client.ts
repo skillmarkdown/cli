@@ -1,4 +1,5 @@
 import { extractApiErrorFields, requestJson, type ApiErrorPayload } from "../shared/api-client";
+import { buildSkillRoutePath } from "../shared/skill-route";
 import { UnpublishApiError } from "./errors";
 import { type UnpublishVersionRequest, type UnpublishVersionResponse } from "./types";
 
@@ -48,10 +49,9 @@ export async function unpublishVersion(
   request: UnpublishVersionRequest,
   options: UnpublishClientOptions = {},
 ): Promise<UnpublishVersionResponse> {
+  const routePath = buildSkillRoutePath(request.username, request.skillSlug);
   const parsed = await requestJson({
-    url: new URL(
-      `${baseUrl}/v1/skills/${request.username}/${request.skillSlug}/versions/${request.version}`,
-    ),
+    url: new URL(`${baseUrl}/v1/skills/${routePath}/versions/${request.version}`),
     method: "DELETE",
     idToken,
     timeoutMs: options.timeoutMs,

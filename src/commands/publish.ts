@@ -1,7 +1,7 @@
 import { basename, resolve } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 
-import { type AuthSession } from "../lib/auth/session";
+import { readAuthSession, type AuthSession } from "../lib/auth/session";
 import { exchangeRefreshTokenForIdToken, type FirebaseIdTokenSession } from "../lib/auth/id-token";
 import { resolveWriteAuth } from "../lib/auth/write-auth";
 import { getWhoami as defaultGetWhoami } from "../lib/whoami/client";

@@ -135,7 +135,7 @@ jobs:
   e2e-core-dev:
     runs-on: ubuntu-latest
     needs: e2e-contract
-    if: ${{ secrets.SKILLMD_DEV_FIREBASE_API_KEY != '' && secrets.SKILLMD_LOGIN_EMAIL != '' && secrets.SKILLMD_LOGIN_PASSWORD != '' }}
+    if: ${{ secrets.SKILLMD_DEV_FIREBASE_API_KEY != '' && secrets.SKILLMD_LOGIN_EMAIL != '' && secrets.SKILLMD_LOGIN_PASSWORD != '' && secrets.SKILLMD_E2E_ORG_SLUG != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -156,7 +156,19 @@ jobs:
           SKILLMD_DEV_FIREBASE_API_KEY: ${{ secrets.SKILLMD_DEV_FIREBASE_API_KEY }}
           SKILLMD_LOGIN_EMAIL: ${{ secrets.SKILLMD_LOGIN_EMAIL }}
           SKILLMD_LOGIN_PASSWORD: ${{ secrets.SKILLMD_LOGIN_PASSWORD }}
-        run: npm run e2e:core
+          SKILLMD_E2E_ORG_SLUG: ${{ secrets.SKILLMD_E2E_ORG_SLUG }}
+        run: |
+          npm run build
+          npm run smoke:pack
+          npm run smoke:link
+          node scripts/command-sweep.mjs --env dev --tier core --strict --report-file reports/e2e-core-dev.json
+
+      - name: Upload core E2E report
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-core-dev-report
+          path: reports/e2e-core-dev.json
+          if-no-files-found: error
 
   e2e-extended-dev:
     runs-on: ubuntu-latest
@@ -185,7 +197,16 @@ jobs:
           SKILLMD_E2E_ORG_SLUG: ${{ secrets.SKILLMD_E2E_ORG_SLUG }}
           SKILLMD_E2E_ORG_MEMBER_USERNAME: ${{ secrets.SKILLMD_E2E_ORG_MEMBER_USERNAME }}
           SKILLMD_E2E_ORG_SKILL_SLUG: ${{ secrets.SKILLMD_E2E_ORG_SKILL_SLUG }}
-        run: npm run e2e:extended
+        run: |
+          npm run build
+          node scripts/command-sweep.mjs --env dev --tier extended --strict --report-file reports/e2e-extended-dev.json
+
+      - name: Upload extended E2E report
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-extended-dev-report
+          path: reports/e2e-extended-dev.json
+          if-no-files-found: error
 
   determinism-matrix:
     runs-on: ${{ matrix.os }}

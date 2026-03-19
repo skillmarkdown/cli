@@ -1,4 +1,5 @@
 import { extractApiErrorFields, requestJson, type ApiErrorPayload } from "../shared/api-client";
+import { buildSkillRoutePath } from "../shared/skill-route";
 import { TagApiError } from "./errors";
 import {
   type DeleteDistTagRequest,
@@ -82,8 +83,9 @@ export async function listDistTags(
   request: { username: string; skillSlug: string },
   options: TagClientOptions = {},
 ): Promise<DistTagsListResponse> {
+  const routePath = buildSkillRoutePath(request.username, request.skillSlug);
   const parsed = await requestJson({
-    url: new URL(`${baseUrl}/v1/skills/${request.username}/${request.skillSlug}/dist-tags`),
+    url: new URL(`${baseUrl}/v1/skills/${routePath}/dist-tags`),
     method: "GET",
     idToken: options.idToken,
     timeoutMs: options.timeoutMs,
@@ -105,10 +107,9 @@ export async function setDistTag(
   request: SetDistTagRequest,
   options: TagClientOptions = {},
 ): Promise<DistTagUpdateResponse> {
+  const routePath = buildSkillRoutePath(request.username, request.skillSlug);
   const parsed = await requestJson({
-    url: new URL(
-      `${baseUrl}/v1/skills/${request.username}/${request.skillSlug}/dist-tags/${request.tag}`,
-    ),
+    url: new URL(`${baseUrl}/v1/skills/${routePath}/dist-tags/${request.tag}`),
     method: "PUT",
     idToken,
     body: { version: request.version },
@@ -131,10 +132,9 @@ export async function removeDistTag(
   request: DeleteDistTagRequest,
   options: TagClientOptions = {},
 ): Promise<DistTagDeleteResponse> {
+  const routePath = buildSkillRoutePath(request.username, request.skillSlug);
   const parsed = await requestJson({
-    url: new URL(
-      `${baseUrl}/v1/skills/${request.username}/${request.skillSlug}/dist-tags/${request.tag}`,
-    ),
+    url: new URL(`${baseUrl}/v1/skills/${routePath}/dist-tags/${request.tag}`),
     method: "DELETE",
     idToken,
     timeoutMs: options.timeoutMs,

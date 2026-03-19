@@ -239,9 +239,11 @@ test("spawned CLI: root --version works with global auth token in any order", ()
 
 test("spawned CLI: search prints dist-tag latest and caches selection for numeric view", async () => {
   const root = makeTempDirectory(CLI_TEST_PREFIX);
+  const authToken = "skmd_dev_tok_abc123abc123abc123abc123.secret";
   const mockRegistry = await startMockRegistry((request, response) => {
     const url = new URL(request.url, "http://127.0.0.1");
     if (request.method === "GET" && url.pathname === "/v1/skills/search") {
+      assert.equal(request.headers.authorization, `Bearer ${authToken}`);
       response.writeHead(200, { "content-type": "application/json" });
       response.end(
         JSON.stringify({
@@ -287,6 +289,7 @@ test("spawned CLI: search prints dist-tag latest and caches selection for numeri
 
   try {
     const searchResult = await runCliAsync(["search", "agent"], root, {
+      SKILLMD_AUTH_TOKEN: authToken,
       SKILLMD_FIREBASE_PROJECT_ID: "skillmarkdown-development",
       SKILLMD_REGISTRY_BASE_URL: baseUrl,
     });
@@ -332,7 +335,7 @@ test("spawned CLI: tag ls/add/rm manages dist-tags via strict v1 endpoints", asy
       );
       return;
     }
-    if (request.method === "GET" && url.pathname === "/v1/skills/core/tag-skill/dist-tags") {
+    if (request.method === "GET" && url.pathname === "/v1/skills/@core/tag-skill/dist-tags") {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(
         JSON.stringify({
@@ -346,7 +349,7 @@ test("spawned CLI: tag ls/add/rm manages dist-tags via strict v1 endpoints", asy
       return;
     }
 
-    if (request.method === "PUT" && url.pathname === "/v1/skills/core/tag-skill/dist-tags/beta") {
+    if (request.method === "PUT" && url.pathname === "/v1/skills/@core/tag-skill/dist-tags/beta") {
       const chunks = [];
       request.on("data", (chunk) => chunks.push(chunk));
       request.on("end", () => {
@@ -374,7 +377,7 @@ test("spawned CLI: tag ls/add/rm manages dist-tags via strict v1 endpoints", asy
 
     if (
       request.method === "DELETE" &&
-      url.pathname === "/v1/skills/core/tag-skill/dist-tags/beta"
+      url.pathname === "/v1/skills/@core/tag-skill/dist-tags/beta"
     ) {
       delete distTags.beta;
       response.writeHead(200, { "content-type": "application/json" });
@@ -466,7 +469,7 @@ test("spawned CLI: tag ls surfaces strict dist-tags route errors", async () => {
 
   const mockRegistry = await startMockRegistry((request, response) => {
     const url = new URL(request.url, "http://127.0.0.1");
-    if (request.method === "GET" && url.pathname === "/v1/skills/core/fallback-skill/dist-tags") {
+    if (request.method === "GET" && url.pathname === "/v1/skills/@core/fallback-skill/dist-tags") {
       response.writeHead(404, { "content-type": "application/json" });
       response.end(
         JSON.stringify({
@@ -496,7 +499,7 @@ test("spawned CLI: tag ls surfaces strict dist-tags route errors", async () => {
       env,
     );
     assert.equal(listResult.status, 1);
-    assert.match(listResult.stderr, /route not found/i);
+    assert.match(listResult.stderr, /not found/i);
   } finally {
     await mockRegistry.close();
     cleanupDirectory(root);
