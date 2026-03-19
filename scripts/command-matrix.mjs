@@ -5,6 +5,7 @@ export const COMMAND_MATRIX = [
   { id: "root.version.short", mode: "both", command: "root" },
   { id: "root.auth-token.global", mode: "local_contract", command: "root" },
 
+  { id: "create.minimal", mode: "local_contract", command: "create" },
   { id: "init.minimal", mode: "local_contract", command: "init" },
   { id: "init.verbose", mode: "both", command: "init" },
   { id: "init.verbose.no-validate", mode: "both", command: "init" },

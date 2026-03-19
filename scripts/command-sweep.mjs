@@ -258,10 +258,6 @@ function parseJsonPayload(stdout) {
   }
 }
 
-function readJsonFile(path) {
-  return JSON.parse(readFileSync(path, "utf8"));
-}
-
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
@@ -317,7 +313,7 @@ function classifyResult({
     };
   }
 
-  let status = "fail";
+  let status;
   if (Array.isArray(acceptedExitCodes) && acceptedExitCodes.length > 0) {
     const matchedExpectedPattern = expectedPattern ? expectedPattern.test(raw.combined) : true;
     status = acceptedExitCodes.includes(raw.exitCode) && matchedExpectedPattern ? "pass" : "fail";
@@ -763,7 +759,9 @@ function validateTagListEventually({
           skipReason: null,
         });
         if (classified.status !== "pass") {
-          throw new Error(classified.detail ?? classified.combined ?? "tag ls retry failed");
+          throw new Error(classified.detail ?? classified.combined ?? "tag ls retry failed", {
+            cause: error,
+          });
         }
       }
     }
@@ -876,22 +874,6 @@ function validateInstallPrune(raw, ctx) {
     `install --prune did not prune ${ctx.ownedSkillId}`,
   );
   assert(!existsSync(ctx.manifestInstallPath), "pruned install path still exists");
-}
-
-function validateInstallPruneGlobal(raw, ctx, agentTarget) {
-  const payload = parseJsonPayload(raw.stdout);
-  assert(payload && Array.isArray(payload.pruned), "install --prune did not report pruned entries");
-  assert(
-    payload.pruned.some(
-      (entry) =>
-        entry &&
-        entry.skillId === ctx.ownedSkillId &&
-        entry.agentTarget === agentTarget &&
-        entry.status === "pruned",
-    ),
-    `install --prune did not prune ${ctx.ownedSkillId} for ${agentTarget}`,
-  );
-  assert(!existsSync(ctx.globalManifestInstallPath), "global pruned install path still exists");
 }
 
 function validateUpdateJson(raw) {

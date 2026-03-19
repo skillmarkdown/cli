@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, existsSync, readFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,6 +26,10 @@ function runCli(args, { cwd = ROOT_DIR, env = {} } = {}) {
       ...env,
     },
   });
+}
+
+function createIsolatedHome() {
+  return mkdtempSync(join(WORKSPACE, "home-"));
 }
 
 function writeSkillsManifest(cwd, payload) {
@@ -122,6 +126,7 @@ async function main() {
     () => {
       const result = runCli(["login"], {
         env: {
+          HOME: createIsolatedHome(),
           SKILLMD_LOGIN_EMAIL: "fixture@example.com",
         },
       });

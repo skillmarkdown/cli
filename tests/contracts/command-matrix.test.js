@@ -35,6 +35,7 @@ test("command matrix covers documented usage variants", async () => {
     "root.version.long",
     "root.version.short",
     "root.auth-token.global",
+    "create.minimal",
     "init.minimal",
     "init.verbose",
     "init.verbose.no-validate",
