@@ -41,6 +41,7 @@ const defaultTargets = [
   "deepseek",
   "perplexity",
 ];
+const maxSkillSlugLength = 64;
 
 const discoverSkillCategories = [
   { label: "Agent Frameworks", queryToken: "frameworks" },
@@ -446,6 +447,18 @@ function slugify(value) {
     .replace(/-{2,}/gu, "-");
 }
 
+function clampSkillSlug(prefix, sequence, descriptor) {
+  const base = `${slugify(prefix)}-${padNumber(sequence)}`;
+  const full = `${base}-${descriptor}`;
+  if (full.length <= maxSkillSlugLength) {
+    return full;
+  }
+
+  const maxDescriptorLength = Math.max(1, maxSkillSlugLength - base.length - 1);
+  const trimmedDescriptor = descriptor.slice(0, maxDescriptorLength).replace(/-+$/u, "");
+  return `${base}-${trimmedDescriptor || descriptor.slice(0, maxDescriptorLength)}`;
+}
+
 function copyTemplateSkill(destination) {
   const gitDir = join(templateRoot, ".git");
   cpSync(templateRoot, destination, {
@@ -499,7 +512,7 @@ function buildScenario(index, options) {
     index % 3 === 0 ? "unicode" : "plain",
   ].join("-");
 
-  const skillSlug = `${slugify(options.prefix)}-${padNumber(options.startIndex + index)}-${descriptor}`;
+  const skillSlug = clampSkillSlug(options.prefix, options.startIndex + index, descriptor);
   return {
     index,
     target,
@@ -534,12 +547,15 @@ function rewriteTemplateFiles(skillDir, scenario, identity) {
   const contributingFile = join(skillDir, "CONTRIBUTING.md");
   const securityFile = join(skillDir, "SECURITY.md");
   const assetsReadmeFile = join(skillDir, "assets", "README.md");
+  const assetPreviewFile = join(skillDir, "assets", "cli-skill-preview.svg");
   const extraReferenceFile = join(skillDir, "references", "EDGE-CASES.md");
   const workflowNotesFile = join(skillDir, "references", "WORKFLOW-NOTES.md");
   const assetDataFile = join(skillDir, "assets", "matrix-notes.json");
   const licenseFile = join(skillDir, "LICENSE");
 
   const handle = `${identity.owner}/${scenario.skillSlug}`;
+  const personalOwner = identity.owner === `@${identity.username}`;
+  const canonicalSkillId = personalOwner ? scenario.skillSlug : handle;
   const title = `${scenario.target.toUpperCase()} Registry Coverage Skill`;
   const shortDescription = `Exercise ${scenario.target} registry behavior with realistic content and varied release parameters.`;
   const longDescription = `${shortDescription} This package is generated from the skillmd-cli-skill template and expanded to cover browse, detail, install, and lifecycle edge cases across ${scenario.categoryLabels.join(", ")}.`;
@@ -565,6 +581,14 @@ function rewriteTemplateFiles(skillDir, scenario, identity) {
   skillContent = skillContent.replace(
     /## Examples[\s\S]*?## Limitations \/ Failure modes/u,
     `${buildExamplesSection(scenario, identity)}\n\n## Limitations / Failure modes`,
+  );
+  skillContent = replaceAll(skillContent, "@skillmarkdown/skillmd-cli-skill", canonicalSkillId);
+  skillContent = replaceAll(skillContent, "@username/skillmd-cli-skill", canonicalSkillId);
+  skillContent = replaceAll(skillContent, "skillmd-cli-skill", scenario.skillSlug);
+  skillContent = replaceAll(
+    skillContent,
+    "--agent-target openai",
+    `--agent-target ${scenario.target}`,
   );
   if (scenario.includeLongMetadata) {
     skillContent = skillContent.replace(
@@ -597,8 +621,14 @@ function rewriteTemplateFiles(skillDir, scenario, identity) {
     "Skill for using `skillmarkdown` with current v1 command contracts across authoring, discovery, auth, release operations, and consumption workflows.",
     `${title}. ${longDescription}`,
   );
-  readmeContent = replaceAll(readmeContent, "@username/skillmd-cli-skill", handle);
-  readmeContent = replaceAll(readmeContent, "@skillmarkdown/skillmd-cli-skill", handle);
+  readmeContent = replaceAll(readmeContent, "@username/skillmd-cli-skill", canonicalSkillId);
+  readmeContent = replaceAll(readmeContent, "@skillmarkdown/skillmd-cli-skill", canonicalSkillId);
+  readmeContent = replaceAll(readmeContent, "skillmd-cli-skill", scenario.skillSlug);
+  readmeContent = replaceAll(
+    readmeContent,
+    "--agent-target openai",
+    `--agent-target ${scenario.target}`,
+  );
   readmeContent += `\n\n## Generated scenario\n\n- Agent target: \`${scenario.target}\`\n- Content mode: \`${scenario.contentMode}\`\n- License mode: \`${scenario.licenseMode}\`\n- Publish sequence: ${scenario.publishes.map(({ version, tag }) => `\`${version}\` (tag \`${tag}\`)`).join(", ")}\n`;
   writeFileSync(readmeFile, readmeContent, "utf8");
 
@@ -615,6 +645,12 @@ function rewriteTemplateFiles(skillDir, scenario, identity) {
   writeFileSync(packageJsonFile, `${JSON.stringify(pkg, null, 2)}\n`, "utf8");
 
   let referenceContent = readFileSync(referenceFile, "utf8");
+  referenceContent = replaceAll(
+    referenceContent,
+    "@skillmarkdown/skillmd-cli-skill",
+    canonicalSkillId,
+  );
+  referenceContent = replaceAll(referenceContent, "@username/skillmd-cli-skill", canonicalSkillId);
   referenceContent = replaceAll(referenceContent, "skillmd-cli-skill", scenario.skillSlug);
   referenceContent += `\n\n## Edge-case matrix\n\n- Skill handle: ${handle}\n- Agent target: ${scenario.target}\n- Releases: ${scenario.publishes.map(({ version }) => version).join(", ")}\n- Dist-tags: ${scenario.publishes.map(({ tag }) => tag).join(", ")}\n`;
   writeFileSync(referenceFile, referenceContent, "utf8");
@@ -672,7 +708,7 @@ function rewriteTemplateFiles(skillDir, scenario, identity) {
       [
         "# Workflow Notes",
         "",
-        `Use ${handle} when you need a realistic ${scenario.target} package with generated release history and template-complete support documents.`,
+        `Use ${canonicalSkillId} when you need a realistic ${scenario.target} package with generated release history and template-complete support documents.`,
         "",
         `Discover Skills fit: ${scenario.categoryLabels.join(", ")}`,
         `Search tokens: ${scenario.categoryTokens.join(", ")}`,
@@ -681,6 +717,17 @@ function rewriteTemplateFiles(skillDir, scenario, identity) {
     );
   } else {
     rmSync(workflowNotesFile, { force: true });
+  }
+
+  if (existsSync(assetPreviewFile)) {
+    let assetPreviewContent = readFileSync(assetPreviewFile, "utf8");
+    assetPreviewContent = replaceAll(
+      assetPreviewContent,
+      "@seed-publisher-dev/skillmd-cli-skill",
+      canonicalSkillId,
+    );
+    assetPreviewContent = replaceAll(assetPreviewContent, "skillmd-cli-skill", scenario.skillSlug);
+    writeFileSync(assetPreviewFile, assetPreviewContent, "utf8");
   }
 
   if (!scenario.includeContributingGuide) {
