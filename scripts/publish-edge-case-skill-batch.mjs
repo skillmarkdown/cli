@@ -131,6 +131,7 @@ function parseArgs(argv) {
     dryRun: false,
     verbose: false,
     skipDiscoverCoverage: false,
+    skipPopularitySeed: false,
     owner: null,
     username: null,
   };
@@ -270,6 +271,10 @@ function parseArgs(argv) {
       parsed.skipDiscoverCoverage = true;
       continue;
     }
+    if (arg === "--skip-popularity-seed") {
+      parsed.skipPopularitySeed = true;
+      continue;
+    }
     if (arg === "--help" || arg === "-h") {
       printUsage(0);
     }
@@ -373,6 +378,7 @@ function printUsage(code) {
       "  --dry-run                 Validate and dry-run publish instead of live publish",
       "  --verbose                 Print every publish command before running",
       "  --skip-discover-coverage  Skip discover coverage validation (for small batches)",
+      "  --skip-popularity-seed    Skip deterministic post-publish usage seeding",
       "  --help                    Show this help",
       "",
       "Examples:",
@@ -385,6 +391,7 @@ function printUsage(code) {
       "  - baseline profile creates 48 skills with every 4th skill getting version history",
       "  - extended profile recreates the heavier 240-skill matrix",
       "  - private publish requires a Pro-capable account",
+      "  - public live publishes seed deterministic usage on the first 10 skills",
       "  - uses /skillmd-cli-skill as the source template for wholeness",
       "  - writes a summary manifest to edge-case-publish-report.json in the workspace",
       "  - use --skip-discover-coverage when seeding a subset of skills",
@@ -848,6 +855,63 @@ function publishScenario(skillDir, scenario, options) {
   return releases;
 }
 
+function seedPopularity(report, options) {
+  if (options.dryRun || options.access !== "public" || options.skipPopularitySeed) {
+    return [];
+  }
+
+  const targets = report.published
+    .map((entry) => {
+      const primaryRelease = entry.releases[0] ?? null;
+      if (
+        !primaryRelease ||
+        typeof primaryRelease.skillId !== "string" ||
+        !primaryRelease.skillId ||
+        typeof primaryRelease.version !== "string" ||
+        !primaryRelease.version
+      ) {
+        return null;
+      }
+
+      return {
+        skillId: primaryRelease.skillId,
+        version: primaryRelease.version,
+        agentTarget: entry.target,
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 10);
+
+  const seeded = [];
+  for (const [index, target] of targets.entries()) {
+    const installCount = targets.length - index;
+    for (let attempt = 0; attempt < installCount; attempt += 1) {
+      runCli(
+        [
+          "use",
+          target.skillId,
+          "--global",
+          "--version",
+          target.version,
+          "--agent-target",
+          target.agentTarget,
+          "--json",
+        ],
+        repoRoot,
+        options.verbose,
+      );
+    }
+    seeded.push({
+      skillId: target.skillId,
+      version: target.version,
+      agentTarget: target.agentTarget,
+      uses: installCount,
+    });
+  }
+
+  return seeded;
+}
+
 function main() {
   ensureTemplateExists();
   const options = parseArgs(process.argv.slice(2));
@@ -905,6 +969,11 @@ function main() {
       console.log(
         `${options.dryRun ? "Prepared" : "Published"} ${identity.owner}/${scenario.skillSlug} (${scenario.target}, ${scenario.contentMode}, ${scenario.licenseMode})`,
       );
+    }
+
+    report.popularitySeed = seedPopularity(report, options);
+    if (report.popularitySeed.length > 0) {
+      console.log(`Seeded deterministic popularity for ${report.popularitySeed.length} skills.`);
     }
 
     const reportPath = join(tempRoot, "edge-case-publish-report.json");
