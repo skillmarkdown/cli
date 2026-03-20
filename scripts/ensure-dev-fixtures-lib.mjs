@@ -6,6 +6,7 @@ export const DEV_FIXTURE_DEFAULTS = {
   proUsername: "prostefdevs",
   freeDisplayName: "test",
   proDisplayName: "prostefdevs",
+  orgSkillSlug: "org-fixture-skill",
 };
 
 export function resolveEnsureDevFixturesConfig(env) {
@@ -18,6 +19,9 @@ export function resolveEnsureDevFixturesConfig(env) {
     proLoginEmail: env.SKILLMD_PRO_LOGIN_EMAIL?.trim() || "",
     proLoginPassword: env.SKILLMD_PRO_LOGIN_PASSWORD?.trim() || "",
     orgSlug: env.SKILLMD_E2E_ORG_SLUG?.trim() || "",
+    orgMemberUsername:
+      env.SKILLMD_E2E_ORG_MEMBER_USERNAME?.trim() || DEV_FIXTURE_DEFAULTS.proUsername,
+    orgSkillSlug: env.SKILLMD_E2E_ORG_SKILL_SLUG?.trim() || DEV_FIXTURE_DEFAULTS.orgSkillSlug,
     freeUsername: DEV_FIXTURE_DEFAULTS.freeUsername,
     proUsername: DEV_FIXTURE_DEFAULTS.proUsername,
     freeDisplayName: DEV_FIXTURE_DEFAULTS.freeDisplayName,

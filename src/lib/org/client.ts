@@ -513,7 +513,7 @@ export async function assignOrganizationSkillTeam(
     url: new URL(
       `${baseUrl}/v1/organizations/${encodeURIComponent(slug)}/skills/${encodeURIComponent(skillSlug)}/team`,
     ),
-    method: "PUT",
+    method: "PATCH",
     idToken,
     body: { teamSlug },
     timeoutMs: options.timeoutMs,

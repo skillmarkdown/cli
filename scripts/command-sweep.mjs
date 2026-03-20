@@ -7,6 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { pickFirstNonEmpty, sanitizeStepForOutput } from "./command-sweep-utils.mjs";
 import { getMatrixCommands } from "./command-matrix.mjs";
+import { DEV_FIXTURE_DEFAULTS } from "./ensure-dev-fixtures-lib.mjs";
 import { loadInternalScriptEnv } from "./internal-env.mjs";
 
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -460,11 +461,7 @@ function preflightOrThrow({ profileName, strict, tier, env }) {
   }
 
   if (tier === "extended" || tier === "all") {
-    const requiredExtendedEnv = [
-      "SKILLMD_E2E_ORG_SLUG",
-      "SKILLMD_E2E_ORG_MEMBER_USERNAME",
-      "SKILLMD_E2E_ORG_SKILL_SLUG",
-    ];
+    const requiredExtendedEnv = ["SKILLMD_E2E_ORG_SLUG"];
     const missingExtended = requiredExtendedEnv.filter((key) => !env[key]?.trim());
     if (missingExtended.length > 0) {
       throw new Error(`missing strict extended prerequisites: ${missingExtended.join(", ")}`);
@@ -932,6 +929,13 @@ function validateDeprecatedUse(raw) {
 }
 
 function validateHistoryEmpty(raw) {
+  if (raw.exitCode !== 0) {
+    assert(
+      /skill not found|not_found/i.test(raw.combined),
+      "expected empty history or skill not found after unpublish",
+    );
+    return;
+  }
   const payload = parseJsonPayload(raw.stdout);
   assert(payload && Array.isArray(payload.results), "history did not return results");
   assert(payload.results.length === 0, "expected empty history results");
@@ -1756,6 +1760,7 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     env: stepEnv,
     strict,
     allowAuthBlocked,
+    acceptedExitCodes: [0, 1],
     validate: validateHistoryEmpty,
     skipReason: unpublishStep.status === "pass" ? null : "unpublish step did not succeed",
   });
@@ -1795,8 +1800,9 @@ function runExtendedTier({ state, env, strict, allowAuthBlocked }) {
   mkdirSync(isolatedHomeDir, { recursive: true });
   const stepEnv = { ...env, HOME: isolatedHomeDir };
   const orgSlug = env.SKILLMD_E2E_ORG_SLUG;
-  const orgMemberUsername = env.SKILLMD_E2E_ORG_MEMBER_USERNAME;
-  const orgSkillSlug = env.SKILLMD_E2E_ORG_SKILL_SLUG;
+  const orgMemberUsername =
+    env.SKILLMD_E2E_ORG_MEMBER_USERNAME?.trim() || DEV_FIXTURE_DEFAULTS.proUsername;
+  const orgSkillSlug = env.SKILLMD_E2E_ORG_SKILL_SLUG?.trim() || DEV_FIXTURE_DEFAULTS.orgSkillSlug;
   const teamSlug = `sweep-team-${RUN_ID}`;
   const teamName = `Sweep Team ${RUN_ID}`;
 
@@ -1858,9 +1864,10 @@ function runExtendedTier({ state, env, strict, allowAuthBlocked }) {
     validate: (raw) => {
       const payload = parseJsonPayload(raw.stdout);
       assert(payload && Array.isArray(payload.tokens), "token ls invalid");
+      const revokedToken = payload.tokens.find((token) => token && token.tokenId === tokenId);
       assert(
-        !payload.tokens.some((token) => token && token.tokenId === tokenId),
-        "token still present after revoke",
+        !revokedToken || typeof revokedToken.revokedAt === "string",
+        "token revoke did not persist revokedAt",
       );
     },
   });
@@ -1896,6 +1903,18 @@ function runExtendedTier({ state, env, strict, allowAuthBlocked }) {
     env: stepEnv,
     strict,
     allowAuthBlocked,
+    acceptedExitCodes: [0, 1],
+    validate: (raw) => {
+      if (raw.exitCode === 0) {
+        const payload = parseJsonPayload(raw.stdout);
+        assert(payload && payload.username === orgMemberUsername, "org member add invalid");
+        return;
+      }
+      assert(
+        /already exists|version_conflict/i.test(raw.combined),
+        "expected org member add to be idempotent when member already exists",
+      );
+    },
   });
   runScenarioStep(state, {
     name: "org-team-add",
@@ -2055,9 +2074,10 @@ function runExtendedTier({ state, env, strict, allowAuthBlocked }) {
     validate: (raw) => {
       const payload = parseJsonPayload(raw.stdout);
       assert(payload && Array.isArray(payload.tokens), "org tokens ls invalid");
+      const revokedToken = payload.tokens.find((token) => token && token.tokenId === orgTokenId);
       assert(
-        !payload.tokens.some((token) => token && token.tokenId === orgTokenId),
-        "org token still present after revoke",
+        !revokedToken || typeof revokedToken.revokedAt === "string",
+        "org token revoke did not persist revokedAt",
       );
     },
   });

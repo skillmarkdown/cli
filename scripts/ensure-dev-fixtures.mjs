@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
@@ -97,8 +97,92 @@ function ensureOrganization(env, config) {
         label: "org create",
       });
     }
+
+    const members = runCliJson({
+      env,
+      homeDir: isolatedHome,
+      args: ["org", "members", "ls", config.orgSlug, "--json"],
+      label: "org members ls",
+    });
+    const memberUsernames = Array.isArray(members?.members)
+      ? members.members
+          .map((entry) => (typeof entry?.username === "string" ? entry.username : ""))
+          .filter(Boolean)
+      : [];
+    if (!memberUsernames.includes(config.orgMemberUsername)) {
+      runCliJson({
+        env,
+        homeDir: isolatedHome,
+        args: [
+          "org",
+          "members",
+          "add",
+          config.orgSlug,
+          config.orgMemberUsername,
+          "--role",
+          "member",
+          "--json",
+        ],
+        label: "org members add",
+      });
+    }
   } finally {
     rmSync(isolatedHome, { recursive: true, force: true });
+  }
+}
+
+function ensureOrganizationSkill(env, config) {
+  const isolatedHome = mkdtempSync(join(tmpdir(), "skillmd-fixtures-org-skill-home-"));
+  const tempRoot = mkdtempSync(join(tmpdir(), "skillmd-fixtures-org-skill-"));
+  const skillDir = join(tempRoot, config.orgSkillSlug);
+  try {
+    mkdirSync(skillDir, { recursive: true });
+
+    runNodeScript({
+      cwd: ROOT_DIR,
+      env: {
+        ...env,
+        HOME: isolatedHome,
+        SKILLMD_LOGIN_EMAIL: config.loginEmail,
+        SKILLMD_LOGIN_PASSWORD: config.loginPassword,
+      },
+      args: [CLI_PATH, "login", "--reauth"],
+      label: "org owner fixture login",
+    });
+
+    runNodeScript({
+      cwd: skillDir,
+      env: {
+        ...env,
+        HOME: isolatedHome,
+      },
+      args: [CLI_PATH, "init", "--template", "verbose"],
+      label: "org skill init",
+    });
+
+    runCliJson({
+      env,
+      homeDir: isolatedHome,
+      args: [
+        "publish",
+        skillDir,
+        "--version",
+        "1.0.0",
+        "--tag",
+        "latest",
+        "--access",
+        "public",
+        "--owner",
+        `@${config.orgSlug}`,
+        "--agent-target",
+        "skillmd",
+        "--json",
+      ],
+      label: "org skill publish",
+    });
+  } finally {
+    rmSync(isolatedHome, { recursive: true, force: true });
+    rmSync(tempRoot, { recursive: true, force: true });
   }
 }
 
@@ -195,6 +279,7 @@ function main() {
 
   console.log("Ensuring dev org fixture...");
   ensureOrganization(env, config);
+  ensureOrganizationSkill(env, config);
 
   console.log("Verifying pro entitlements...");
   verifyProFixture(env, config);
@@ -219,6 +304,8 @@ function main() {
         },
         privateSearchSeed,
         orgSlug: config.orgSlug,
+        orgMemberUsername: config.orgMemberUsername,
+        orgSkillSlug: config.orgSkillSlug,
         status: "ready",
       },
       null,
