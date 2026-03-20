@@ -157,3 +157,90 @@ test("downloadArtifact fails on non-2xx responses", async () => {
     },
   );
 });
+
+test("resolveSkillVersion accepts valid custom agent targets", async () => {
+  const payload = await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        owner: "@test",
+        username: "test",
+        skill: "test-skill",
+        spec: "latest",
+        version: "1.2.3",
+        agentTarget: "custom:workspace",
+      }),
+    () => resolveSkillVersion("https://registry.example.com", "", "test-skill", "latest"),
+  );
+
+  assert.equal(payload.agentTarget, "custom:workspace");
+});
+
+test("resolveSkillVersion rejects invalid agent targets in success payload", async () => {
+  await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        owner: "@test",
+        username: "test",
+        skill: "test-skill",
+        spec: "latest",
+        version: "1.2.3",
+        agentTarget: "CUSTOM:BAD",
+      }),
+    async () => {
+      await assert.rejects(
+        resolveSkillVersion("https://registry.example.com", "", "test-skill", "latest"),
+        /missing required fields/i,
+      );
+    },
+  );
+});
+
+test("getArtifactDescriptor rejects invalid agent targets in success payload", async () => {
+  await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        owner: "@test",
+        username: "test",
+        skill: "test-skill",
+        version: "1.2.3",
+        digest: "sha256:abc",
+        sizeBytes: 3,
+        mediaType: "application/vnd.skillmarkdown.skill.v1+tar",
+        deprecated: false,
+        deprecatedAt: null,
+        deprecatedMessage: null,
+        downloadUrl: "https://storage.example.com/object",
+        downloadExpiresAt: "2026-03-02T12:00:00.000Z",
+        agentTarget: "bad",
+      }),
+    async () => {
+      await assert.rejects(
+        getArtifactDescriptor("https://registry.example.com", {
+          username: "",
+          skillSlug: "test-skill",
+          version: "1.2.3",
+        }),
+        /missing required fields/i,
+      );
+    },
+  );
+});
+
+test("downloadArtifact redacts invalid download origins", async () => {
+  const payload = await withMockedFetch(
+    async () => ({
+      ok: true,
+      status: 200,
+      headers: {
+        get() {
+          return null;
+        },
+      },
+      arrayBuffer: async () => new Uint8Array([1]).buffer,
+    }),
+    () => downloadArtifact("not-a-url"),
+  );
+
+  assert.equal(payload.downloadedFrom, "redacted");
+  assert.equal(payload.contentType, undefined);
+});

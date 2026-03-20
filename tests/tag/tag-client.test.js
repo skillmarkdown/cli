@@ -201,3 +201,64 @@ test("tag client maps API errors", async () => {
     },
   );
 });
+
+test("listDistTags normalizes non-string distTag values out of the payload", async () => {
+  const payload = await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        owner: "@owner",
+        username: "username",
+        skill: "test-skill",
+        distTags: { latest: "1.2.3", beta: 42, old: null },
+        updatedAt: "2026-03-03T12:00:00.000Z",
+      }),
+    () =>
+      listDistTags("https://registry.example.com", {
+        username: "username",
+        skillSlug: "test-skill",
+      }),
+  );
+
+  assert.deepEqual(payload.distTags, { latest: "1.2.3" });
+});
+
+test("setDistTag rejects malformed success payloads", async () => {
+  await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        status: "updated",
+        tag: "beta",
+      }),
+    async () => {
+      await assert.rejects(
+        setDistTag("https://registry.example.com", "id-token", {
+          username: "username",
+          skillSlug: "test-skill",
+          tag: "beta",
+          version: "1.2.3",
+        }),
+        /missing required fields/i,
+      );
+    },
+  );
+});
+
+test("removeDistTag rejects malformed success payloads", async () => {
+  await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        status: "deleted",
+        distTags: {},
+      }),
+    async () => {
+      await assert.rejects(
+        removeDistTag("https://registry.example.com", "id-token", {
+          username: "username",
+          skillSlug: "test-skill",
+          tag: "beta",
+        }),
+        /missing required fields/i,
+      );
+    },
+  );
+});

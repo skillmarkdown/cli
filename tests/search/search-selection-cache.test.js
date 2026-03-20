@@ -136,3 +136,98 @@ test("readSearchSelectionCache returns null when pageStartIndex is invalid", () 
     cleanupDirectory(root);
   }
 });
+
+test("readSearchSelectionCache rejects invalid continuation shapes", () => {
+  const root = makeTempDirectory(CACHE_TEST_PREFIX);
+  const cachePath = path.join(root, ".skillmd", "search-cache.json");
+
+  try {
+    fs.mkdirSync(path.dirname(cachePath), { recursive: true });
+    fs.writeFileSync(
+      cachePath,
+      JSON.stringify(
+        {
+          registryBaseUrl: "https://registry.example.com",
+          createdAt: "2026-03-02T12:00:00.000Z",
+          skillIds: ["@core/one"],
+          continuations: [{ key: "", nextIndex: 0, createdAt: "" }],
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    assert.equal(readSearchSelectionCache(cachePath), null);
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("readSearchSelectionCache rejects non-array continuations", () => {
+  const root = makeTempDirectory(CACHE_TEST_PREFIX);
+  const cachePath = path.join(root, ".skillmd", "search-cache.json");
+
+  try {
+    fs.mkdirSync(path.dirname(cachePath), { recursive: true });
+    fs.writeFileSync(
+      cachePath,
+      JSON.stringify(
+        {
+          registryBaseUrl: "https://registry.example.com",
+          createdAt: "2026-03-02T12:00:00.000Z",
+          skillIds: ["@core/one"],
+          continuations: {},
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    assert.equal(readSearchSelectionCache(cachePath), null);
+  } finally {
+    cleanupDirectory(root);
+  }
+});
+
+test("buildSearchContinuationKey normalizes blank query and explicit scope", () => {
+  const publicKey = buildSearchContinuationKey({
+    registryBaseUrl: " https://registry.example.com/// ",
+    query: null,
+    limit: 20,
+    cursor: "cursor_1",
+  });
+  const privateKey = buildSearchContinuationKey({
+    registryBaseUrl: "https://registry.example.com",
+    query: null,
+    limit: 20,
+    cursor: "cursor_1",
+    scope: "private",
+  });
+
+  assert.notEqual(publicKey, privateKey);
+  assert.match(publicKey, /"public"/);
+  assert.match(privateKey, /"private"/);
+});
+
+test("writeSearchSelectionCache creates cache file with secure permissions", () => {
+  const root = makeTempDirectory(CACHE_TEST_PREFIX);
+  const cachePath = path.join(root, ".skillmd", "search-cache.json");
+
+  try {
+    writeSearchSelectionCache(
+      {
+        registryBaseUrl: "https://registry.example.com",
+        createdAt: "2026-03-02T12:00:00.000Z",
+        skillIds: ["@core/one"],
+      },
+      cachePath,
+    );
+
+    const mode = fs.statSync(cachePath).mode & 0o777;
+    assert.equal(mode, 0o600);
+  } finally {
+    cleanupDirectory(root);
+  }
+});

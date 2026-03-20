@@ -375,3 +375,55 @@ test("installSkillArtifact surfaces restore failure details", async () => {
     cleanupDirectory(root);
   }
 });
+
+test("installSkillArtifact overwrites pre-existing backup before swap", async () => {
+  const root = makeTempDirectory(TEST_PREFIX);
+
+  try {
+    const archiveBytes = await createArchiveBytes({
+      "SKILL.md": "---\nname: overwrite-backup\n---\n",
+    });
+    const targetPath = path.join(
+      root,
+      ".agent",
+      "skills",
+      "registry.example.com",
+      "owner",
+      "overwrite-backup-skill",
+    );
+    const tempRoot = path.join(root, ".agent", ".tmp");
+
+    fs.mkdirSync(targetPath, { recursive: true });
+    fs.writeFileSync(path.join(targetPath, "old.txt"), "old", "utf8");
+    let removedGeneratedBackup = false;
+
+    const fileOps = {
+      access: fsp.access,
+      stat: fsp.stat,
+      lstat: fsp.lstat,
+      mkdir: fsp.mkdir,
+      writeFile: fsp.writeFile,
+      rm: async (target, options) => {
+        if (String(target).includes("-backup")) {
+          removedGeneratedBackup = true;
+        }
+        return fsp.rm(target, options);
+      },
+      rename: fsp.rename,
+    };
+
+    await installSkillArtifact(
+      {
+        targetPath,
+        tempRoot,
+        archiveBytes,
+      },
+      { fileOps },
+    );
+
+    assert.equal(fs.existsSync(path.join(targetPath, "SKILL.md")), true);
+    assert.equal(removedGeneratedBackup, true);
+  } finally {
+    cleanupDirectory(root);
+  }
+});

@@ -65,6 +65,68 @@ test("listTokens parses list payload", async () => {
   assert.equal(payload.tokens[0].name, "ci");
 });
 
+test("listTokens accepts revokedAt and lastUsedAt fields", async () => {
+  const payload = await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        tokens: [
+          {
+            tokenId: "tok_abc123abc123abc123abc123",
+            name: "ci",
+            scope: "admin",
+            createdAt: "2026-03-03T00:00:00.000Z",
+            expiresAt: "2026-04-02T00:00:00.000Z",
+            revokedAt: "2026-03-04T00:00:00.000Z",
+            lastUsedAt: null,
+          },
+        ],
+      }),
+    () => listTokens("https://registry.example.com", "id-token"),
+  );
+
+  assert.equal(payload.tokens[0].scope, "admin");
+  assert.equal(payload.tokens[0].revokedAt, "2026-03-04T00:00:00.000Z");
+});
+
+test("createToken rejects malformed success payloads", async () => {
+  await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        tokenId: "tok_abc123abc123abc123abc123",
+        name: "ci",
+      }),
+    async () => {
+      await assert.rejects(
+        createToken("https://registry.example.com", "id-token", { name: "ci" }),
+        /missing required fields/i,
+      );
+    },
+  );
+});
+
+test("listTokens rejects malformed token entries", async () => {
+  await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        tokens: [
+          {
+            tokenId: "tok_abc123abc123abc123abc123",
+            name: "ci",
+            scope: "owner",
+            createdAt: "2026-03-03T00:00:00.000Z",
+            expiresAt: "2026-04-02T00:00:00.000Z",
+          },
+        ],
+      }),
+    async () => {
+      await assert.rejects(
+        listTokens("https://registry.example.com", "id-token"),
+        /missing required fields/i,
+      );
+    },
+  );
+});
+
 test("revokeToken sends DELETE and parses response", async () => {
   const payload = await withMockedFetch(
     async (input, init) => {

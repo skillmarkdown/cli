@@ -71,3 +71,44 @@ test("getWhoami maps API errors", async () => {
     },
   );
 });
+
+test("getWhoami accepts token auth with null project and optional fields omitted", async () => {
+  const payload = await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        uid: "uid-1",
+        owner: "@core",
+        username: "core",
+        email: null,
+        projectId: null,
+        authType: "token",
+        scope: "read",
+      }),
+    () => getWhoami("https://registry.example.com", "id-token"),
+  );
+
+  assert.equal(payload.authType, "token");
+  assert.equal(payload.projectId, null);
+});
+
+test("getWhoami rejects malformed organization payloads", async () => {
+  await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        uid: "uid-1",
+        owner: "@core",
+        username: "core",
+        email: "core@example.com",
+        projectId: "skillmarkdown-development",
+        authType: "firebase",
+        scope: "admin",
+        organizations: [{ slug: "facebook", owner: "@facebook", role: "viewer" }],
+      }),
+    async () => {
+      await assert.rejects(
+        getWhoami("https://registry.example.com", "id-token"),
+        /missing required fields/i,
+      );
+    },
+  );
+});

@@ -99,6 +99,22 @@ test("preparePublish maps API errors", async () => {
   );
 });
 
+test("preparePublish rejects malformed success payloads", async () => {
+  await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        status: "upload_required",
+        publishToken: "pub-token",
+      }),
+    async () => {
+      await assert.rejects(
+        preparePublish("https://registry.example.com", "id-token", preparePayload()),
+        /missing required fields/i,
+      );
+    },
+  );
+});
+
 test("uploadArtifact uploads with content-type header", async () => {
   await withMockedFetch(
     async (_input, init) => {
@@ -111,6 +127,26 @@ test("uploadArtifact uploads with content-type header", async () => {
         "https://upload.example.com/object",
         Buffer.from("content"),
         "application/x-test",
+      );
+    },
+  );
+});
+
+test("uploadArtifact preserves explicit content-type and custom headers", async () => {
+  await withMockedFetch(
+    async (_input, init) => {
+      assert.equal(init.method, "POST");
+      assert.equal(init.headers.get("Content-Type"), "application/custom");
+      assert.equal(init.headers.get("x-upload-token"), "abc123");
+      return mockTextResponse(201, "created");
+    },
+    async () => {
+      await uploadArtifact(
+        "https://upload.example.com/object",
+        Buffer.from("content"),
+        "application/x-test",
+        "POST",
+        { "Content-Type": "application/custom", "x-upload-token": "abc123" },
       );
     },
   );
@@ -158,4 +194,23 @@ test("commitPublish accepts idempotent response", async () => {
   );
 
   assert.equal(result.status, "idempotent");
+});
+
+test("commitPublish rejects malformed success payloads", async () => {
+  await withMockedFetch(
+    async () =>
+      mockJsonResponse(200, {
+        status: "published",
+        skillId: "@core/publish-skill",
+        version: "1.0.0",
+      }),
+    async () => {
+      await assert.rejects(
+        commitPublish("https://registry.example.com", "id-token", {
+          publishToken: "pub-token",
+        }),
+        /missing required fields/i,
+      );
+    },
+  );
 });

@@ -46,7 +46,7 @@
     "sweep:commands:both:extended": "npm run build && node scripts/command-sweep.mjs --env both --tier all --allow-auth-blocked",
     "test": "npm run build:test && node --test",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:coverage": "npm run build:test && rm -rf coverage && mkdir -p coverage/v8 && NODE_V8_COVERAGE=coverage/v8 node --test --experimental-test-coverage",
+    "test:coverage": "npm run build:test && rm -rf coverage && mkdir -p coverage/v8 && NODE_V8_COVERAGE=coverage/v8 node --test --experimental-test-coverage --test-coverage-include=src/** --test-coverage-exclude=tests/** --test-coverage-exclude=scripts/** --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100",
     "seed:edge-cases:dev": "node scripts/publish-edge-case-skill-batch.mjs --profile baseline",
     "seed:edge-cases:dev:extended": "node scripts/publish-edge-case-skill-batch.mjs --profile extended"
   },

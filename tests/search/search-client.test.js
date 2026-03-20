@@ -132,3 +132,35 @@ test("searchSkills defaults missing distTags to empty map", async () => {
 
   assert.deepEqual(payload.results[0].distTags, {});
 });
+
+test("searchSkills normalizes mixed distTags values and omits empty query params", async () => {
+  const payload = await withMockedFetch(
+    async (input) => {
+      const url = new URL(String(input));
+      assert.equal(url.searchParams.get("q"), null);
+      assert.equal(url.searchParams.get("limit"), null);
+      assert.equal(url.searchParams.get("cursor"), null);
+      return mockJsonResponse(200, {
+        query: null,
+        limit: 20,
+        results: [
+          {
+            skillId: "test-skill",
+            owner: "@owner",
+            username: "username",
+            skill: "test-skill",
+            description: "desc",
+            distTags: { latest: "1.0.0", invalid: 5, old: null },
+            updatedAt: "2026-03-03T10:00:00.000Z",
+          },
+          null,
+        ],
+        nextCursor: null,
+      });
+    },
+    () => searchSkills("https://registry.example.com", {}),
+  );
+
+  assert.deepEqual(payload.results[0].distTags, { latest: "1.0.0" });
+  assert.equal(payload.results[1], null);
+});
