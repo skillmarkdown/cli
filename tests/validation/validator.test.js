@@ -134,24 +134,26 @@ test("accepts BOM-prefixed SKILL.md frontmatter", () => {
   });
 });
 
-test("fails strict validation when skill contains disallowed raster media", () => {
+test("fails strict validation when skill contains unsupported binary media", () => {
   withVerboseSkill("validator-disallowed-png", ({ dir }) => {
     fs.writeFileSync(path.join(dir, "assets", "logo.png"), "not-a-real-png", "utf8");
 
     const result = validateSkill(dir, { strict: true });
     assert.equal(result.status, "failed");
-    assert.match(result.message, /must not contain binary media files/);
+    assert.match(result.message, /must contain only reviewable text-first files/);
     assert.match(result.message, /assets\/logo\.png/);
+    assert.match(result.message, /unsupported file type/);
   });
 });
 
-test("fails strict validation when skill contains disallowed video with uppercase extension", () => {
+test("fails strict validation when skill contains unsupported video with uppercase extension", () => {
   withVerboseSkill("validator-disallowed-video", ({ dir }) => {
     fs.writeFileSync(path.join(dir, "references", "DEMO.MP4"), "not-a-real-mp4", "utf8");
 
     const result = validateSkill(dir, { strict: true });
     assert.equal(result.status, "failed");
     assert.match(result.message, /references\/DEMO\.MP4/);
+    assert.match(result.message, /unsupported file type/);
   });
 });
 
@@ -162,6 +164,28 @@ test("allows svg assets during strict validation", () => {
 
     const result = validateSkill(dir, { strict: true });
     assert.equal(result.status, "passed");
+  });
+});
+
+test("fails strict validation when allowlisted extension contains binary bytes", () => {
+  withVerboseSkill("validator-binary-json", ({ dir }) => {
+    fs.writeFileSync(path.join(dir, "references", "data.json"), Buffer.from([0x7b, 0x00, 0x7d]));
+
+    const result = validateSkill(dir, { strict: true });
+    assert.equal(result.status, "failed");
+    assert.match(result.message, /references\/data\.json/);
+    assert.match(result.message, /binary content detected/);
+  });
+});
+
+test("fails strict validation for blocked binary artifacts beyond media", () => {
+  withVerboseSkill("validator-pdf-blocked", ({ dir }) => {
+    fs.writeFileSync(path.join(dir, "references", "guide.pdf"), "%PDF-1.7", "utf8");
+
+    const result = validateSkill(dir, { strict: true });
+    assert.equal(result.status, "failed");
+    assert.match(result.message, /references\/guide\.pdf/);
+    assert.match(result.message, /unsupported file type/);
   });
 });
 

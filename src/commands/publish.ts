@@ -12,8 +12,10 @@ import { parsePublishFlags } from "../lib/publish/flags";
 import { buildPublishManifest } from "../lib/publish/manifest";
 import { packSkillArtifact } from "../lib/publish/pack";
 import {
-  findDisallowedPublishMediaFiles,
-  formatDisallowedPublishMediaMessage,
+  type PublishContentPolicyViolation,
+  findBlockedPublishContentFiles,
+  formatBlockedPublishContentMessage,
+  listPublishableSkillFiles,
 } from "../lib/publish/file-policy";
 import { commitPublish, preparePublish, uploadArtifact } from "../lib/publish/client";
 import {
@@ -47,6 +49,7 @@ interface PublishCommandOptions {
   env?: NodeJS.ProcessEnv;
   readSession?: () => AuthSession | null;
   validateSkill?: (targetDir: string, options?: { strict?: boolean }) => ValidationResult;
+  checkPublishContent?: (targetDir: string) => PublishContentPolicyViolation[];
   getConfig?: (env: NodeJS.ProcessEnv) => PublishEnvConfig;
   packArtifact?: (targetDir: string) => PackedArtifact;
   buildManifest?: (options: {
@@ -228,23 +231,25 @@ export async function runPublishCommand(
     const config = getConfigFn(env);
     const agentTarget = parsed.agentTarget ?? config.defaultAgentTarget ?? DEFAULT_AGENT_TARGET;
 
-    const packArtifactFn = options.packArtifact ?? packSkillArtifact;
-    const artifact = packArtifactFn(targetDir);
-    const disallowedMediaFiles = findDisallowedPublishMediaFiles(
-      (artifact.files ?? []).map((entry) => entry.path),
-    );
+    const checkPublishContent =
+      options.checkPublishContent ??
+      ((dir: string) => findBlockedPublishContentFiles(dir, listPublishableSkillFiles(dir)));
+    const blockedContentFiles = checkPublishContent(targetDir);
 
-    if (disallowedMediaFiles.length > 0) {
-      const message = formatDisallowedPublishMediaMessage(disallowedMediaFiles);
+    if (blockedContentFiles.length > 0) {
+      const message = formatBlockedPublishContentMessage(blockedContentFiles);
       if (parsed.json) {
         printJsonError("validation", message, {
-          hint: "Remove binary media files from the skill package. Use text, markdown, csv, json, or svg assets instead.",
+          hint: "Use only reviewable text-first files in published skills. Prefer text, markdown, csv, json, yaml, toml, or svg assets.",
         });
         return 1;
       }
       console.error(`skillmd publish: ${message}`);
       return 1;
     }
+
+    const packArtifactFn = options.packArtifact ?? packSkillArtifact;
+    const artifact = packArtifactFn(targetDir);
 
     if (artifact.sizeBytes > MAX_PUBLISH_ARTIFACT_SIZE_BYTES) {
       if (parsed.json) {

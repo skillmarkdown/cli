@@ -8,8 +8,8 @@ import {
   STRICT_SECTION_HEADINGS,
 } from "../scaffold/skill-spec";
 import {
-  findDisallowedPublishMediaFiles,
-  formatDisallowedPublishMediaMessage,
+  findBlockedPublishContentFiles,
+  formatBlockedPublishContentMessage,
   listPublishableSkillFiles,
 } from "../publish/file-policy";
 
@@ -151,15 +151,14 @@ function collectStrictScaffoldErrors(targetDir: string): string[] {
     (section) => !hasHeadingOutsideFencedCode(skillContent, section),
   ).map((section) => `SKILL.md is missing strict section: ${section}`);
 
-  const disallowedMediaFiles = findDisallowedPublishMediaFiles(
+  const blockedContentFiles = findBlockedPublishContentFiles(
+    targetDir,
     listPublishableSkillFiles(targetDir),
   );
-  const disallowedMediaErrors =
-    disallowedMediaFiles.length > 0
-      ? [formatDisallowedPublishMediaMessage(disallowedMediaFiles)]
-      : [];
+  const blockedContentErrors =
+    blockedContentFiles.length > 0 ? [formatBlockedPublishContentMessage(blockedContentFiles)] : [];
 
-  return [...missingStrictFiles, ...missingStrictSections, ...disallowedMediaErrors];
+  return [...missingStrictFiles, ...missingStrictSections, ...blockedContentErrors];
 }
 
 function hasHeadingOutsideFencedCode(content: string, heading: string): boolean {

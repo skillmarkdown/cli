@@ -46,6 +46,7 @@ function baseOptions(overrides = {}) {
       SKILLMD_REGISTRY_BASE_URL: "https://registry.example.com",
     },
     validateSkill: () => ({ status: "passed", message: "ok" }),
+    checkPublishContent: () => [],
     readSession: () => ({
       provider: "email",
       uid: "uid-1",
@@ -511,13 +512,10 @@ test("fails when manifest exceeds configured max size", async () => {
   assert.match(errors.join("\n"), /manifest exceeds max size/i);
 });
 
-test("fails before upload when artifact contains disallowed binary media", async () => {
+test("fails before upload when artifact contains blocked publish content", async () => {
   let prepareCalled = false;
   const options = baseOptions({
-    packArtifact: () => ({
-      ...packedArtifact(),
-      files: [{ path: "assets/logo.png", sizeBytes: 12, sha256: "abc" }],
-    }),
+    checkPublishContent: () => [{ path: "assets/logo.png", reason: "unsupported-file-type" }],
     preparePublish: async () => {
       prepareCalled = true;
       return {
@@ -534,17 +532,17 @@ test("fails before upload when artifact contains disallowed binary media", async
 
   assert.equal(result, 1);
   assert.equal(prepareCalled, false);
-  assert.match(errors.join("\n"), /must not contain binary media files/);
+  assert.match(errors.join("\n"), /must contain only reviewable text-first files/);
   assert.match(errors.join("\n"), /assets\/logo\.png/);
+  assert.match(errors.join("\n"), /unsupported file type/);
 });
 
-test("publish --json returns structured validation error for disallowed binary media", async () => {
+test("publish --json returns structured validation error for blocked binary content", async () => {
   let prepareCalled = false;
   const options = baseOptions({
-    packArtifact: () => ({
-      ...packedArtifact(),
-      files: [{ path: "references/IMAGE.JPG", sizeBytes: 12, sha256: "abc" }],
-    }),
+    checkPublishContent: () => [
+      { path: "references/notes.json", reason: "binary-content-detected" },
+    ],
     preparePublish: async () => {
       prepareCalled = true;
       return {
@@ -565,8 +563,9 @@ test("publish --json returns structured validation error for disallowed binary m
   const payload = JSON.parse(logs.join("\n"));
   assert.equal(payload.ok, false);
   assert.equal(payload.error.type, "validation");
-  assert.match(payload.error.message, /references\/IMAGE\.JPG/);
-  assert.match(payload.error.hint, /Use text, markdown, csv, json, or svg assets instead/);
+  assert.match(payload.error.message, /references\/notes\.json/);
+  assert.match(payload.error.message, /binary content detected/);
+  assert.match(payload.error.hint, /Use only reviewable text-first files/);
 });
 
 test("publish --json returns structured auth error for project mismatch", async () => {
