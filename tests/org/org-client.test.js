@@ -212,7 +212,7 @@ test("assignOrganizationSkillTeam sends null when clearing", async () => {
     async (input, init) => {
       const url = new URL(String(input));
       assert.equal(url.pathname, "/v1/organizations/facebook/skills/private-skill/team");
-      assert.equal(init.method, "PUT");
+      assert.equal(init.method, "PATCH");
       assert.deepEqual(JSON.parse(String(init.body)), {
         teamSlug: null,
       });
