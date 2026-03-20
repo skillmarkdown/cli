@@ -589,8 +589,7 @@ function rewriteTemplateFiles(skillDir, scenario, identity) {
     /## Examples[\s\S]*?## Limitations \/ Failure modes/u,
     `${buildExamplesSection(scenario, identity)}\n\n## Limitations / Failure modes`,
   );
-  skillContent = replaceAll(skillContent, "@skillmarkdown/skillmd-cli-skill", canonicalSkillId);
-  skillContent = replaceAll(skillContent, "@username/skillmd-cli-skill", canonicalSkillId);
+  skillContent = skillContent.replace(/@[a-z0-9-]+\/skillmd-cli-skill/giu, canonicalSkillId);
   skillContent = replaceAll(skillContent, "skillmd-cli-skill", scenario.skillSlug);
   skillContent = replaceAll(
     skillContent,
@@ -628,8 +627,7 @@ function rewriteTemplateFiles(skillDir, scenario, identity) {
     "Skill for using `skillmarkdown` with current v1 command contracts across authoring, discovery, auth, release operations, and consumption workflows.",
     `${title}. ${longDescription}`,
   );
-  readmeContent = replaceAll(readmeContent, "@username/skillmd-cli-skill", canonicalSkillId);
-  readmeContent = replaceAll(readmeContent, "@skillmarkdown/skillmd-cli-skill", canonicalSkillId);
+  readmeContent = readmeContent.replace(/@[a-z0-9-]+\/skillmd-cli-skill/giu, canonicalSkillId);
   readmeContent = replaceAll(readmeContent, "skillmd-cli-skill", scenario.skillSlug);
   readmeContent = replaceAll(
     readmeContent,
@@ -652,12 +650,10 @@ function rewriteTemplateFiles(skillDir, scenario, identity) {
   writeFileSync(packageJsonFile, `${JSON.stringify(pkg, null, 2)}\n`, "utf8");
 
   let referenceContent = readFileSync(referenceFile, "utf8");
-  referenceContent = replaceAll(
-    referenceContent,
-    "@skillmarkdown/skillmd-cli-skill",
+  referenceContent = referenceContent.replace(
+    /@[a-z0-9-]+\/skillmd-cli-skill/giu,
     canonicalSkillId,
   );
-  referenceContent = replaceAll(referenceContent, "@username/skillmd-cli-skill", canonicalSkillId);
   referenceContent = replaceAll(referenceContent, "skillmd-cli-skill", scenario.skillSlug);
   referenceContent += `\n\n## Edge-case matrix\n\n- Skill handle: ${handle}\n- Agent target: ${scenario.target}\n- Releases: ${scenario.publishes.map(({ version }) => version).join(", ")}\n- Dist-tags: ${scenario.publishes.map(({ tag }) => tag).join(", ")}\n`;
   writeFileSync(referenceFile, referenceContent, "utf8");
@@ -728,9 +724,8 @@ function rewriteTemplateFiles(skillDir, scenario, identity) {
 
   if (existsSync(assetPreviewFile)) {
     let assetPreviewContent = readFileSync(assetPreviewFile, "utf8");
-    assetPreviewContent = replaceAll(
-      assetPreviewContent,
-      "@seed-publisher-dev/skillmd-cli-skill",
+    assetPreviewContent = assetPreviewContent.replace(
+      /@[a-z0-9-]+\/skillmd-cli-skill/giu,
       canonicalSkillId,
     );
     assetPreviewContent = replaceAll(assetPreviewContent, "skillmd-cli-skill", scenario.skillSlug);

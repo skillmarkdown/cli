@@ -233,7 +233,7 @@ function main() {
         includesLicense: index % 2 === 0,
       });
       console.log(
-        `Published ${parsed.skillId}@${parsed.version} for ${target} via ${publishTarget}`,
+        `Published ${parsed.skillId} version ${parsed.version} for ${target} via ${publishTarget}`,
       );
     });
 

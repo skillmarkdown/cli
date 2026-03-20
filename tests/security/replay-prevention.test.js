@@ -96,7 +96,7 @@ describe("Security: Replay Attack Prevention", () => {
               // First commit succeeds
               return {
                 status: "published",
-                skillId: "@testuser/test-skill",
+                skillId: "test-skill",
                 version: "1.0.0",
                 tag: "latest",
                 distTags: { latest: "1.0.0" },

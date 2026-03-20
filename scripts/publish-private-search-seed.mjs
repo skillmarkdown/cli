@@ -170,7 +170,7 @@ function main() {
         version: payload.version,
         status: payload.status,
       });
-      console.log(`Published ${payload.skillId}@${payload.version} (${payload.status})`);
+      console.log(`Published ${payload.skillId} version ${payload.version} (${payload.status})`);
     }
 
     console.log(

@@ -6,17 +6,10 @@ const { requireDist } = require("../helpers/dist-imports.js");
 const { parseHistoryFlags } = requireDist("lib/history/flags.js");
 
 test("parses skill id, limit, cursor, and json flag", () => {
-  const parsed = parseHistoryFlags([
-    "@stefdevscore/test-skill",
-    "--limit",
-    "10",
-    "--cursor",
-    "opaque",
-    "--json",
-  ]);
+  const parsed = parseHistoryFlags(["test-skill", "--limit", "10", "--cursor", "opaque", "--json"]);
 
   assert.deepEqual(parsed, {
-    skillId: "@stefdevscore/test-skill",
+    skillId: "test-skill",
     limit: 10,
     cursor: "opaque",
     json: true,

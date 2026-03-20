@@ -88,7 +88,7 @@ describe("Security: Artifact Integrity Verification", () => {
           uploadArtifact: async () => {},
           commitPublish: async () => ({
             status: "published",
-            skillId: "@testuser/test-skill",
+            skillId: "test-skill",
             version: "1.0.0",
             tag: "latest",
             distTags: { latest: "1.0.0" },
@@ -140,7 +140,7 @@ describe("Security: Artifact Integrity Verification", () => {
           uploadArtifact: async () => {},
           commitPublish: async () => ({
             status: "published",
-            skillId: "@testuser/test-skill",
+            skillId: "test-skill",
             version: "1.0.0",
             tag: "latest",
             distTags: { latest: "1.0.0" },
@@ -187,7 +187,7 @@ describe("Security: Artifact Integrity Verification", () => {
           uploadArtifact: async () => {},
           commitPublish: async () => ({
             status: "published",
-            skillId: "@testuser/test-skill",
+            skillId: "test-skill",
             version: "1.0.0",
             tag: "latest",
             distTags: { latest: "1.0.0" },
@@ -235,7 +235,7 @@ describe("Security: Artifact Integrity Verification", () => {
           uploadArtifact: async () => {},
           commitPublish: async () => ({
             status: "published",
-            skillId: "@testuser/test-skill",
+            skillId: "test-skill",
             version: "1.0.0",
             tag: "latest",
             distTags: { latest: "1.0.0" },

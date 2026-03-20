@@ -134,7 +134,7 @@ function printDryRunResult(
   }
 
   console.log(
-    `Publish dry-run ready: ${payload.skillId}@${payload.version} ` +
+    `Publish dry-run ready: ${payload.skillId} version ${payload.version} ` +
       `(tag: ${payload.tag}, access: ${payload.access}, provenance: ${payload.provenance}, ` +
       `target: ${payload.agentTarget}, digest: ${payload.digest}, size: ${payload.sizeBytes} bytes).`,
   );
@@ -162,14 +162,14 @@ function printPublishedResult(
 
   if (status === "idempotent") {
     console.log(
-      `Already published ${payload.skillId}@${payload.version} ` +
+      `Already published ${payload.skillId} version ${payload.version} ` +
         `(tag: ${payload.tag}, target: ${payload.agentTarget}).`,
     );
     return;
   }
 
   console.log(
-    `Published ${payload.skillId}@${payload.version} ` +
+    `Published ${payload.skillId} version ${payload.version} ` +
       `(tag: ${payload.tag}, target: ${payload.agentTarget}).`,
   );
 }

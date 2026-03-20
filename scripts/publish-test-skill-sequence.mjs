@@ -185,7 +185,7 @@ function main() {
       );
       const parsed = JSON.parse(raw);
       published.push({ version: parsed.version, status: parsed.status, skillId: parsed.skillId });
-      console.log(`Published ${parsed.skillId}@${parsed.version} (${parsed.status})`);
+      console.log(`Published ${parsed.skillId} version ${parsed.version} (${parsed.status})`);
     }
 
     console.log(JSON.stringify({ workspace: tempRoot, published }, null, 2));

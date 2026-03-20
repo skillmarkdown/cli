@@ -536,7 +536,7 @@ test("records pro-plan hint when install is denied for private skill access", as
             defaults: {},
             dependencies: [
               {
-                skillId: "@stefdevscore/private-skill",
+                skillId: "private-skill",
                 spec: "latest",
               },
             ],
