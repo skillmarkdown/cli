@@ -15,7 +15,7 @@ export const LOGOUT_USAGE = "Usage: skillmd logout";
 export const PUBLISH_USAGE =
   "Usage: skillmd publish [path] --version <semver> [--tag <dist-tag>] [--access <public|private>] [--provenance] [--owner <owner>] [--agent-target <skillmd|openai|claude|gemini|meta|mistral|deepseek|perplexity|custom:<slug>>] [--dry-run] [--json]";
 export const SEARCH_USAGE =
-  "Usage: skillmd search [query] [--limit <1-50>] [--cursor <token>] [--scope <public|private>] [--json]";
+  "Usage: skillmd search [query] [--limit <1-50>] [--cursor <token>] [--scope <public|private>] [--json] (login required)";
 export const VIEW_USAGE = "Usage: skillmd view <skill-id|index> [--json]";
 export const HISTORY_USAGE =
   "Usage: skillmd history <skill-id> [--limit <1-50>] [--cursor <token>] [--json]";

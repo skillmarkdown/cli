@@ -91,7 +91,9 @@ Notes:
 
 ## Authentication
 
-`skillmd login` signs you in so the CLI can publish skills, manage installs, and access private or org features.
+`skillmd login` signs you in so the CLI can search, inspect, install, and manage registry skills, plus publish and access owner or org features.
+
+During early access, registry-visible reads also require login. In CLI flags and responses, `public` still means a visibility scope, not anonymous internet access.
 
 For API-calling commands, auth precedence is:
 

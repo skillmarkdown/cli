@@ -22,7 +22,7 @@ export function authzHintForReason(reason?: string): string | null {
   }
   if (reason === "forbidden_plan") {
     return (
-      "Hint: private skills require a Pro plan. Free users can only use public skills. " +
+      "Hint: private skills require a Pro plan. Free users can use skills visible to signed-in users. " +
       `Manage your account or plan at ${SKILLMARKDOWN_WEBSITE_URL}.`
     );
   }
