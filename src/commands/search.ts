@@ -23,7 +23,13 @@ interface SearchCommandOptions {
   getConfig?: (env: NodeJS.ProcessEnv) => RegistryEnvConfig;
   searchSkills?: (
     baseUrl: string,
-    request: { query?: string; limit?: number; cursor?: string; scope?: "public" | "private" },
+    request: {
+      query?: string;
+      limit?: number;
+      cursor?: string;
+      scope?: "public" | "private";
+      match?: "all" | "id";
+    },
     options?: { timeoutMs?: number; idToken?: string },
   ) => Promise<SearchSkillsResponse>;
   readSelectionCache?: () => SearchSelectionCache | null;
@@ -204,6 +210,7 @@ export async function runSearchCommand(
         limit: parsed.limit,
         cursor: parsed.cursor,
         scope: parsed.scope,
+        match: parsed.scope === "public" ? "id" : "all",
       },
       { timeoutMs: config.requestTimeoutMs, idToken },
     );

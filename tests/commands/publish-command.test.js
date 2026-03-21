@@ -306,7 +306,7 @@ test("publishes successfully", async () => {
   );
 
   assert.equal(result, 0);
-  assert.match(logs.join("\n"), /Published @core\/publish-skill version 1.0.0/);
+  assert.match(logs.join("\n"), /Published publish-skill version 1.0.0/);
 });
 
 test("handles idempotent publish response", async () => {
@@ -370,10 +370,7 @@ test("commits idempotent prepare responses without uploading artifact", async ()
   assert.equal(result, 0);
   assert.equal(uploadCalled, false);
   assert.equal(commitCalled, true);
-  assert.match(
-    logs.join("\n"),
-    /Already published @core\/publish-skill version 1.0.0 \(tag: stable/,
-  );
+  assert.match(logs.join("\n"), /Already published publish-skill version 1.0.0 \(tag: stable/);
 });
 
 test("maps version conflict errors", async () => {

@@ -78,6 +78,9 @@ export async function searchSkills(
   if (request.scope) {
     url.searchParams.set("scope", request.scope);
   }
+  if (request.match && request.match !== "all") {
+    url.searchParams.set("match", request.match);
+  }
 
   const parsed = await requestJson({
     url,

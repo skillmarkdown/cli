@@ -1,4 +1,5 @@
 export type SearchScope = "public" | "private";
+export type SearchMatch = "all" | "id";
 
 export interface SearchFlags {
   query?: string;
@@ -30,6 +31,7 @@ export interface SearchSkillsRequest {
   limit?: number;
   cursor?: string;
   scope?: SearchScope;
+  match?: SearchMatch;
 }
 
 export interface SearchSkillsResponse {

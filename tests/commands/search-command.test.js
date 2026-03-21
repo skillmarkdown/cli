@@ -54,6 +54,64 @@ test("prints human output for search results", async () => {
   assert.match(logs.join("\n"), /1.2.3/);
 });
 
+test("public search requests identifier match mode", async () => {
+  let capturedRequest = null;
+  const { result } = await captureConsole(() =>
+    runSearchCommand(
+      ["se"],
+      baseOptions({
+        searchSkills: async (_baseUrl, request) => {
+          capturedRequest = request;
+          return {
+            query: "se",
+            limit: 20,
+            results: [],
+            nextCursor: null,
+          };
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.deepEqual(capturedRequest, {
+    query: "se",
+    limit: undefined,
+    cursor: undefined,
+    scope: "public",
+    match: "id",
+  });
+});
+
+test("private search keeps broad match mode", async () => {
+  let capturedRequest = null;
+  const { result } = await captureConsole(() =>
+    runSearchCommand(
+      ["query", "--scope", "private"],
+      baseOptions({
+        searchSkills: async (_baseUrl, request) => {
+          capturedRequest = request;
+          return {
+            query: "query",
+            limit: 20,
+            results: [],
+            nextCursor: null,
+          };
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 0);
+  assert.deepEqual(capturedRequest, {
+    query: "query",
+    limit: undefined,
+    cursor: undefined,
+    scope: "private",
+    match: "all",
+  });
+});
+
 test("prints json output with --json", async () => {
   const { result, logs } = await captureConsole(() =>
     runSearchCommand(["agent", "--json"], baseOptions()),

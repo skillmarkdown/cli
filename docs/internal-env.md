@@ -60,6 +60,21 @@ This script uses:
 - backend admin helpers in `/Users/azk/Desktop/workspace/skillmarkdown/functions/functions/scripts`
 - an isolated temporary `HOME` during login/org verification so local sessions are not overwritten
 
+## Search Contract Notes
+
+The current early-access search contract is:
+
+- web autocomplete uses `match=id`
+- CLI public `search` uses `match=id`
+- broader discovery/private search flows use `match=all`
+
+Current canonical dev verification queries:
+
+- after `npm run fixtures:dev:ensure`, private fixture search should succeed for `cursorseed`
+- after `npm run seed:edge-cases:dev`, public registry search should succeed for `ed`
+
+Do not treat `se` as a required public success probe in the current dev environment. The reset/reseed flow now rebuilds the public corpus around `edge-*`, so historical `se*` expectations are stale unless a dedicated `se*` fixture is added deliberately.
+
 ## Extended Sweep Note
 
 `npm run e2e:extended` now reuses `npm run fixtures:dev:ensure` automatically for the shared base fixtures.

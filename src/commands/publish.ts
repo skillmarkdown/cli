@@ -31,6 +31,7 @@ import {
 } from "../lib/publish/types";
 import { PUBLISH_USAGE } from "../lib/shared/cli-text";
 import { DEFAULT_AGENT_TARGET } from "../lib/shared/agent-target";
+import { parseSkillId } from "../lib/registry/skill-id";
 import {
   failWithUsage,
   printJsonApiError,
@@ -140,6 +141,18 @@ function printDryRunResult(
   );
 }
 
+function formatDisplaySkillId(skillId: string, targetOwnerSlug?: string): string {
+  if (targetOwnerSlug) {
+    return skillId;
+  }
+
+  try {
+    return parseSkillId(skillId).skillSlug;
+  } catch {
+    return skillId;
+  }
+}
+
 function printPublishedResult(
   json: boolean,
   status: "published" | "idempotent",
@@ -153,6 +166,7 @@ function printPublishedResult(
       requested: boolean;
       recorded: boolean;
     };
+    targetOwnerSlug?: string;
   },
 ): void {
   if (json) {
@@ -160,16 +174,18 @@ function printPublishedResult(
     return;
   }
 
+  const displaySkillId = formatDisplaySkillId(payload.skillId, payload.targetOwnerSlug);
+
   if (status === "idempotent") {
     console.log(
-      `Already published ${payload.skillId} version ${payload.version} ` +
+      `Already published ${displaySkillId} version ${payload.version} ` +
         `(tag: ${payload.tag}, target: ${payload.agentTarget}).`,
     );
     return;
   }
 
   console.log(
-    `Published ${payload.skillId} version ${payload.version} ` +
+    `Published ${displaySkillId} version ${payload.version} ` +
       `(tag: ${payload.tag}, target: ${payload.agentTarget}).`,
   );
 }
@@ -406,6 +422,7 @@ export async function runPublishCommand(
       agentTarget: committed.agentTarget ?? agentTarget,
       distTags: committed.distTags,
       provenance: committed.provenance,
+      targetOwnerSlug: parsed.owner,
     });
     return 0;
   } catch (error) {

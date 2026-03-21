@@ -962,7 +962,7 @@ function main() {
         releases,
       });
       console.log(
-        `${options.dryRun ? "Prepared" : "Published"} ${identity.owner}/${scenario.skillSlug} (${scenario.target}, ${scenario.contentMode}, ${scenario.licenseMode})`,
+        `${options.dryRun ? "Prepared" : "Published"} ${scenario.skillSlug} (${scenario.target}, ${scenario.contentMode}, ${scenario.licenseMode})`,
       );
     }
 

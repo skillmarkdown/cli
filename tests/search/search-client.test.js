@@ -67,6 +67,32 @@ test("searchSkills sends private scope and bearer token when provided", async ()
   );
 });
 
+test("searchSkills sends match when provided", async () => {
+  await withMockedFetch(
+    async (input) => {
+      const url = new URL(String(input));
+      assert.equal(url.searchParams.get("q"), "se");
+      assert.equal(url.searchParams.get("scope"), "public");
+      assert.equal(url.searchParams.get("match"), "id");
+      return mockJsonResponse(200, {
+        query: "se",
+        limit: 5,
+        results: [],
+        nextCursor: null,
+      });
+    },
+    async () => {
+      const payload = await searchSkills("https://registry.example.com", {
+        query: "se",
+        limit: 5,
+        scope: "public",
+        match: "id",
+      });
+      assert.equal(payload.query, "se");
+    },
+  );
+});
+
 test("searchSkills maps nested API errors", async () => {
   await withMockedFetch(
     async () =>
