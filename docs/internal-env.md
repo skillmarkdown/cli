@@ -36,6 +36,26 @@ These identifiers are the current local dev fixture targets used by strict CLI s
 
 Keep passwords and live secrets in local `~/.skillmd/.env`, not in repo-tracked docs.
 
+## Current Production Public Endpoints
+
+Canonical production URLs:
+
+- production Firebase project: `skillmarkdown`
+- production web URL: `https://skillmarkdown.com`
+- production registry URL: `https://registry.skillmarkdown.com`
+
+Direct fallback production URLs:
+
+- production App Hosting URL: `https://web-nextjs--skillmarkdown.us-central1.hosted.app`
+- production Cloud Run registry URL: `https://registryapi-pfd5mx23uq-uc.a.run.app`
+
+Observed status on `2026-03-22`:
+
+- `skillmarkdown.com` resolves in DNS but HTTPS was still provisioning
+- `registry.skillmarkdown.com` did not yet resolve in public DNS
+- `https://registryapi-pfd5mx23uq-uc.a.run.app/v1/healthz` returns `200`
+- `https://web-nextjs--skillmarkdown.us-central1.hosted.app` currently responds with `401 Basic realm="Restricted"`
+
 ## Replayable Fixture Setup
 
 To recreate the strict dev auth/org fixtures from the CLI repo:
