@@ -119,6 +119,23 @@ Password defaults:
 
 Override those values in `~/.skillmd/.env` if needed.
 
+## Replayable Team Quota Probe
+
+To verify the live dev team limits end to end from the CLI repo:
+
+```bash
+cd /Users/azk/Desktop/workspace/skillmarkdown/cli
+npm run e2e:team-quotas:dev
+```
+
+What it does:
+
+- ensures the same dedicated free and Pro quota fixture users exist
+- resets all of their organizations before the probe
+- creates one free-owned org and verifies team creation is blocked with `forbidden_plan`
+- creates one Pro-owned org, creates `5` real teams, and verifies the `6th` fails
+- asserts the live backend returns `plan_limit_exceeded` for the Pro overflow
+
 ## Search Contract Notes
 
 The current early-access search contract is:
@@ -163,6 +180,7 @@ SKILLMD_E2E_ORG_SLUG=...
 
 - `scripts/command-sweep.mjs`
 - `scripts/org-quota-probe.mjs`
+- `scripts/team-quota-probe.mjs`
 - `scripts/publish-private-search-seed.mjs`
 - `scripts/publish-test-skill-sequence.mjs`
 - `scripts/publish-provider-batch.mjs`

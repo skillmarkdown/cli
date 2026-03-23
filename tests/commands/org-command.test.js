@@ -383,6 +383,26 @@ test("org create surfaces quota failures without swallowing the backend message"
   assert.match(errors.join("\n"), /free accounts can create up to 5 organizations/);
 });
 
+test("org team add surfaces plan failures without swallowing the backend message", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runOrgCommand(
+      ["team", "add", "facebook", "core", "--name", "Core Team"],
+      baseOptions({
+        createOrganizationTeam: async () => {
+          throw new OrgApiError(403, "forbidden", "teams are available on pro accounts only", {
+            reason: "forbidden_plan",
+            resource: "teams",
+            plan: "free",
+          });
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /teams are available on pro accounts only/);
+});
+
 test("org read commands fail when not logged in", async () => {
   const { result, errors } = await captureConsole(() =>
     runOrgCommand(

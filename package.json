@@ -34,6 +34,7 @@
     "e2e:core": "npm run build && npm run smoke:pack && npm run smoke:link && node scripts/command-sweep.mjs --env dev --tier core --strict",
     "e2e:extended": "npm run fixtures:dev:ensure && node scripts/command-sweep.mjs --env dev --tier extended --strict",
     "e2e:org-quotas:dev": "npm run build && node scripts/org-quota-probe.mjs",
+    "e2e:team-quotas:dev": "npm run build && node scripts/team-quota-probe.mjs",
     "e2e:release": "npm run e2e:contract && npm run e2e:core && npm run e2e:extended",
     "fixtures:dev:ensure": "npm run build && node scripts/ensure-dev-fixtures.mjs",
     "seed:providers:dev": "node scripts/publish-provider-batch.mjs",
