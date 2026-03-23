@@ -21,6 +21,12 @@ Optional overrides:
 - `SKILLMD_DEV_FIREBASE_API_KEY`
 - `SKILLMD_PROD_FIREBASE_API_KEY`
 - `SKILLMD_E2E_PRIVATE_CURSOR_QUERY`
+- `SKILLMD_QUOTA_FREE_EMAIL`
+- `SKILLMD_QUOTA_FREE_PASSWORD`
+- `SKILLMD_QUOTA_FREE_USERNAME`
+- `SKILLMD_QUOTA_PRO_EMAIL`
+- `SKILLMD_QUOTA_PRO_PASSWORD`
+- `SKILLMD_QUOTA_PRO_USERNAME`
 
 ## Current Dev Fixtures
 
@@ -81,6 +87,38 @@ This script uses:
 - backend admin helpers in `/Users/azk/Desktop/workspace/skillmarkdown/functions/functions/scripts`
 - an isolated temporary `HOME` during login/org verification so local sessions are not overwritten
 
+## Replayable Org Quota Probe
+
+To verify the live dev org quotas end to end from the CLI repo:
+
+```bash
+cd /Users/azk/Desktop/workspace/skillmarkdown/cli
+npm run e2e:org-quotas:dev
+```
+
+What it does:
+
+- ensures dedicated free and Pro quota fixture users exist
+- forces their plans to `free` and `pro`
+- deletes all existing organization memberships owned by those quota fixtures
+- creates `5` real orgs for the free fixture and verifies the `6th` fails
+- creates `20` real orgs for the Pro fixture and verifies the `21st` fails
+- asserts the live backend returns `plan_limit_exceeded`
+
+Default quota fixtures:
+
+- free quota email: `quotafree@stefdevs.com`
+- free quota username: `quotafree`
+- Pro quota email: `quotapro@stefdevs.com`
+- Pro quota username: `quotapro`
+
+Password defaults:
+
+- free quota password falls back to `SKILLMD_LOGIN_PASSWORD`
+- Pro quota password falls back to `SKILLMD_PRO_LOGIN_PASSWORD`
+
+Override those values in `~/.skillmd/.env` if needed.
+
 ## Search Contract Notes
 
 The current early-access search contract is:
@@ -124,6 +162,7 @@ SKILLMD_E2E_ORG_SLUG=...
 ## Scripts Using This Convention
 
 - `scripts/command-sweep.mjs`
+- `scripts/org-quota-probe.mjs`
 - `scripts/publish-private-search-seed.mjs`
 - `scripts/publish-test-skill-sequence.mjs`
 - `scripts/publish-provider-batch.mjs`
