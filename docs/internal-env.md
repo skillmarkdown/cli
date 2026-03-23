@@ -136,6 +136,24 @@ What it does:
 - creates one Pro-owned org, creates `5` real teams, and verifies the `6th` fails
 - asserts the live backend returns `plan_limit_exceeded` for the Pro overflow
 
+## Replayable Token Quota Probe
+
+To verify the live dev token limits end to end from the CLI repo:
+
+```bash
+cd /Users/azk/Desktop/workspace/skillmarkdown/cli
+npm run e2e:token-quotas:dev
+```
+
+What it does:
+
+- ensures the same dedicated free and Pro quota fixture users exist
+- resets their organizations and user tokens before the probe
+- creates `20` real user tokens for the free fixture and verifies the `21st` fails
+- creates `20` real user tokens for the Pro fixture and verifies the `21st` fails
+- creates one Pro-owned org, creates `5` real org tokens, and verifies the `6th` fails
+- asserts the live backend returns `plan_limit_exceeded` for both user and organization token overflow
+
 ## Search Contract Notes
 
 The current early-access search contract is:
@@ -181,6 +199,7 @@ SKILLMD_E2E_ORG_SLUG=...
 - `scripts/command-sweep.mjs`
 - `scripts/org-quota-probe.mjs`
 - `scripts/team-quota-probe.mjs`
+- `scripts/token-quota-probe.mjs`
 - `scripts/publish-private-search-seed.mjs`
 - `scripts/publish-test-skill-sequence.mjs`
 - `scripts/publish-provider-batch.mjs`

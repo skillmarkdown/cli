@@ -173,6 +173,46 @@ test("createOrganizationTeam surfaces team plan quota denials", async () => {
   );
 });
 
+test("createOrganizationToken surfaces token quota denials", async () => {
+  await assert.rejects(
+    withMockedFetch(
+      async () =>
+        mockJsonResponse(403, {
+          error: {
+            code: "plan_limit_exceeded",
+            message: "organizations can create up to 5 access tokens",
+            details: {
+              resource: "organization_tokens",
+              organizationSlug: "facebook",
+              currentCount: 5,
+              maxAllowed: 5,
+              plan: "pro",
+            },
+          },
+        }),
+      () =>
+        createOrganizationToken("https://registry.example.com", "id-token", "facebook", {
+          name: "deploy",
+          scope: "admin",
+          expiresDays: 30,
+        }),
+    ),
+    (error) => {
+      assert.ok(error instanceof OrgApiError);
+      assert.equal(error.code, "plan_limit_exceeded");
+      assert.equal(error.message, "organizations can create up to 5 access tokens");
+      assert.deepEqual(error.details, {
+        resource: "organization_tokens",
+        organizationSlug: "facebook",
+        currentCount: 5,
+        maxAllowed: 5,
+        plan: "pro",
+      });
+      return true;
+    },
+  );
+});
+
 test("addOrganizationMember sends payload and parses response", async () => {
   const payload = await withMockedFetch(
     async (input, init) => {

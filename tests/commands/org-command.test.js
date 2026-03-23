@@ -339,6 +339,33 @@ test("adds and removes organization tokens", async () => {
   );
 });
 
+test("surfaces organization token quota denials cleanly", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runOrgCommand(
+      ["tokens", "add", "facebook", "deploy", "--scope", "admin"],
+      baseOptions({
+        createOrganizationToken: async () => {
+          throw new OrgApiError(
+            403,
+            "plan_limit_exceeded",
+            "organizations can create up to 5 access tokens",
+            {
+              resource: "organization_tokens",
+              organizationSlug: "facebook",
+              currentCount: 5,
+              maxAllowed: 5,
+              plan: "pro",
+            },
+          );
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /organizations can create up to 5 access tokens/);
+});
+
 test("prints helpful authz hint for membership failures", async () => {
   const { result, errors } = await captureConsole(() =>
     runOrgCommand(

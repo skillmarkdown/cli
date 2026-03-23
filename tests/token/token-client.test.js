@@ -164,3 +164,41 @@ test("token client maps API errors", async () => {
     },
   );
 });
+
+test("createToken surfaces plan quota denials", async () => {
+  await assert.rejects(
+    withMockedFetch(
+      async () =>
+        mockJsonResponse(403, {
+          error: {
+            code: "plan_limit_exceeded",
+            message: "free accounts can create up to 20 access tokens",
+            details: {
+              resource: "tokens",
+              currentCount: 20,
+              maxAllowed: 20,
+              plan: "free",
+            },
+          },
+        }),
+      () =>
+        createToken("https://registry.example.com", "id-token", {
+          name: "ci",
+          scope: "publish",
+          expiresDays: 30,
+        }),
+    ),
+    (error) => {
+      assert.ok(error instanceof TokenApiError);
+      assert.equal(error.code, "plan_limit_exceeded");
+      assert.equal(error.message, "free accounts can create up to 20 access tokens");
+      assert.deepEqual(error.details, {
+        resource: "tokens",
+        currentCount: 20,
+        maxAllowed: 20,
+        plan: "free",
+      });
+      return true;
+    },
+  );
+});
