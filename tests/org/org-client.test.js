@@ -42,6 +42,42 @@ test("createOrganization sends payload and parses response", async () => {
   assert.equal(payload.owner, "@facebook");
 });
 
+test("createOrganization surfaces plan quota denials", async () => {
+  await assert.rejects(
+    withMockedFetch(
+      async () =>
+        mockJsonResponse(403, {
+          error: {
+            code: "plan_limit_exceeded",
+            message: "free accounts can create up to 5 organizations",
+            details: {
+              resource: "organizations",
+              currentCount: 5,
+              maxAllowed: 5,
+              plan: "free",
+            },
+          },
+        }),
+      () =>
+        createOrganization("https://registry.example.com", "id-token", {
+          slug: "facebook",
+        }),
+    ),
+    (error) => {
+      assert.ok(error instanceof OrgApiError);
+      assert.equal(error.code, "plan_limit_exceeded");
+      assert.equal(error.message, "free accounts can create up to 5 organizations");
+      assert.deepEqual(error.details, {
+        resource: "organizations",
+        currentCount: 5,
+        maxAllowed: 5,
+        plan: "free",
+      });
+      return true;
+    },
+  );
+});
+
 test("listOrganizationMembers parses response", async () => {
   const payload = await withMockedFetch(
     async (input, init) => {

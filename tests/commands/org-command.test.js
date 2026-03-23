@@ -357,6 +357,32 @@ test("prints helpful authz hint for membership failures", async () => {
   assert.match(errors.join("\n"), /skillmd org/);
 });
 
+test("org create surfaces quota failures without swallowing the backend message", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runOrgCommand(
+      ["create", "facebook"],
+      baseOptions({
+        createOrganization: async () => {
+          throw new OrgApiError(
+            403,
+            "plan_limit_exceeded",
+            "free accounts can create up to 5 organizations",
+            {
+              resource: "organizations",
+              currentCount: 5,
+              maxAllowed: 5,
+              plan: "free",
+            },
+          );
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /free accounts can create up to 5 organizations/);
+});
+
 test("org read commands fail when not logged in", async () => {
   const { result, errors } = await captureConsole(() =>
     runOrgCommand(
