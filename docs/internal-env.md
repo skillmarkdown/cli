@@ -42,6 +42,7 @@ Canonical production URLs:
 
 - production Firebase project: `skillmarkdown`
 - production web URL: `https://skillmarkdown.com`
+- production web alias URL: `https://www.skillmarkdown.com`
 - production registry URL: `https://registry.skillmarkdown.com`
 
 Direct fallback production URLs:
@@ -51,10 +52,10 @@ Direct fallback production URLs:
 
 Observed status on `2026-03-22`:
 
-- `skillmarkdown.com` resolves in DNS but HTTPS was still provisioning
-- `registry.skillmarkdown.com` did not yet resolve in public DNS
-- `https://registryapi-pfd5mx23uq-uc.a.run.app/v1/healthz` returns `200`
-- `https://web-nextjs--skillmarkdown.us-central1.hosted.app` currently responds with `401 Basic realm="Restricted"`
+- `skillmarkdown.com` is live and currently responds with `401 Basic realm="Restricted"`
+- `www.skillmarkdown.com` is live and currently responds with `401 Basic realm="Restricted"`
+- `https://registry.skillmarkdown.com/v1/healthz` returns `200`
+- keep the direct App Hosting and direct Cloud Run endpoints as fallbacks
 
 ## Replayable Fixture Setup
 
