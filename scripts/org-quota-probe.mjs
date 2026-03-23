@@ -268,7 +268,7 @@ function runQuotaProbeForFixture(env, fixture, limit) {
   }
 }
 
-function main() {
+async function main() {
   ensureLocalPrerequisites();
 
   const { config, missing } = resolveConfig(loadInternalScriptEnv());
