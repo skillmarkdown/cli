@@ -36,6 +36,7 @@
     "e2e:org-quotas:dev": "npm run build && node scripts/org-quota-probe.mjs",
     "e2e:team-quotas:dev": "npm run build && node scripts/team-quota-probe.mjs",
     "e2e:token-quotas:dev": "npm run build && node scripts/token-quota-probe.mjs",
+    "e2e:write-throttles:dev": "npm run build && node scripts/write-throttle-probe.mjs",
     "e2e:release": "npm run e2e:contract && npm run e2e:core && npm run e2e:extended",
     "fixtures:dev:ensure": "npm run build && node scripts/ensure-dev-fixtures.mjs",
     "seed:providers:dev": "node scripts/publish-provider-batch.mjs",

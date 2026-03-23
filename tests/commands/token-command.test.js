@@ -200,3 +200,22 @@ test("surfaces token quota denials cleanly", async () => {
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /free accounts can create up to 20 access tokens/);
 });
+
+test("surfaces token rate-limit denials cleanly", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runTokenCommand(
+      ["add", "ci"],
+      baseOptions({
+        createToken: async () => {
+          throw new TokenApiError(429, "rate_limited", "user token creation rate limit exceeded", {
+            reason: "user_token_create_rate_limited",
+            retryAfterSeconds: 60,
+          });
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /user token creation rate limit exceeded/);
+});

@@ -154,6 +154,24 @@ What it does:
 - creates one Pro-owned org, creates `5` real org tokens, and verifies the `6th` fails
 - asserts the live backend returns `plan_limit_exceeded` for both user and organization token overflow
 
+## Replayable Write Throttle Probe
+
+To verify the live dev write throttles end to end from the CLI repo:
+
+```bash
+cd /Users/azk/Desktop/workspace/skillmarkdown/cli
+npm run e2e:write-throttles:dev
+```
+
+What it does:
+
+- ensures the same dedicated free and Pro quota fixture users exist
+- clears the targeted route-specific rate-limit buckets before probing
+- verifies org creation is blocked on the `4th` attempt within the hourly window
+- verifies user token creation is blocked on the `11th` attempt within the hourly window
+- verifies org token creation is blocked on the `11th` attempt within the hourly window
+- asserts the live backend returns `rate_limited` with the expected route-specific `details.reason`
+
 ## Search Contract Notes
 
 The current early-access search contract is:
@@ -200,6 +218,7 @@ SKILLMD_E2E_ORG_SLUG=...
 - `scripts/org-quota-probe.mjs`
 - `scripts/team-quota-probe.mjs`
 - `scripts/token-quota-probe.mjs`
+- `scripts/write-throttle-probe.mjs`
 - `scripts/publish-private-search-seed.mjs`
 - `scripts/publish-test-skill-sequence.mjs`
 - `scripts/publish-provider-batch.mjs`

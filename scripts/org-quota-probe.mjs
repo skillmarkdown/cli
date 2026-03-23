@@ -55,6 +55,9 @@ function ensureLocalPrerequisites() {
   if (!existsSync(join(FUNCTIONS_DIR, "scripts", "reset-user-organizations.mjs"))) {
     throw new Error(`reset-user-organizations helper not found at ${FUNCTIONS_DIR}`);
   }
+  if (!existsSync(join(FUNCTIONS_DIR, "scripts", "reset-rate-limits.mjs"))) {
+    throw new Error(`reset-rate-limits helper not found at ${FUNCTIONS_DIR}`);
+  }
 }
 
 function runNodeScript({ cwd, env, args, label }) {
@@ -172,6 +175,23 @@ function resetFixtureOrganizations(env, fixture) {
   });
 }
 
+function resetOrgCreateRateLimit(env, uid) {
+  runNodeScript({
+    cwd: FUNCTIONS_DIR,
+    env: process.env,
+    args: [
+      "scripts/reset-rate-limits.mjs",
+      "--project",
+      env.firebaseProjectId,
+      "--route-class",
+      "org_create_rate_limited",
+      "--key",
+      `org_create:uid:${uid}`,
+    ],
+    label: `reset org create rate limit ${uid}`,
+  });
+}
+
 function loginFixture(env, fixture, homeDir) {
   const email = fixture === "pro" ? env.proEmail : env.freeEmail;
   const password = fixture === "pro" ? env.proPassword : env.freePassword;
@@ -191,13 +211,47 @@ function loginFixture(env, fixture, homeDir) {
 
 function runQuotaProbeForFixture(env, fixture, limit) {
   const username = fixture === "pro" ? env.proUsername : env.freeUsername;
+  const email = fixture === "pro" ? env.proEmail : env.freeEmail;
   const prefix = fixture === "pro" ? "quota-pro" : "quota-free";
   const homeDir = mkdtempSync(join(tmpdir(), `skillmd-quota-${fixture}-`));
+  const fixtureUser = parseJson(
+    runNodeScript({
+      cwd: FUNCTIONS_DIR,
+      env: {
+        ...process.env,
+        SKILLMD_FIREBASE_PROJECT_ID: env.firebaseProjectId,
+        SKILLMD_REGISTRY_BASE_URL: env.registryBaseUrl,
+        SKILLMD_FIREBASE_API_KEY: env.firebaseApiKey,
+      },
+      args: [
+        "scripts/create-verified-auth-user.mjs",
+        "--project",
+        env.firebaseProjectId,
+        "--registry-base-url",
+        env.registryBaseUrl,
+        "--api-key",
+        env.firebaseApiKey,
+        "--email",
+        email,
+        "--password",
+        fixture === "pro" ? env.proPassword : env.freePassword,
+        "--display-name",
+        username,
+        "--username",
+        username,
+        "--plan",
+        fixture,
+      ],
+      label: `${fixture} quota fixture user`,
+    }),
+    `${fixture} quota fixture user`,
+  );
 
   try {
     loginFixture(env, fixture, homeDir);
 
     for (let index = 1; index <= limit; index += 1) {
+      resetOrgCreateRateLimit(env, fixtureUser.uid);
       const slug = `${prefix}-${String(index).padStart(2, "0")}`;
       const result = runCli({
         env,
@@ -212,6 +266,7 @@ function runQuotaProbeForFixture(env, fixture, limit) {
     }
 
     const extraSlug = `${prefix}-${String(limit + 1).padStart(2, "0")}`;
+    resetOrgCreateRateLimit(env, fixtureUser.uid);
     const overflow = runCli({
       env,
       homeDir,

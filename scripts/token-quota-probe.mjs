@@ -51,6 +51,7 @@ function ensureLocalPrerequisites() {
     "set-user-plan.mjs",
     "reset-user-organizations.mjs",
     "reset-user-tokens.mjs",
+    "reset-rate-limits.mjs",
   ]) {
     if (!existsSync(join(FUNCTIONS_DIR, "scripts", helper))) {
       throw new Error(`${helper} not found at ${FUNCTIONS_DIR}`);
@@ -181,6 +182,23 @@ function resetFixtureTokens(env, fixture) {
   });
 }
 
+function resetRateLimit(env, routeClass, key) {
+  runNodeScript({
+    cwd: FUNCTIONS_DIR,
+    env: process.env,
+    args: [
+      "scripts/reset-rate-limits.mjs",
+      "--project",
+      env.firebaseProjectId,
+      "--route-class",
+      routeClass,
+      "--key",
+      key,
+    ],
+    label: `reset ${routeClass}`,
+  });
+}
+
 function loginFixture(env, fixture, homeDir) {
   const email = fixture === "pro" ? env.proEmail : env.freeEmail;
   const password = fixture === "pro" ? env.proPassword : env.freePassword;
@@ -212,11 +230,50 @@ function createOrganization(env, homeDir, slug, label) {
 
 function runUserTokenProbe(env, fixture) {
   const homeDir = mkdtempSync(join(tmpdir(), `skillmd-token-${fixture}-`));
+  const email = fixture === "pro" ? env.proEmail : env.freeEmail;
+  const username = fixture === "pro" ? env.proUsername : env.freeUsername;
+  const fixtureUser = parseJson(
+    runNodeScript({
+      cwd: FUNCTIONS_DIR,
+      env: {
+        ...process.env,
+        SKILLMD_FIREBASE_PROJECT_ID: env.firebaseProjectId,
+        SKILLMD_REGISTRY_BASE_URL: env.registryBaseUrl,
+        SKILLMD_FIREBASE_API_KEY: env.firebaseApiKey,
+      },
+      args: [
+        "scripts/create-verified-auth-user.mjs",
+        "--project",
+        env.firebaseProjectId,
+        "--registry-base-url",
+        env.registryBaseUrl,
+        "--api-key",
+        env.firebaseApiKey,
+        "--email",
+        email,
+        "--password",
+        fixture === "pro" ? env.proPassword : env.freePassword,
+        "--display-name",
+        username,
+        "--username",
+        username,
+        "--plan",
+        fixture,
+      ],
+      label: `${fixture} token quota fixture user`,
+    }),
+    `${fixture} token quota fixture user`,
+  );
 
   try {
     loginFixture(env, fixture, homeDir);
 
     for (let index = 1; index <= 20; index += 1) {
+      resetRateLimit(
+        env,
+        "user_token_create_rate_limited",
+        `user_token_create:uid:${fixtureUser.uid}`,
+      );
       const result = runCli({
         env,
         homeDir,
@@ -291,12 +348,49 @@ function runUserTokenProbe(env, fixture) {
 function runOrganizationTokenProbe(env) {
   const homeDir = mkdtempSync(join(tmpdir(), "skillmd-org-token-pro-"));
   const orgSlug = "quota-token-pro";
+  const fixtureUser = parseJson(
+    runNodeScript({
+      cwd: FUNCTIONS_DIR,
+      env: {
+        ...process.env,
+        SKILLMD_FIREBASE_PROJECT_ID: env.firebaseProjectId,
+        SKILLMD_REGISTRY_BASE_URL: env.registryBaseUrl,
+        SKILLMD_FIREBASE_API_KEY: env.firebaseApiKey,
+      },
+      args: [
+        "scripts/create-verified-auth-user.mjs",
+        "--project",
+        env.firebaseProjectId,
+        "--registry-base-url",
+        env.registryBaseUrl,
+        "--api-key",
+        env.firebaseApiKey,
+        "--email",
+        env.proEmail,
+        "--password",
+        env.proPassword,
+        "--display-name",
+        env.proUsername,
+        "--username",
+        env.proUsername,
+        "--plan",
+        "pro",
+      ],
+      label: "org token quota fixture user",
+    }),
+    "org token quota fixture user",
+  );
 
   try {
     loginFixture(env, "pro", homeDir);
     createOrganization(env, homeDir, orgSlug, "pro org token probe org create");
 
     for (let index = 1; index <= 5; index += 1) {
+      resetRateLimit(
+        env,
+        "org_token_create_rate_limited",
+        `org_token_create:uid:${fixtureUser.uid}:${orgSlug}`,
+      );
       const result = runCli({
         env,
         homeDir,
