@@ -1366,7 +1366,7 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
     name: "org-ls",
     args: ["org", "ls", "--json"],
     cwd: ROOT_DIR,
-    env: stepEnv,
+    env: proStepEnv,
     strict,
     allowAuthBlocked,
     coverageKind: "live-auth",
@@ -1375,8 +1375,8 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
       const payload = parseJsonPayload(raw.stdout);
       assert(payload && Array.isArray(payload.organizations), "org ls invalid");
       assert(
-        payload.organizations.some((org) => org && org.slug === stepEnv.SKILLMD_E2E_ORG_SLUG),
-        `missing org ${stepEnv.SKILLMD_E2E_ORG_SLUG}`,
+        payload.organizations.some((org) => org && org.slug === proStepEnv.SKILLMD_E2E_ORG_SLUG),
+        `missing org ${proStepEnv.SKILLMD_E2E_ORG_SLUG}`,
       );
     },
   });
@@ -1386,7 +1386,7 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
       "org",
       "tokens",
       "add",
-      stepEnv.SKILLMD_E2E_ORG_SLUG ?? "missing-org",
+      proStepEnv.SKILLMD_E2E_ORG_SLUG ?? "missing-org",
       `sweep-org-${RUN_ID}`,
       "--scope",
       "admin",
@@ -1395,7 +1395,7 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
       "--json",
     ],
     cwd: ROOT_DIR,
-    env: stepEnv,
+    env: proStepEnv,
     strict,
     allowAuthBlocked,
     coverageKind: "live-auth",
@@ -1408,9 +1408,9 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
   }
   runScenarioStep(state, {
     name: "org-tokens-ls",
-    args: ["org", "tokens", "ls", stepEnv.SKILLMD_E2E_ORG_SLUG ?? "missing-org", "--json"],
+    args: ["org", "tokens", "ls", proStepEnv.SKILLMD_E2E_ORG_SLUG ?? "missing-org", "--json"],
     cwd: ROOT_DIR,
-    env: stepEnv,
+    env: proStepEnv,
     strict,
     allowAuthBlocked,
     coverageKind: "live-auth",
@@ -1430,12 +1430,12 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
       "org",
       "tokens",
       "rm",
-      stepEnv.SKILLMD_E2E_ORG_SLUG ?? "missing-org",
+      proStepEnv.SKILLMD_E2E_ORG_SLUG ?? "missing-org",
       orgTokenId ?? "missing-token",
       "--json",
     ],
     cwd: ROOT_DIR,
-    env: stepEnv,
+    env: proStepEnv,
     strict,
     allowAuthBlocked,
     coverageKind: "live-auth",
