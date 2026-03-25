@@ -21,6 +21,12 @@ Optional overrides:
 - `SKILLMD_DEV_FIREBASE_API_KEY`
 - `SKILLMD_PROD_FIREBASE_API_KEY`
 - `SKILLMD_E2E_PRIVATE_CURSOR_QUERY`
+- `SKILLMD_QUOTA_FREE_EMAIL`
+- `SKILLMD_QUOTA_FREE_PASSWORD`
+- `SKILLMD_QUOTA_FREE_USERNAME`
+- `SKILLMD_QUOTA_PRO_EMAIL`
+- `SKILLMD_QUOTA_PRO_PASSWORD`
+- `SKILLMD_QUOTA_PRO_USERNAME`
 
 ## Current Dev Fixtures
 
@@ -81,6 +87,91 @@ This script uses:
 - backend admin helpers in `/Users/azk/Desktop/workspace/skillmarkdown/functions/functions/scripts`
 - an isolated temporary `HOME` during login/org verification so local sessions are not overwritten
 
+## Replayable Org Quota Probe
+
+To verify the live dev org quotas end to end from the CLI repo:
+
+```bash
+cd /Users/azk/Desktop/workspace/skillmarkdown/cli
+npm run e2e:org-quotas:dev
+```
+
+What it does:
+
+- ensures dedicated free and Pro quota fixture users exist
+- forces their plans to `free` and `pro`
+- deletes all existing organization memberships owned by those quota fixtures
+- creates `5` real orgs for the free fixture and verifies the `6th` fails
+- creates `20` real orgs for the Pro fixture and verifies the `21st` fails
+- asserts the live backend returns `plan_limit_exceeded`
+
+Default quota fixtures:
+
+- free quota email: `quotafree@stefdevs.com`
+- free quota username: `quotafree`
+- Pro quota email: `quotapro@stefdevs.com`
+- Pro quota username: `quotapro`
+
+Password defaults:
+
+- free quota password falls back to `SKILLMD_LOGIN_PASSWORD`
+- Pro quota password falls back to `SKILLMD_PRO_LOGIN_PASSWORD`
+
+Override those values in `~/.skillmd/.env` if needed.
+
+## Replayable Team Quota Probe
+
+To verify the live dev team limits end to end from the CLI repo:
+
+```bash
+cd /Users/azk/Desktop/workspace/skillmarkdown/cli
+npm run e2e:team-quotas:dev
+```
+
+What it does:
+
+- ensures the same dedicated free and Pro quota fixture users exist
+- resets all of their organizations before the probe
+- creates one free-owned org and verifies team creation is blocked with `forbidden_plan`
+- creates one Pro-owned org, creates `5` real teams, and verifies the `6th` fails
+- asserts the live backend returns `plan_limit_exceeded` for the Pro overflow
+
+## Replayable Token Quota Probe
+
+To verify the live dev token limits end to end from the CLI repo:
+
+```bash
+cd /Users/azk/Desktop/workspace/skillmarkdown/cli
+npm run e2e:token-quotas:dev
+```
+
+What it does:
+
+- ensures the same dedicated free and Pro quota fixture users exist
+- resets their organizations and user tokens before the probe
+- creates `20` real user tokens for the free fixture and verifies the `21st` fails
+- creates `20` real user tokens for the Pro fixture and verifies the `21st` fails
+- creates one Pro-owned org, creates `5` real org tokens, and verifies the `6th` fails
+- asserts the live backend returns `plan_limit_exceeded` for both user and organization token overflow
+
+## Replayable Write Throttle Probe
+
+To verify the live dev write throttles end to end from the CLI repo:
+
+```bash
+cd /Users/azk/Desktop/workspace/skillmarkdown/cli
+npm run e2e:write-throttles:dev
+```
+
+What it does:
+
+- ensures the same dedicated free and Pro quota fixture users exist
+- clears the targeted route-specific rate-limit buckets before probing
+- verifies org creation is blocked on the `4th` attempt within the hourly window
+- verifies user token creation is blocked on the `11th` attempt within the hourly window
+- verifies org token creation is blocked on the `11th` attempt within the hourly window
+- asserts the live backend returns `rate_limited` with the expected route-specific `details.reason`
+
 ## Search Contract Notes
 
 The current early-access search contract is:
@@ -124,6 +215,10 @@ SKILLMD_E2E_ORG_SLUG=...
 ## Scripts Using This Convention
 
 - `scripts/command-sweep.mjs`
+- `scripts/org-quota-probe.mjs`
+- `scripts/team-quota-probe.mjs`
+- `scripts/token-quota-probe.mjs`
+- `scripts/write-throttle-probe.mjs`
 - `scripts/publish-private-search-seed.mjs`
 - `scripts/publish-test-skill-sequence.mjs`
 - `scripts/publish-provider-batch.mjs`

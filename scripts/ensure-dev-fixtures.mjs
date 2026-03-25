@@ -18,6 +18,17 @@ const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI_PATH = join(ROOT_DIR, "dist", "cli.js");
 const FUNCTIONS_DIR = resolve(ROOT_DIR, "..", "functions", "functions");
 const PRIVATE_SEARCH_SEED_SCRIPT = join(ROOT_DIR, "scripts", "publish-private-search-seed.mjs");
+const LANDING_DISCOVER_REFRESH_SCRIPT = join(
+  FUNCTIONS_DIR,
+  "scripts",
+  "refresh-landing-discover.mjs",
+);
+const LANDING_MOST_POPULAR_REFRESH_SCRIPT = join(
+  FUNCTIONS_DIR,
+  "scripts",
+  "refresh-landing-most-popular.mjs",
+);
+const LANDING_RECENT_REFRESH_SCRIPT = join(FUNCTIONS_DIR, "scripts", "refresh-landing-recent.mjs");
 
 function ensureLocalPrerequisites() {
   if (!existsSync(CLI_PATH)) {
@@ -28,6 +39,19 @@ function ensureLocalPrerequisites() {
   }
   if (!existsSync(PRIVATE_SEARCH_SEED_SCRIPT)) {
     throw new Error(`private search seed script not found at ${PRIVATE_SEARCH_SEED_SCRIPT}`);
+  }
+  if (!existsSync(LANDING_DISCOVER_REFRESH_SCRIPT)) {
+    throw new Error(
+      `landing discover refresh script not found at ${LANDING_DISCOVER_REFRESH_SCRIPT}`,
+    );
+  }
+  if (!existsSync(LANDING_MOST_POPULAR_REFRESH_SCRIPT)) {
+    throw new Error(
+      `landing most popular refresh script not found at ${LANDING_MOST_POPULAR_REFRESH_SCRIPT}`,
+    );
+  }
+  if (!existsSync(LANDING_RECENT_REFRESH_SCRIPT)) {
+    throw new Error(`landing recent refresh script not found at ${LANDING_RECENT_REFRESH_SCRIPT}`);
   }
 }
 
@@ -106,10 +130,16 @@ function ensureOrganization(env, config) {
     });
     const memberUsernames = Array.isArray(members?.members)
       ? members.members
-          .map((entry) => (typeof entry?.username === "string" ? entry.username : ""))
-          .filter(Boolean)
+          .map((entry) => ({
+            username: typeof entry?.username === "string" ? entry.username : "",
+            role: typeof entry?.role === "string" ? entry.role : "",
+          }))
+          .filter((entry) => entry.username.length > 0)
       : [];
-    if (!memberUsernames.includes(config.orgMemberUsername)) {
+    const existingMember = memberUsernames.find(
+      (entry) => entry.username === config.orgMemberUsername,
+    );
+    if (!existingMember) {
       runCliJson({
         env,
         homeDir: isolatedHome,
@@ -120,7 +150,29 @@ function ensureOrganization(env, config) {
           config.orgSlug,
           config.orgMemberUsername,
           "--role",
-          "member",
+          "owner",
+          "--json",
+        ],
+        label: "org members add",
+      });
+    } else if (existingMember.role !== "owner") {
+      runCliJson({
+        env,
+        homeDir: isolatedHome,
+        args: ["org", "members", "rm", config.orgSlug, config.orgMemberUsername, "--json"],
+        label: "org members rm",
+      });
+      runCliJson({
+        env,
+        homeDir: isolatedHome,
+        args: [
+          "org",
+          "members",
+          "add",
+          config.orgSlug,
+          config.orgMemberUsername,
+          "--role",
+          "owner",
           "--json",
         ],
         label: "org members add",
@@ -240,6 +292,27 @@ function ensurePrivateSearchSeed(env, config) {
   return { query, prefix, count: 6 };
 }
 
+function refreshLandingAggregates(env, config) {
+  runNodeScript({
+    cwd: FUNCTIONS_DIR,
+    env,
+    args: [LANDING_DISCOVER_REFRESH_SCRIPT, "--project", config.firebaseProjectId],
+    label: "landing discover refresh",
+  });
+  runNodeScript({
+    cwd: FUNCTIONS_DIR,
+    env,
+    args: [LANDING_MOST_POPULAR_REFRESH_SCRIPT, "--project", config.firebaseProjectId],
+    label: "landing most popular refresh",
+  });
+  runNodeScript({
+    cwd: FUNCTIONS_DIR,
+    env,
+    args: [LANDING_RECENT_REFRESH_SCRIPT, "--project", config.firebaseProjectId],
+    label: "landing recent refresh",
+  });
+}
+
 function main() {
   ensureLocalPrerequisites();
 
@@ -286,6 +359,9 @@ function main() {
 
   console.log("Ensuring private search seed corpus...");
   const privateSearchSeed = ensurePrivateSearchSeed(env, config);
+
+  console.log("Refreshing landing aggregates...");
+  refreshLandingAggregates(env, config);
 
   console.log(
     JSON.stringify(

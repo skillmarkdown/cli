@@ -174,3 +174,48 @@ test("prints request id and scope hint for token API errors", async () => {
   assert.match(errors.join("\n"), /request req_tok_123/);
   assert.match(errors.join("\n"), /use a token with the required scope/i);
 });
+
+test("surfaces token quota denials cleanly", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runTokenCommand(
+      ["add", "ci"],
+      baseOptions({
+        createToken: async () => {
+          throw new TokenApiError(
+            403,
+            "plan_limit_exceeded",
+            "free accounts can create up to 20 access tokens",
+            {
+              resource: "tokens",
+              currentCount: 20,
+              maxAllowed: 20,
+              plan: "free",
+            },
+          );
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /free accounts can create up to 20 access tokens/);
+});
+
+test("surfaces token rate-limit denials cleanly", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runTokenCommand(
+      ["add", "ci"],
+      baseOptions({
+        createToken: async () => {
+          throw new TokenApiError(429, "rate_limited", "user token creation rate limit exceeded", {
+            reason: "user_token_create_rate_limited",
+            retryAfterSeconds: 60,
+          });
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /user token creation rate limit exceeded/);
+});

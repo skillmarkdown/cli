@@ -42,6 +42,42 @@ test("createOrganization sends payload and parses response", async () => {
   assert.equal(payload.owner, "@facebook");
 });
 
+test("createOrganization surfaces plan quota denials", async () => {
+  await assert.rejects(
+    withMockedFetch(
+      async () =>
+        mockJsonResponse(403, {
+          error: {
+            code: "plan_limit_exceeded",
+            message: "free accounts can create up to 5 organizations",
+            details: {
+              resource: "organizations",
+              currentCount: 5,
+              maxAllowed: 5,
+              plan: "free",
+            },
+          },
+        }),
+      () =>
+        createOrganization("https://registry.example.com", "id-token", {
+          slug: "facebook",
+        }),
+    ),
+    (error) => {
+      assert.ok(error instanceof OrgApiError);
+      assert.equal(error.code, "plan_limit_exceeded");
+      assert.equal(error.message, "free accounts can create up to 5 organizations");
+      assert.deepEqual(error.details, {
+        resource: "organizations",
+        currentCount: 5,
+        maxAllowed: 5,
+        plan: "free",
+      });
+      return true;
+    },
+  );
+});
+
 test("listOrganizationMembers parses response", async () => {
   const payload = await withMockedFetch(
     async (input, init) => {
@@ -96,6 +132,85 @@ test("createOrganizationTeam sends payload and parses response", async () => {
   );
 
   assert.equal(payload.teamSlug, "core");
+});
+
+test("createOrganizationTeam surfaces team plan quota denials", async () => {
+  await assert.rejects(
+    withMockedFetch(
+      async () =>
+        mockJsonResponse(403, {
+          error: {
+            code: "plan_limit_exceeded",
+            message: "pro organizations can create up to 5 teams",
+            details: {
+              resource: "teams",
+              organizationSlug: "facebook",
+              currentCount: 5,
+              maxAllowed: 5,
+              plan: "pro",
+            },
+          },
+        }),
+      () =>
+        createOrganizationTeam("https://registry.example.com", "id-token", "facebook", {
+          teamSlug: "core",
+          name: "Core Team",
+        }),
+    ),
+    (error) => {
+      assert.ok(error instanceof OrgApiError);
+      assert.equal(error.code, "plan_limit_exceeded");
+      assert.equal(error.message, "pro organizations can create up to 5 teams");
+      assert.deepEqual(error.details, {
+        resource: "teams",
+        organizationSlug: "facebook",
+        currentCount: 5,
+        maxAllowed: 5,
+        plan: "pro",
+      });
+      return true;
+    },
+  );
+});
+
+test("createOrganizationToken surfaces token quota denials", async () => {
+  await assert.rejects(
+    withMockedFetch(
+      async () =>
+        mockJsonResponse(403, {
+          error: {
+            code: "plan_limit_exceeded",
+            message: "organizations can create up to 5 access tokens",
+            details: {
+              resource: "organization_tokens",
+              organizationSlug: "facebook",
+              currentCount: 5,
+              maxAllowed: 5,
+              plan: "pro",
+            },
+          },
+        }),
+      () =>
+        createOrganizationToken("https://registry.example.com", "id-token", "facebook", {
+          name: "deploy",
+          scope: "admin",
+          expiresDays: 30,
+        }),
+    ),
+    (error) => {
+      assert.ok(error instanceof OrgApiError);
+      assert.equal(error.code, "plan_limit_exceeded");
+      assert.equal(error.message, "organizations can create up to 5 access tokens");
+      assert.deepEqual(error.details, {
+        resource: "organization_tokens",
+        organizationSlug: "facebook",
+        currentCount: 5,
+        maxAllowed: 5,
+        plan: "pro",
+      });
+      return true;
+    },
+  );
 });
 
 test("addOrganizationMember sends payload and parses response", async () => {

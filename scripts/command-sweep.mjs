@@ -1798,7 +1798,14 @@ function runCoreTier({ state, env, strict, allowAuthBlocked }) {
 function runExtendedTier({ state, env, strict, allowAuthBlocked }) {
   const isolatedHomeDir = join(state.workspace, "isolated-home-extended");
   mkdirSync(isolatedHomeDir, { recursive: true });
-  const stepEnv = { ...env, HOME: isolatedHomeDir };
+  const stepEnv = {
+    ...env,
+    HOME: isolatedHomeDir,
+    ...(env.SKILLMD_PRO_LOGIN_EMAIL ? { SKILLMD_LOGIN_EMAIL: env.SKILLMD_PRO_LOGIN_EMAIL } : {}),
+    ...(env.SKILLMD_PRO_LOGIN_PASSWORD
+      ? { SKILLMD_LOGIN_PASSWORD: env.SKILLMD_PRO_LOGIN_PASSWORD }
+      : {}),
+  };
   const orgSlug = env.SKILLMD_E2E_ORG_SLUG;
   const orgMemberUsername =
     env.SKILLMD_E2E_ORG_MEMBER_USERNAME?.trim() || DEV_FIXTURE_DEFAULTS.proUsername;

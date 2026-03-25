@@ -339,6 +339,57 @@ test("adds and removes organization tokens", async () => {
   );
 });
 
+test("surfaces organization token quota denials cleanly", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runOrgCommand(
+      ["tokens", "add", "facebook", "deploy", "--scope", "admin"],
+      baseOptions({
+        createOrganizationToken: async () => {
+          throw new OrgApiError(
+            403,
+            "plan_limit_exceeded",
+            "organizations can create up to 5 access tokens",
+            {
+              resource: "organization_tokens",
+              organizationSlug: "facebook",
+              currentCount: 5,
+              maxAllowed: 5,
+              plan: "pro",
+            },
+          );
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /organizations can create up to 5 access tokens/);
+});
+
+test("surfaces organization token rate-limit denials cleanly", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runOrgCommand(
+      ["tokens", "add", "facebook", "deploy", "--scope", "admin"],
+      baseOptions({
+        createOrganizationToken: async () => {
+          throw new OrgApiError(
+            429,
+            "rate_limited",
+            "organization token creation rate limit exceeded",
+            {
+              reason: "org_token_create_rate_limited",
+              retryAfterSeconds: 60,
+            },
+          );
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /organization token creation rate limit exceeded/);
+});
+
 test("prints helpful authz hint for membership failures", async () => {
   const { result, errors } = await captureConsole(() =>
     runOrgCommand(
@@ -355,6 +406,90 @@ test("prints helpful authz hint for membership failures", async () => {
   assert.equal(result, 1);
   assert.match(errors.join("\n"), /skillmd whoami/);
   assert.match(errors.join("\n"), /skillmd org/);
+});
+
+test("org create surfaces quota failures without swallowing the backend message", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runOrgCommand(
+      ["create", "facebook"],
+      baseOptions({
+        createOrganization: async () => {
+          throw new OrgApiError(
+            403,
+            "plan_limit_exceeded",
+            "free accounts can create up to 5 organizations",
+            {
+              resource: "organizations",
+              currentCount: 5,
+              maxAllowed: 5,
+              plan: "free",
+            },
+          );
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /free accounts can create up to 5 organizations/);
+});
+
+test("org create surfaces rate-limit failures without swallowing the backend message", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runOrgCommand(
+      ["create", "facebook"],
+      baseOptions({
+        createOrganization: async () => {
+          throw new OrgApiError(429, "rate_limited", "organization creation rate limit exceeded", {
+            reason: "org_create_rate_limited",
+            retryAfterSeconds: 60,
+          });
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /organization creation rate limit exceeded/);
+});
+
+test("org team add surfaces plan failures without swallowing the backend message", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runOrgCommand(
+      ["team", "add", "facebook", "core", "--name", "Core Team"],
+      baseOptions({
+        createOrganizationTeam: async () => {
+          throw new OrgApiError(403, "forbidden", "teams are available on pro accounts only", {
+            reason: "forbidden_plan",
+            resource: "teams",
+            plan: "free",
+          });
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /teams are available on pro accounts only/);
+});
+
+test("org team add surfaces rate-limit failures without swallowing the backend message", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runOrgCommand(
+      ["team", "add", "facebook", "core", "--name", "Core Team"],
+      baseOptions({
+        createOrganizationTeam: async () => {
+          throw new OrgApiError(429, "rate_limited", "team creation rate limit exceeded", {
+            reason: "team_create_rate_limited",
+            retryAfterSeconds: 60,
+          });
+        },
+      }),
+    ),
+  );
+
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /team creation rate limit exceeded/);
 });
 
 test("org read commands fail when not logged in", async () => {
