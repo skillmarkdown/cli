@@ -389,7 +389,7 @@ export async function runOrgCommand(
             { timeoutMs: config.requestTimeoutMs },
           ),
         printHuman: (result) => {
-          console.log(`Created organization ${result.owner}.`);
+          console.log(`Created organization identity ${result.owner}.`);
         },
         isApiError: isOrgApiError,
       });
