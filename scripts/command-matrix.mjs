@@ -92,6 +92,10 @@ export const COMMAND_MATRIX = [
   { id: "org.tokens.ls", mode: "both", command: "org" },
   { id: "org.tokens.add", mode: "both", command: "org" },
   { id: "org.tokens.rm", mode: "both", command: "org" },
+
+  { id: "collaborators.ls", mode: "both", command: "collaborators" },
+  { id: "collaborators.add", mode: "both", command: "collaborators" },
+  { id: "collaborators.rm", mode: "both", command: "collaborators" },
 ];
 
 export function getMatrixIds() {

@@ -87,6 +87,9 @@ test("command matrix covers documented usage variants", async () => {
     "org.tokens.ls",
     "org.tokens.add",
     "org.tokens.rm",
+    "collaborators.ls",
+    "collaborators.add",
+    "collaborators.rm",
   ];
 
   for (const id of requiredIds) {
