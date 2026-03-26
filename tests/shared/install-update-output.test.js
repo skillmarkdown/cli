@@ -19,6 +19,7 @@ test("toUseApiErrorReason includes pro-plan hint for forbidden_plan", () => {
   assert.match(message, /private skill access is not allowed/i);
   assert.match(message, /private skills require a Pro plan/i);
   assert.match(message, /https:\/\/www\.skillmarkdown\.com/);
+  assert.doesNotMatch(message, /\n/);
 });
 
 test("printSkillStatusTable renders rows with spec and detail columns", async () => {

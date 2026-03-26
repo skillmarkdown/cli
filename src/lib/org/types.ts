@@ -18,6 +18,12 @@ export interface OrganizationCreateResponse {
   owner: string;
 }
 
+export interface OrganizationReadResponse {
+  slug: string;
+  owner: string;
+  createdAt: string;
+}
+
 export interface OrganizationTeamMembership {
   organizationSlug: string;
   teamSlug: string;
@@ -69,6 +75,11 @@ export interface OrganizationMemberMutationResponse {
   username: string;
   owner: string;
   role: OrganizationRole;
+}
+
+export interface OrganizationDeleteResponse {
+  status: "deleted";
+  slug: string;
 }
 
 export interface OrganizationMemberRemoveResponse {
@@ -155,9 +166,16 @@ export interface OrganizationTokenRevokeResponse {
   tokenId: string;
 }
 
+export interface OrganizationAvatarUpdateResponse {
+  status: "ok";
+  avatarUrl: string | null;
+}
+
 export type ParsedOrgFlags =
   | { valid: true; action: "ls"; json: boolean }
+  | { valid: true; action: "get"; slug: string; json: boolean }
   | { valid: true; action: "create"; slug: string; json: boolean }
+  | { valid: true; action: "rm"; slug: string; confirm?: string; json: boolean }
   | { valid: true; action: "members.ls"; slug: string; json: boolean }
   | {
       valid: true;
@@ -167,7 +185,23 @@ export type ParsedOrgFlags =
       role: OrganizationRole;
       json: boolean;
     }
+  | {
+      valid: true;
+      action: "members.set-role";
+      slug: string;
+      username: string;
+      role: OrganizationRole;
+      json: boolean;
+    }
   | { valid: true; action: "members.rm"; slug: string; username: string; json: boolean }
+  | {
+      valid: true;
+      action: "avatar.set";
+      slug: string;
+      avatarUrl: string;
+      json: boolean;
+    }
+  | { valid: true; action: "avatar.clear"; slug: string; json: boolean }
   | { valid: true; action: "team.ls"; slug: string; json: boolean }
   | {
       valid: true;

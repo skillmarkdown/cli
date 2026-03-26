@@ -1,11 +1,14 @@
 import { extractApiErrorFields, requestJson, type ApiErrorPayload } from "../shared/api-client";
 import { OrgApiError } from "./errors";
 import {
+  type OrganizationAvatarUpdateResponse,
   type OrganizationCreateResponse,
+  type OrganizationDeleteResponse,
   type CreatedOrganizationTokenResponse,
   type OrganizationMemberMutationResponse,
   type OrganizationMemberRemoveResponse,
   type OrganizationMembersResponse,
+  type OrganizationReadResponse,
   type OrganizationRole,
   type OrganizationSkillTeamUpdateResponse,
   type OrganizationSkillsResponse,
@@ -121,6 +124,18 @@ function isOrganizationCreateResponse(value: unknown): value is OrganizationCrea
   return typeof record.slug === "string" && typeof record.owner === "string";
 }
 
+function isOrganizationReadResponse(value: unknown): value is OrganizationReadResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.slug === "string" &&
+    typeof record.owner === "string" &&
+    typeof record.createdAt === "string"
+  );
+}
+
 function isOrganizationMemberMutationResponse(
   value: unknown,
 ): value is OrganizationMemberMutationResponse {
@@ -148,6 +163,14 @@ function isOrganizationMemberRemoveResponse(
     typeof record.slug === "string" &&
     typeof record.username === "string"
   );
+}
+
+function isOrganizationDeleteResponse(value: unknown): value is OrganizationDeleteResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return record.status === "deleted" && typeof record.slug === "string";
 }
 
 function isOrganizationTeamsResponse(value: unknown): value is OrganizationTeamsResponse {
@@ -301,6 +324,36 @@ function isOrganizationTokenRevokeResponse(
   return record.status === "revoked" && typeof record.tokenId === "string";
 }
 
+function isOrganizationAvatarUpdateResponse(
+  value: unknown,
+): value is OrganizationAvatarUpdateResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return (
+    record.status === "ok" && (record.avatarUrl === null || typeof record.avatarUrl === "string")
+  );
+}
+
+export async function getOrganization(
+  baseUrl: string,
+  idToken: string,
+  slug: string,
+  options: OrgClientOptions = {},
+): Promise<OrganizationReadResponse> {
+  return requestJson({
+    url: new URL(`${baseUrl}/v1/organizations/${encodeURIComponent(slug)}`),
+    method: "GET",
+    idToken,
+    timeoutMs: options.timeoutMs,
+    label: "Organization API",
+    isValid: isOrganizationReadResponse,
+    missingFieldsMessage: "Organization API response was missing required fields",
+    toApiError: toOrgApiError,
+  });
+}
+
 export async function listOrganizationMembers(
   baseUrl: string,
   idToken: string,
@@ -333,6 +386,24 @@ export async function createOrganization(
     body: request,
     label: "Organization API",
     isValid: isOrganizationCreateResponse,
+    missingFieldsMessage: "Organization API response was missing required fields",
+    toApiError: toOrgApiError,
+  });
+}
+
+export async function deleteOrganization(
+  baseUrl: string,
+  idToken: string,
+  slug: string,
+  options: OrgClientOptions = {},
+): Promise<OrganizationDeleteResponse> {
+  return requestJson({
+    url: new URL(`${baseUrl}/v1/organizations/${encodeURIComponent(slug)}`),
+    method: "DELETE",
+    idToken,
+    timeoutMs: options.timeoutMs,
+    label: "Organization API",
+    isValid: isOrganizationDeleteResponse,
     missingFieldsMessage: "Organization API response was missing required fields",
     toApiError: toOrgApiError,
   });
@@ -374,6 +445,49 @@ export async function removeOrganizationMember(
     timeoutMs: options.timeoutMs,
     label: "Organization API",
     isValid: isOrganizationMemberRemoveResponse,
+    missingFieldsMessage: "Organization API response was missing required fields",
+    toApiError: toOrgApiError,
+  });
+}
+
+export async function updateOrganizationMemberRole(
+  baseUrl: string,
+  idToken: string,
+  slug: string,
+  username: string,
+  request: { role: OrganizationRole },
+  options: OrgClientOptions = {},
+): Promise<OrganizationMemberMutationResponse> {
+  return requestJson({
+    url: new URL(
+      `${baseUrl}/v1/organizations/${encodeURIComponent(slug)}/members/${encodeURIComponent(username)}`,
+    ),
+    method: "PATCH",
+    idToken,
+    body: request,
+    timeoutMs: options.timeoutMs,
+    label: "Organization API",
+    isValid: isOrganizationMemberMutationResponse,
+    missingFieldsMessage: "Organization API response was missing required fields",
+    toApiError: toOrgApiError,
+  });
+}
+
+export async function setOrganizationAvatar(
+  baseUrl: string,
+  idToken: string,
+  slug: string,
+  avatarUrl: string | null,
+  options: OrgClientOptions = {},
+): Promise<OrganizationAvatarUpdateResponse> {
+  return requestJson({
+    url: new URL(`${baseUrl}/v1/organizations/${encodeURIComponent(slug)}/avatar`),
+    method: "PATCH",
+    idToken,
+    body: { avatarUrl },
+    timeoutMs: options.timeoutMs,
+    label: "Organization API",
+    isValid: isOrganizationAvatarUpdateResponse,
     missingFieldsMessage: "Organization API response was missing required fields",
     toApiError: toOrgApiError,
   });

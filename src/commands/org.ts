@@ -1,6 +1,9 @@
+import { createInterface } from "node:readline/promises";
+import { stdin as input, stdout as output } from "node:process";
+
 import { resolveReadIdToken as defaultResolveReadIdToken } from "../lib/auth/read-token";
 import { resolveWriteAuth } from "../lib/auth/write-auth";
-import { failWithUsage } from "../lib/shared/command-output";
+import { failWithUsage, printJsonError } from "../lib/shared/command-output";
 import {
   getAuthRegistryEnvConfig,
   getLoginScopedRegistryEnvConfig,
@@ -14,7 +17,9 @@ import {
   assignOrganizationSkillTeam as defaultAssignOrganizationSkillTeam,
   createOrganizationToken as defaultCreateOrganizationToken,
   createOrganizationTeam as defaultCreateOrganizationTeam,
+  deleteOrganization as defaultDeleteOrganization,
   getOrganizationTeam as defaultGetOrganizationTeam,
+  getOrganization as defaultGetOrganization,
   listOrganizationMembers as defaultListOrganizationMembers,
   listOrganizationSkills as defaultListOrganizationSkills,
   listOrganizationTokens as defaultListOrganizationTokens,
@@ -22,16 +27,21 @@ import {
   removeOrganizationMember as defaultRemoveOrganizationMember,
   removeOrganizationTeamMember as defaultRemoveOrganizationTeamMember,
   revokeOrganizationToken as defaultRevokeOrganizationToken,
+  setOrganizationAvatar as defaultSetOrganizationAvatar,
+  updateOrganizationMemberRole as defaultUpdateOrganizationMemberRole,
 } from "../lib/org/client";
 import { isOrgApiError } from "../lib/org/errors";
 import {
   type OrgEnvConfig,
+  type OrganizationAvatarUpdateResponse,
   type CreatedOrganizationTokenResponse,
   type OrganizationCreateResponse,
+  type OrganizationDeleteResponse,
   type OrganizationMemberMutationResponse,
   type OrganizationMemberRemoveResponse,
   type OrganizationMembersResponse,
   type OrganizationMembership,
+  type OrganizationReadResponse,
   type OrganizationRole,
   type OrganizationSkillTeamUpdateResponse,
   type OrganizationSkillsResponse,
@@ -91,12 +101,32 @@ interface OrgCommandOptions {
     teamSlug: string,
     options?: { timeoutMs?: number },
   ) => Promise<OrganizationTeamResponse>;
+  getOrganization?: (
+    baseUrl: string,
+    idToken: string,
+    slug: string,
+    options?: { timeoutMs?: number },
+  ) => Promise<OrganizationReadResponse>;
   createOrganization?: (
     baseUrl: string,
     idToken: string,
     request: { slug: string },
     options?: { timeoutMs?: number },
   ) => Promise<OrganizationCreateResponse>;
+  deleteOrganization?: (
+    baseUrl: string,
+    idToken: string,
+    slug: string,
+    options?: { timeoutMs?: number },
+  ) => Promise<OrganizationDeleteResponse>;
+  updateOrganizationMemberRole?: (
+    baseUrl: string,
+    idToken: string,
+    slug: string,
+    username: string,
+    request: { role: OrganizationRole },
+    options?: { timeoutMs?: number },
+  ) => Promise<OrganizationMemberMutationResponse>;
   createOrganizationTeam?: (
     baseUrl: string,
     idToken: string,
@@ -154,6 +184,14 @@ interface OrgCommandOptions {
     tokenId: string,
     options?: { timeoutMs?: number },
   ) => Promise<OrganizationTokenRevokeResponse>;
+  setOrganizationAvatar?: (
+    baseUrl: string,
+    idToken: string,
+    slug: string,
+    avatarUrl: string | null,
+    options?: { timeoutMs?: number },
+  ) => Promise<OrganizationAvatarUpdateResponse>;
+  promptForDeleteConfirmation?: (slug: string) => Promise<string>;
 }
 
 function printOrganizationListHuman(organizations: OrganizationMembership[]): void {
@@ -178,6 +216,12 @@ function printOrganizationMembersHuman(payload: OrganizationMembersResponse): vo
   for (const member of payload.members) {
     console.log(`- ${member.owner} role=${member.role}`);
   }
+}
+
+function printOrganizationHuman(payload: OrganizationReadResponse): void {
+  console.log(`Organization identity: ${payload.owner}`);
+  console.log(`Slug: ${payload.slug}`);
+  console.log(`Created: ${payload.createdAt}`);
 }
 
 function printOrganizationTeamsHuman(payload: OrganizationTeamsResponse): void {
@@ -237,6 +281,25 @@ function printOrganizationTokensHuman(payload: OrganizationTokensResponse): void
   }
 }
 
+function normalizeIdentity(value: string): string {
+  return value.trim().replace(/^@+/, "").toLowerCase();
+}
+
+async function promptForDeleteConfirmation(slug: string): Promise<string> {
+  if (!input.isTTY || !output.isTTY) {
+    throw new Error(
+      `organization deletion requires --confirm ${slug} when standard input is not interactive`,
+    );
+  }
+
+  const rl = createInterface({ input, output });
+  try {
+    return (await rl.question(`Type ${slug} to delete @${slug}: `)).trim();
+  } finally {
+    rl.close();
+  }
+}
+
 export async function runOrgCommand(
   args: string[],
   options: OrgCommandOptions = {},
@@ -271,6 +334,7 @@ export async function runOrgCommand(
     }
 
     const readActions = new Set([
+      "get",
       "members.ls",
       "team.ls",
       "team.members.ls",
@@ -279,6 +343,23 @@ export async function runOrgCommand(
     ]);
     if (readActions.has(parsed.action)) {
       const config = (options.getReadConfig ?? getLoginScopedRegistryEnvConfig)(env);
+      if (parsed.action === "get") {
+        return executeReadCommand<OrganizationReadResponse>({
+          command: "skillmd org",
+          json: parsed.json,
+          resolveIdToken: options.resolveReadIdToken ?? (() => defaultResolveReadIdToken({ env })),
+          run: (idToken) =>
+            (options.getOrganization ?? defaultGetOrganization)(
+              config.registryBaseUrl,
+              idToken,
+              parsed.slug,
+              { timeoutMs: config.requestTimeoutMs },
+            ),
+          printHuman: printOrganizationHuman,
+          isApiError: isOrgApiError,
+        });
+      }
+
       if (parsed.action === "members.ls") {
         return executeReadCommand<OrganizationMembersResponse>({
           command: "skillmd org",
@@ -395,6 +476,40 @@ export async function runOrgCommand(
       });
     }
 
+    if (parsed.action === "rm") {
+      const confirmedValue =
+        parsed.confirm ??
+        normalizeIdentity(
+          await (options.promptForDeleteConfirmation ?? promptForDeleteConfirmation)(parsed.slug),
+        );
+      if (confirmedValue !== parsed.slug) {
+        const message = `organization deletion cancelled: confirmation must match ${parsed.slug}`;
+        if (parsed.json) {
+          printJsonError("validation", message);
+          return 1;
+        }
+        console.error(`skillmd org: ${message}`);
+        return 1;
+      }
+
+      return executeWriteCommand<OrganizationDeleteResponse>({
+        command: "skillmd org",
+        json: parsed.json,
+        resolveAuth: resolveOrgWriteAuth,
+        run: (idToken) =>
+          (options.deleteOrganization ?? defaultDeleteOrganization)(
+            config.registryBaseUrl,
+            idToken,
+            parsed.slug,
+            { timeoutMs: config.requestTimeoutMs },
+          ),
+        printHuman: (result) => {
+          console.log(`Deleted organization identity @${result.slug}.`);
+        },
+        isApiError: isOrgApiError,
+      });
+    }
+
     if (parsed.action === "members.add") {
       return executeWriteCommand<OrganizationMemberMutationResponse>({
         command: "skillmd org",
@@ -415,6 +530,27 @@ export async function runOrgCommand(
       });
     }
 
+    if (parsed.action === "members.set-role") {
+      return executeWriteCommand<OrganizationMemberMutationResponse>({
+        command: "skillmd org",
+        json: parsed.json,
+        resolveAuth: resolveOrgWriteAuth,
+        run: (idToken) =>
+          (options.updateOrganizationMemberRole ?? defaultUpdateOrganizationMemberRole)(
+            config.registryBaseUrl,
+            idToken,
+            parsed.slug,
+            parsed.username,
+            { role: parsed.role },
+            { timeoutMs: config.requestTimeoutMs },
+          ),
+        printHuman: (result) => {
+          console.log(`Updated ${result.owner} in @${result.slug} to ${result.role}.`);
+        },
+        isApiError: isOrgApiError,
+      });
+    }
+
     if (parsed.action === "members.rm") {
       return executeWriteCommand<OrganizationMemberRemoveResponse>({
         command: "skillmd org",
@@ -430,6 +566,31 @@ export async function runOrgCommand(
           ),
         printHuman: (result) => {
           console.log(`Removed @${result.username} from @${result.slug}.`);
+        },
+        isApiError: isOrgApiError,
+      });
+    }
+
+    if (parsed.action === "avatar.set" || parsed.action === "avatar.clear") {
+      return executeWriteCommand<OrganizationAvatarUpdateResponse>({
+        command: "skillmd org",
+        json: parsed.json,
+        resolveAuth: resolveOrgWriteAuth,
+        run: (idToken) =>
+          (options.setOrganizationAvatar ?? defaultSetOrganizationAvatar)(
+            config.registryBaseUrl,
+            idToken,
+            parsed.slug,
+            parsed.action === "avatar.set" ? parsed.avatarUrl : null,
+            { timeoutMs: config.requestTimeoutMs },
+          ),
+        printHuman: (result) => {
+          if (result.avatarUrl) {
+            console.log(`Set organization avatar for @${parsed.slug}.`);
+            console.log(`Avatar URL: ${result.avatarUrl}`);
+            return;
+          }
+          console.log(`Cleared organization avatar for @${parsed.slug}.`);
         },
         isApiError: isOrgApiError,
       });

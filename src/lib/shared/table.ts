@@ -102,6 +102,50 @@ function wrapToWidth(value: string, width: number): string[] {
   if (value.length === 0) {
     return [""];
   }
+
+  const tokens = value.match(/\S+\s*|\s+/g);
+  if (tokens) {
+    const lines: string[] = [];
+    let current = "";
+    let currentWidth = 0;
+
+    for (const token of tokens) {
+      const tokenWidth = displayWidth(token);
+      if (tokenWidth > width) {
+        const trimmedCurrent = current.trimEnd();
+        if (trimmedCurrent) {
+          lines.push(trimmedCurrent);
+          current = "";
+          currentWidth = 0;
+        }
+        for (const segment of wrapToWidthByGrapheme(token.trimEnd(), width)) {
+          lines.push(segment);
+        }
+        continue;
+      }
+      if (currentWidth > 0 && currentWidth + tokenWidth > width) {
+        lines.push(current.trimEnd());
+        current = token.trimStart();
+        currentWidth = displayWidth(current);
+        continue;
+      }
+      current += token;
+      currentWidth += tokenWidth;
+    }
+
+    if (current.trimEnd()) {
+      lines.push(current.trimEnd());
+    }
+    return lines.length > 0 ? lines : [""];
+  }
+
+  return wrapToWidthByGrapheme(value, width);
+}
+
+function wrapToWidthByGrapheme(value: string, width: number): string[] {
+  if (value.length === 0) {
+    return [""];
+  }
   const lines: string[] = [];
   let current = "";
   let currentWidth = 0;

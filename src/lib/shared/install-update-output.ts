@@ -4,7 +4,9 @@ import { renderTable } from "./table";
 
 export function toUseApiErrorReason(error: unknown): string {
   if (isUseApiError(error)) {
-    return formatCliApiErrorWithHint("skillmd use", error).replace(/^skillmd use: /, "");
+    return formatCliApiErrorWithHint("skillmd use", error)
+      .replace(/^skillmd use: /, "")
+      .replace(/\s*\n\s*/g, " ");
   }
 
   return error instanceof Error ? error.message : "Unknown error";

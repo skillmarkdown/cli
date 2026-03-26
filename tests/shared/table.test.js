@@ -88,3 +88,24 @@ test("renderTable shrinks low-priority columns when maxWidth is constrained", ()
   // Column shrinking applies to fit maxWidth while preserving table structure.
   assert.match(lines[3], /^│ .*\.{3} .*│ .*\.{3} .*│$/);
 });
+
+test("renderTable prefers wrapping on word boundaries before splitting long tokens", () => {
+  const lines = renderTable(
+    [
+      {
+        header: "DETAIL",
+        width: 24,
+        wrap: true,
+        maxLines: 4,
+        value: () =>
+          "Hint: private skills require a Pro plan. Manage your account at https://www.skillmarkdown.com.",
+      },
+    ],
+    [{}],
+  );
+
+  const output = lines.join("\n");
+  assert.match(output, /Hint: private skills/);
+  assert.match(output, /Manage your account at/);
+  assert.match(output, /https:\/\/www\.skillm/);
+});

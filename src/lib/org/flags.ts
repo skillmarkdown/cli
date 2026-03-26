@@ -18,6 +18,10 @@ function parseJson(positionalArgs: string[]): { positional: string[]; json: bool
   return splitJsonFlag(positionalArgs);
 }
 
+function normalizeIdentity(value: string | undefined): string {
+  return value?.trim().replace(/^@+/, "").toLowerCase() ?? "";
+}
+
 export function parseOrgFlags(args: string[]): ParsedOrgFlags {
   if (args.length === 0) {
     return { valid: false, json: false };
@@ -38,11 +42,50 @@ export function parseOrgFlags(args: string[]): ParsedOrgFlags {
     if (!parsed || parsed.positional.length !== 2) {
       return { valid: false, json: false };
     }
-    const slug = parsed.positional[1]?.trim();
+    const slug = normalizeIdentity(parsed.positional[1]);
     if (!slug) {
       return { valid: false, json: false };
     }
     return { valid: true, action: "create", slug, json: parsed.json };
+  }
+
+  if (section === "get") {
+    const parsed = parseJson(args);
+    if (!parsed || parsed.positional.length !== 2) {
+      return { valid: false, json: false };
+    }
+    const slug = normalizeIdentity(parsed.positional[1]);
+    if (!slug) {
+      return { valid: false, json: false };
+    }
+    return { valid: true, action: "get", slug, json: parsed.json };
+  }
+
+  if (section === "rm") {
+    const slug = normalizeIdentity(args[1]);
+    if (!slug) {
+      return { valid: false, json: false };
+    }
+    let confirm: string | undefined;
+    let json = false;
+    for (let index = 2; index < args.length; index += 1) {
+      const current = args[index];
+      if (current === "--json") {
+        json = true;
+        continue;
+      }
+      const confirmOption = parseOptionValue(args, index, "confirm");
+      if (confirmOption.matched) {
+        confirm = normalizeIdentity(confirmOption.value);
+        if (!confirm) {
+          return { valid: false, json: false };
+        }
+        index = confirmOption.nextIndex;
+        continue;
+      }
+      return { valid: false, json: false };
+    }
+    return { valid: true, action: "rm", slug, confirm, json };
   }
 
   if (section === "members") {
@@ -51,7 +94,11 @@ export function parseOrgFlags(args: string[]): ParsedOrgFlags {
       if (!parsed || parsed.positional.length !== 3) {
         return { valid: false, json: false };
       }
-      return { valid: true, action: "members.ls", slug: parsed.positional[2], json: parsed.json };
+      const slug = normalizeIdentity(parsed.positional[2]);
+      if (!slug) {
+        return { valid: false, json: false };
+      }
+      return { valid: true, action: "members.ls", slug, json: parsed.json };
     }
 
     if (subsection === "rm") {
@@ -59,18 +106,23 @@ export function parseOrgFlags(args: string[]): ParsedOrgFlags {
       if (!parsed || parsed.positional.length !== 4) {
         return { valid: false, json: false };
       }
+      const slug = normalizeIdentity(parsed.positional[2]);
+      const username = normalizeIdentity(parsed.positional[3]);
+      if (!slug || !username) {
+        return { valid: false, json: false };
+      }
       return {
         valid: true,
         action: "members.rm",
-        slug: parsed.positional[2],
-        username: parsed.positional[3],
+        slug,
+        username,
         json: parsed.json,
       };
     }
 
     if (subsection === "add") {
-      const slug = args[2]?.trim();
-      const username = args[3]?.trim();
+      const slug = normalizeIdentity(args[2]);
+      const username = normalizeIdentity(args[3]);
       if (!slug || !username) {
         return { valid: false, json: false };
       }
@@ -95,6 +147,81 @@ export function parseOrgFlags(args: string[]): ParsedOrgFlags {
       }
       return { valid: true, action: "members.add", slug, username, role, json };
     }
+
+    if (subsection === "set-role") {
+      const slug = normalizeIdentity(args[2]);
+      const username = normalizeIdentity(args[3]);
+      if (!slug || !username) {
+        return { valid: false, json: false };
+      }
+      let role: OrganizationRole | null = null;
+      let json = false;
+      for (let index = 4; index < args.length; index += 1) {
+        const current = args[index];
+        if (current === "--json") {
+          json = true;
+          continue;
+        }
+        const roleOption = parseOptionValue(args, index, "role");
+        if (roleOption.matched) {
+          if (!roleOption.value || !isRole(roleOption.value)) {
+            return { valid: false, json: false };
+          }
+          role = roleOption.value;
+          index = roleOption.nextIndex;
+          continue;
+        }
+        return { valid: false, json: false };
+      }
+      if (!role) {
+        return { valid: false, json: false };
+      }
+      return { valid: true, action: "members.set-role", slug, username, role, json };
+    }
+  }
+
+  if (section === "avatar") {
+    if (subsection === "clear") {
+      const parsed = parseJson(args);
+      if (!parsed || parsed.positional.length !== 3) {
+        return { valid: false, json: false };
+      }
+      const slug = normalizeIdentity(parsed.positional[2]);
+      if (!slug) {
+        return { valid: false, json: false };
+      }
+      return { valid: true, action: "avatar.clear", slug, json: parsed.json };
+    }
+
+    if (subsection === "set") {
+      const slug = normalizeIdentity(args[2]);
+      if (!slug) {
+        return { valid: false, json: false };
+      }
+      let avatarUrl = "";
+      let json = false;
+      for (let index = 3; index < args.length; index += 1) {
+        const current = args[index];
+        if (current === "--json") {
+          json = true;
+          continue;
+        }
+        const urlOption = parseOptionValue(args, index, "url");
+        if (urlOption.matched) {
+          avatarUrl = urlOption.value?.trim() ?? "";
+          if (!avatarUrl) {
+            return { valid: false, json: false };
+          }
+          index = urlOption.nextIndex;
+          continue;
+        }
+        return { valid: false, json: false };
+      }
+      if (!avatarUrl) {
+        return { valid: false, json: false };
+      }
+      return { valid: true, action: "avatar.set", slug, avatarUrl, json };
+    }
   }
 
   if (section === "team") {
@@ -103,12 +230,16 @@ export function parseOrgFlags(args: string[]): ParsedOrgFlags {
       if (!parsed || parsed.positional.length !== 3) {
         return { valid: false, json: false };
       }
-      return { valid: true, action: "team.ls", slug: parsed.positional[2], json: parsed.json };
+      const slug = normalizeIdentity(parsed.positional[2]);
+      if (!slug) {
+        return { valid: false, json: false };
+      }
+      return { valid: true, action: "team.ls", slug, json: parsed.json };
     }
 
     if (subsection === "add") {
-      const slug = args[2]?.trim();
-      const teamSlug = args[3]?.trim();
+      const slug = normalizeIdentity(args[2]);
+      const teamSlug = normalizeIdentity(args[3]);
       if (!slug || !teamSlug) {
         return { valid: false, json: false };
       }
@@ -146,8 +277,8 @@ export function parseOrgFlags(args: string[]): ParsedOrgFlags {
         return {
           valid: true,
           action: "team.members.ls",
-          slug: parsed.positional[3],
-          teamSlug: parsed.positional[4],
+          slug: normalizeIdentity(parsed.positional[3]),
+          teamSlug: normalizeIdentity(parsed.positional[4]),
           json: parsed.json,
         };
       }
@@ -160,9 +291,9 @@ export function parseOrgFlags(args: string[]): ParsedOrgFlags {
         return {
           valid: true,
           action: action === "add" ? "team.members.add" : "team.members.rm",
-          slug: parsed.positional[3],
-          teamSlug: parsed.positional[4],
-          username: parsed.positional[5],
+          slug: normalizeIdentity(parsed.positional[3]),
+          teamSlug: normalizeIdentity(parsed.positional[4]),
+          username: normalizeIdentity(parsed.positional[5]),
           json: parsed.json,
         };
       }
@@ -175,7 +306,11 @@ export function parseOrgFlags(args: string[]): ParsedOrgFlags {
       if (!parsed || parsed.positional.length !== 3) {
         return { valid: false, json: false };
       }
-      return { valid: true, action: "skills.ls", slug: parsed.positional[2], json: parsed.json };
+      const slug = normalizeIdentity(parsed.positional[2]);
+      if (!slug) {
+        return { valid: false, json: false };
+      }
+      return { valid: true, action: "skills.ls", slug, json: parsed.json };
     }
 
     if (subsection === "team" && (action === "set" || action === "clear")) {
@@ -187,9 +322,9 @@ export function parseOrgFlags(args: string[]): ParsedOrgFlags {
         return {
           valid: true,
           action: "skills.team.set",
-          slug: parsed.positional[3],
-          skillSlug: parsed.positional[4],
-          teamSlug: parsed.positional[5],
+          slug: normalizeIdentity(parsed.positional[3]),
+          skillSlug: normalizeIdentity(parsed.positional[4]),
+          teamSlug: normalizeIdentity(parsed.positional[5]),
           json: parsed.json,
         };
       }
@@ -197,8 +332,8 @@ export function parseOrgFlags(args: string[]): ParsedOrgFlags {
         return {
           valid: true,
           action: "skills.team.clear",
-          slug: parsed.positional[3],
-          skillSlug: parsed.positional[4],
+          slug: normalizeIdentity(parsed.positional[3]),
+          skillSlug: normalizeIdentity(parsed.positional[4]),
           json: parsed.json,
         };
       }
@@ -211,7 +346,11 @@ export function parseOrgFlags(args: string[]): ParsedOrgFlags {
       if (!parsed || parsed.positional.length !== 3) {
         return { valid: false, json: false };
       }
-      return { valid: true, action: "tokens.ls", slug: parsed.positional[2], json: parsed.json };
+      const slug = normalizeIdentity(parsed.positional[2]);
+      if (!slug) {
+        return { valid: false, json: false };
+      }
+      return { valid: true, action: "tokens.ls", slug, json: parsed.json };
     }
 
     if (subsection === "rm") {
@@ -226,14 +365,14 @@ export function parseOrgFlags(args: string[]): ParsedOrgFlags {
       return {
         valid: true,
         action: "tokens.rm",
-        slug: parsed.positional[2],
+        slug: normalizeIdentity(parsed.positional[2]),
         tokenId,
         json: parsed.json,
       };
     }
 
     if (subsection === "add") {
-      const slug = args[2]?.trim();
+      const slug = normalizeIdentity(args[2]);
       const name = args[3]?.trim();
       if (!slug || !name) {
         return { valid: false, json: false };

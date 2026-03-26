@@ -50,6 +50,11 @@ function baseOptions(overrides = {}) {
         },
       ],
     }),
+    getOrganization: async (_baseUrl, _idToken, slug) => ({
+      slug,
+      owner: `@${slug}`,
+      createdAt: "2026-03-01T00:00:00.000Z",
+    }),
     listOrganizationMembers: async () => ({
       slug: "facebook",
       owner: "@facebook",
@@ -78,6 +83,16 @@ function baseOptions(overrides = {}) {
     createOrganization: async (_baseUrl, _idToken, request) => ({
       slug: request.slug,
       owner: `@${request.slug}`,
+    }),
+    deleteOrganization: async (_baseUrl, _idToken, slug) => ({
+      status: "deleted",
+      slug,
+    }),
+    updateOrganizationMemberRole: async (_baseUrl, _idToken, slug, username, request) => ({
+      slug,
+      username,
+      owner: `@${username}`,
+      role: request.role,
     }),
     listOrganizationTeams: async () => ({
       slug: "facebook",
@@ -192,6 +207,11 @@ function baseOptions(overrides = {}) {
       status: "revoked",
       tokenId: "tok_abc123abc123abc123abc123",
     }),
+    setOrganizationAvatar: async (_baseUrl, _idToken, _slug, avatarUrl) => ({
+      status: "ok",
+      avatarUrl,
+    }),
+    promptForDeleteConfirmation: async (slug) => slug,
     ...overrides,
   };
 }
@@ -215,6 +235,31 @@ test("creates organization", async () => {
   const payload = JSON.parse(logs.join("\n"));
   assert.equal(payload.slug, "acme");
   assert.equal(payload.owner, "@acme");
+});
+
+test("gets organization details in human output", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runOrgCommand(["get", "facebook"], baseOptions()),
+  );
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /Organization identity: @facebook/);
+  assert.match(logs.join("\n"), /Created: 2026-03-01T00:00:00.000Z/);
+});
+
+test("deletes organization with explicit confirmation", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runOrgCommand(["rm", "facebook", "--confirm", "facebook"], baseOptions()),
+  );
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /Deleted organization identity @facebook/);
+});
+
+test("fails organization delete when confirmation does not match", async () => {
+  const { result, errors } = await captureConsole(() =>
+    runOrgCommand(["rm", "facebook", "--confirm", "meta"], baseOptions()),
+  );
+  assert.equal(result, 1);
+  assert.match(errors.join("\n"), /confirmation must match facebook/);
 });
 
 test("lists organization teams in json", async () => {
@@ -243,12 +288,43 @@ test("adds organization member", async () => {
   assert.match(logs.join("\n"), /Added @maintainer to @facebook as admin/);
 });
 
+test("updates organization member role", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runOrgCommand(
+      ["members", "set-role", "facebook", "maintainer", "--role", "owner"],
+      baseOptions(),
+    ),
+  );
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /Updated @maintainer in @facebook to owner/);
+});
+
 test("removes organization member", async () => {
   const { result, logs } = await captureConsole(() =>
     runOrgCommand(["members", "rm", "facebook", "maintainer"], baseOptions()),
   );
   assert.equal(result, 0);
   assert.match(logs.join("\n"), /Removed @maintainer from @facebook/);
+});
+
+test("sets organization avatar", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runOrgCommand(
+      ["avatar", "set", "facebook", "--url", "https://cdn.example.com/facebook.png"],
+      baseOptions(),
+    ),
+  );
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /Set organization avatar for @facebook/);
+  assert.match(logs.join("\n"), /https:\/\/cdn\.example\.com\/facebook\.png/);
+});
+
+test("clears organization avatar", async () => {
+  const { result, logs } = await captureConsole(() =>
+    runOrgCommand(["avatar", "clear", "facebook"], baseOptions()),
+  );
+  assert.equal(result, 0);
+  assert.match(logs.join("\n"), /Cleared organization avatar for @facebook/);
 });
 
 test("creates organization team", async () => {
