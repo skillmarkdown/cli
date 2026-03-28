@@ -1,5 +1,5 @@
 export const ROOT_USAGE =
-  "Usage: skillmd [--auth-token <token>] [--version|-v] <init|create|validate|login|logout|publish|search|view|history|install|list|remove|use|update|tag|deprecate|unpublish|whoami|org|collaborators|token>";
+  "Usage: skillmd [--auth-token <token>] [--version|-v] <init|create|validate|login|logout|publish|search|view|history|install|list|remove|use|update|tag|deprecate|unpublish|whoami|org|collaborators|account|report|token>";
 export const INIT_USAGE = "Usage: skillmd init [--no-validate] [--template <minimal|verbose>]";
 export const CREATE_USAGE =
   "Usage: skillmd create <target> [--no-validate] [--template <minimal|verbose>]";
@@ -32,11 +32,17 @@ export const DEPRECATE_USAGE =
   'Usage: skillmd deprecate <skill-id>@<version|range> --message "<text>" [--json]';
 export const UNPUBLISH_USAGE = "Usage: skillmd unpublish <skill-id>@<version> [--json]";
 export const WHOAMI_USAGE = "Usage: skillmd whoami [--json]";
+export const ACCOUNT_USAGE =
+  "Usage: skillmd account <delete|support> ... [--json]\n" +
+  "  skillmd account delete [--confirm delete-account] [--json]\n" +
+  '  skillmd account support --subject "<text>" --message "<text>" [--json]';
 export const COLLABORATORS_USAGE =
   "Usage: skillmd collaborators <ls|add|rm> ... [--json]\n" +
   "  skillmd collaborators ls <skill-id> [--json]\n" +
   "  skillmd collaborators add <skill-id> <username> [--json]\n" +
   "  skillmd collaborators rm <skill-id> <username> [--json]";
+export const REPORT_USAGE =
+  'Usage: skillmd report malware <skill-id> --reason <malware|credential_theft|data_exfiltration|obfuscation|impersonation|other> --description "<text>" --reported-version <version> --source-url <url> [--evidence-url <url> ...] [--json]';
 export const ORG_USAGE =
   "Usage: skillmd org <ls|get|create|rm|avatar|members|team|skills|tokens> ... [--json]\n" +
   "  skillmd org ls [--json]\n" +

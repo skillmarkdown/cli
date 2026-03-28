@@ -21,6 +21,8 @@ import { runViewCommand } from "./commands/view";
 import { runWhoamiCommand } from "./commands/whoami";
 import { runOrgCommand } from "./commands/org";
 import { runCollaboratorsCommand } from "./commands/collaborators";
+import { runAccountCommand } from "./commands/account";
+import { runReportCommand } from "./commands/report";
 import { ROOT_USAGE } from "./lib/shared/cli-text";
 import { AUTH_TOKEN_ENV_VAR } from "./lib/auth/api-token";
 
@@ -47,6 +49,8 @@ const COMMAND_HANDLERS: Record<string, CommandHandler> = {
   whoami: runWhoamiCommand,
   org: runOrgCommand,
   collaborators: runCollaboratorsCommand,
+  account: runAccountCommand,
+  report: runReportCommand,
   token: runTokenCommand,
 };
 

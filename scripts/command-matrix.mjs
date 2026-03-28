@@ -21,6 +21,8 @@ export const COMMAND_MATRIX = [
   { id: "login.env-missing", mode: "local_contract", command: "login" },
   { id: "logout.basic", mode: "both", command: "logout" },
   { id: "whoami.json", mode: "both", command: "whoami" },
+  { id: "account.delete", mode: "both", command: "account" },
+  { id: "account.support", mode: "both", command: "account" },
 
   { id: "publish.dry-run", mode: "both", command: "publish" },
   { id: "publish.real", mode: "live_e2e", command: "publish" },
@@ -96,6 +98,8 @@ export const COMMAND_MATRIX = [
   { id: "collaborators.ls", mode: "both", command: "collaborators" },
   { id: "collaborators.add", mode: "both", command: "collaborators" },
   { id: "collaborators.rm", mode: "both", command: "collaborators" },
+
+  { id: "report.malware", mode: "both", command: "report" },
 ];
 
 export function getMatrixIds() {

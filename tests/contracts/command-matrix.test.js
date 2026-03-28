@@ -47,6 +47,8 @@ test("command matrix covers documented usage variants", async () => {
     "login.env-noninteractive",
     "login.env-missing",
     "logout.basic",
+    "account.delete",
+    "account.support",
     "publish.dry-run",
     "publish.real",
     "publish.owner",
@@ -90,6 +92,7 @@ test("command matrix covers documented usage variants", async () => {
     "collaborators.ls",
     "collaborators.add",
     "collaborators.rm",
+    "report.malware",
   ];
 
   for (const id of requiredIds) {
